@@ -1,0 +1,47 @@
+.personal-info-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.personal-info-card {
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.personal-info-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.personal-info-form label {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.personal-info-form input,
+.personal-info-form select {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #374151;
+  background-color: #ffffff;
+  width: 100%;
+  appearance: auto;
+}
+
+.pi-btn {
+  background-color: #fc4c02;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem;
+  cursor: pointer;
+}
