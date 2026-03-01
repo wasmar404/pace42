@@ -41,12 +41,10 @@ export class ResetPasswordDto {
   @MinLength(8)
   newPassword!: string;
 }
-
 export class OAuthCallbackDto {
-  @IsIn(['google', 'intra'])
-  provider!: 'google' | 'intra';
   @IsString()
   code!: string;
+
   @IsOptional()
   @IsString()
   redirectUri?: string;
