@@ -1,13 +1,14 @@
 import {
   IsDateString,
-  IsEmail,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdatePersonalDto {
   @IsString()
@@ -17,9 +18,6 @@ export class UpdatePersonalDto {
   @IsString()
   @MaxLength(100)
   lastName!: string;
-
-  @IsEmail()
-  email!: string;
 
   @IsDateString()
   dateOfBirth!: string;
@@ -35,12 +33,16 @@ export class UpdatePhysicalDto {
   level!: string;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
+  @Max(500)
   weightKg?: number;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
+  @Max(300)
   heightCm?: number;
 }

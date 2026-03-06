@@ -17,6 +17,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let statusCode: number;
     let message: string;
+    let details: string | undefined;
 
     if (error instanceof HttpException) {
       statusCode = error.getStatus();
@@ -35,6 +36,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       // If it's an unexpected error
       statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       message = 'Internal server error';
+
+      if (error instanceof Error) {
+        // Log server-side for debugging
+        // eslint-disable-next-line no-console
+        console.error(error);
+
+        // In development, return the actual error message to help debugging.
+        if ((process.env.NODE_ENV ?? 'development') !== 'production') {
+          details = error.message;
+        }
+      }
     }
 
     // Send clean, consistent response
@@ -42,6 +54,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error: {
         statusCode,
         message,
+        ...(details ? { details } : {}),
         path: request.url,
         timestamp: new Date().toISOString(),
       },
