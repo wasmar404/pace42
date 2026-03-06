@@ -1,8 +1,54 @@
 import "../styles/Signup.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { supabase } from "../supabaseClient";
 
 
 export default function Signup() {
+    const navigate = useNavigate();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const onSignup = async (e) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+        try {
+            const { error: signUpError } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    // After the user clicks the email confirmation link,
+                    // Supabase will redirect them back to this URL.
+                    emailRedirectTo: `${window.location.origin}/verification?next=/personal-info`,
+                },
+            });
+            if (signUpError) throw signUpError;
+            navigate("/verification", { state: { email } });
+        } catch (err) {
+            setError(err?.message || "Signup failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onGoogle = async () => {
+        setError("");
+        const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback?next=/personal-info`,
+            },
+        });
+        if (oauthError) {
+            setError(oauthError.message);
+            return;
+        }
+        if (data?.url) window.location.href = data.url;
+    };
+
     return (
         <div className="Signup">
             <div className="bg-overlay">
@@ -21,7 +67,7 @@ export default function Signup() {
                     Track your progress and reach goals.
                 </p>
                 <div className="social-buttons">
-                    <button className="social-btn google">
+                    <button className="social-btn google" type="button" onClick={onGoogle}>
                         <span>Sign Up With Google</span>
                     </button>
         
@@ -31,23 +77,28 @@ export default function Signup() {
                     <span>or</span>
                 </div>
 
-                <div className="email-form">
+                <form className="email-form" onSubmit={onSignup}>
                     <label className="input-label">Email</label>
                     <input 
                         type="email" 
                         placeholder="Enter Email" 
                         className="email-input"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                     />
                     <label className="password-input">Password</label>
                     <input
                         type="Password"
                         placeholder="Enter your password"
                         className="pass-in"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                     />
-                    <Link to="/verification">
-                    <button className="sign-button full">Sign Up</button>
-                    </Link>
-                </div>
+                    {error ? <p className="terms dark-text">{error}</p> : null}
+                    <button className="sign-button full" type="submit" disabled={loading}>
+                        {loading ? "Signing up..." : "Sign Up"}
+                    </button>
+                </form>
 
                 <p className="terms dark-text">
                     By continuing, you are agreeing to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
