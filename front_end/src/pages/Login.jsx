@@ -4,28 +4,38 @@ import { Link } from "react-router-dom";
 export default function Login() {
     return (
         <div className="login-page">
-            <div className="login-card">
-                <div className="login-header">
-                    <h2>Log In</h2>
-                </div>
+            <div className="bg-overlay">
+                <img 
+                    src="/src/assets/runners.jpg" 
+                    alt="Runners" 
+                    className="bg-image"
+                />
+                <div className="dark-overlay"></div>
+            </div>
+
+            <div className="center-card dark">
+                <h1 className="title">Log In</h1>
 
                 <form className="login-form">
-                    <label>Email</label>
+                    <label className="input-label">Email</label>
                     <input
                     type = "email"
                     placeholder="Enter your email"
+                    className="form-input"
                     />
-                    <label>Password</label>
+                    <label className="input-label">Password</label>
                     <input
-                    type="Password"
+                    type="password"
                     placeholder="Enter your password"
+                    className="form-input"
                     />
-                    <button type="submit" className="lg-btn">
+                    <button type="submit" className="sign-button full">
                         Log In
                     </button>
                 </form>
                 <p className="signup-text">
-                   Don't have an account? <Link to="/signup">Sign up</Link>  </p>
+                   Don't have an account? <Link to="/signup">Sign up</Link>
+                </p>
             </div>
         </div>
     );

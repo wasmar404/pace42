@@ -5,7 +5,7 @@
     box-sizing: border-box;
 }
 
-/* Main Container */
+
 .Landing {
     min-height: 100vh;
     display: flex;
@@ -13,7 +13,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
-/* Side Panels */
+
 .left-panel,
 .right-panel {
     display: none;
@@ -45,7 +45,7 @@
     object-position: top;
 }
 
-/* Center Card */
+
 .center-card {
     width: 100%;
     display: flex;
@@ -53,39 +53,30 @@
     justify-content: center;
     align-items: center;
     padding: 3rem 1.5rem;
-    background-color: #ffffff;
+    background-color: #ffffff !important;
     z-index: 10;
 }
 
-@media (min-width: 1024px) {
-    .center-card {
-        width: 33.333%;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-}
 
-/* Logo */
+
 .logo {
-    font-size: 2.5rem;
-    font-weight: 900;
-    font-style: italic;
-    color: #fc4c02;
-    letter-spacing: -0.05em;
+    width: 250px;
+    height: auto;
     margin-bottom: 1rem;
     text-align: center;
 }
 
-/* Tagline */
+
 .tagline {
     font-size: 0.875rem;
-    color: #475569;
+    color: #1f2227 !important;
     line-height: 1.625;
     text-align: center;
     margin-bottom: 1.5rem;
     max-width: 20rem;
 }
 
-/* Buttons Container */
+
 .Buttons {
     display: flex;
     flex-direction: column;
@@ -100,7 +91,6 @@
     width: 100%;
 }
 
-/* Button Styles */
 .log-button,
 .sign-button {
     width: 100%;
@@ -122,7 +112,7 @@
     color: #ffffff;
 }
 
-/* Terms Text */
+
 .terms {
     font-size: 0.625rem;
     text-align: center;
@@ -140,7 +130,7 @@
     color: #1e293b;
 }
 
-/* Footer */
+
 .landing-footer {
     width: 100%;
     background-color: #ffffff;
