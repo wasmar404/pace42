@@ -1,31 +1,63 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { backendJson, backendUpload } from "../backendApi";
+
 export default function PersonalInfo() {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
+
     const [profileImage, setProfileImage] = useState(null);
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [dateOfBirth, setDateOfBirth] = useState("");
+    const [gender, setGender] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [avatarUploading, setAvatarUploading] = useState(false);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+
+    const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+        await backendJson("PUT", "/api/me/personal", {
+        firstName,
+        lastName,
+        dateOfBirth,
+        gender,
+        });
+
         navigate("/personal-info1");
+    } catch (err) {
+        setError("Failed to save info");
+    }
+
+    setLoading(false);
     };
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setProfileImage(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
+
+    const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setProfileImage(URL.createObjectURL(file));
+    setAvatarUploading(true);
+
+    try {
+        await backendUpload("/api/me/avatar", file);
+    } catch {
+        setError("Upload failed");
+    }
+
+    setAvatarUploading(false);
     };
+
 
     const handleAvatarClick = () => {
-        fileInputRef.current.click();
+    fileInputRef.current.click();
     };
-
     return (
         <div className="personal-info-page">
             <div className="bg-overlay">
@@ -97,17 +129,30 @@ export default function PersonalInfo() {
                         type="text"
                         placeholder="Enter your first name"
                         className="form-input"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
                     />
                     <label className="input-label">Last Name</label>
                     <input
                         type="text"
                         placeholder="Enter your last name"
                         className="form-input"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
                     />
                     <label className="input-label">Date of Birth</label>
-                    <input type="date" className="form-input" />
+                    <input
+                        type="date"
+                        className="form-input"
+                        value={dateOfBirth}
+                        onChange={(e) => setDateOfBirth(e.target.value)}
+                    />
                     <label className="input-label">Gender</label>
-                    <select defaultValue="" className="form-input">
+                    <select
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        className="form-input"
+                    >
                         <option value="" disabled>
                             Select your gender
                         </option>
@@ -115,7 +160,6 @@ export default function PersonalInfo() {
                         <option value="female">Female</option>
                     </select>
                     <button type="submit" className="sign-button full">
-                        Continue
                     </button>
                 </form>
             </div>
