@@ -1,6 +1,6 @@
 .otp-input {
-  width: 45px;
-  height: 30px;
+  width: 35px !important;
+  height: 35px;
   margin: 8px;
   font-size: 20px;
   text-align: center;

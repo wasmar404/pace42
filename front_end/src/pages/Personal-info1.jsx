@@ -4,25 +4,38 @@ import { Link } from "react-router-dom";
 export default function PersonalInfo1() {
     return (
         <div className="personal-info-page">
-            <div className="personal-info-card">
-                <h2>Personal Information</h2>
+            <div className="bg-overlay">
+                <img 
+                    src="/src/assets/runners.jpg" 
+                    alt="Runners" 
+                    className="bg-image"
+                />
+                <div className="dark-overlay"></div>
+            </div>
+
+            <div className="center-card dark">
+                <h1 className="title">Personal Information</h1>
+                
                 <form className="personal-info-form">
-                    <label>Level</label>
+                    <label className="input-label">Level</label>
                     <input
                     type = "text"
                     placeholder="Enter your level"
+                    className="form-input"
                     />
-                    <label>Weight</label>
+                    <label className="input-label">Weight</label>
                     <input
                     type = "text"
                     placeholder="Enter your weight"
+                    className="form-input"
                     />
-                    <label>Height</label>
+                    <label className="input-label">Height</label>
                     <input
                     type = "text"
                     placeholder="Enter your height"
+                    className="form-input"
                     />
-                    <button type="submit" className="pi-btn">
+                    <button type="submit" className="sign-button full">
                         Continue
                     </button>
                 </form>

@@ -16,7 +16,7 @@ export default function Landing() {
 
                 {/* Center Card */}
                 <div className="center-card">
-                    <h1 className="logo">pace42</h1>
+                    <img src="/src/assets/logo.png" alt="Pace42 Logo" className="logo" />
                     <p className="tagline">
                         Track your progress and cheer each other on. Join over 100 million active people on Pace42 for free.
                     </p>
@@ -43,14 +43,6 @@ export default function Landing() {
                 </div>
             </div>
 
-            {/* Footer */}
-            <footer className="landing-footer">
-                <img 
-                    src="/src/assets/logo.png" 
-                    alt="Pace42 Logo" 
-                    className="footer-logo"
-                />
-            </footer>
         </>
     );
 }
