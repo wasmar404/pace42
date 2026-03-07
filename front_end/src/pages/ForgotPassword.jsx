@@ -1,37 +1,70 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import "../styles/ForgotPassword.css";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('')
-  const [msg, setMsg] = useState('')
+  const [email, setEmail] = useState('');
+  const [msg, setMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e) => {
-    e.preventDefault()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
-    setMsg(error ? error.message : 'Reset link sent')
-  }
+    e.preventDefault();
+    setMsg('');
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setMsg('Reset link sent to your email');
+    } catch (err) {
+      setMsg(err?.message || 'Failed to send reset link');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div>
-      <h1>Forgot Password</h1>
-
-      <form onSubmit={onSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+    <div className="ForgotPassword">
+      <div className="bg-overlay">
+        <img 
+          src="/src/assets/runners.jpg" 
+          alt="Runners" 
+          className="bg-image"
         />
+        <div className="dark-overlay"></div>
+      </div>
 
-        <button type="submit">Send reset link</button>
-      </form>
+      <div className="center-card dark">
+        <h1 className="title">Forgot Password</h1>
+        
+        <p className="tagline">
+          Enter your email to receive a password reset link.
+        </p>
 
-      {msg && <p>{msg}</p>}
+        <form className="email-form" onSubmit={onSubmit}>
+          <label className="input-label">Email</label>
+          <input 
+            type="email" 
+            placeholder="Enter your email" 
+            className="email-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-      <Link to="/login">Back to login</Link>
+          {msg && <p className="terms dark-text">{msg}</p>}
+
+          <button className="sign-button full" type="submit" disabled={loading}>
+            {loading ? "Sending..." : "Send Reset Link"}
+          </button>
+        </form>
+
+        <p className="login-link">
+          Remember your password? <Link to="/login">Log in</Link>
+        </p>
+      </div>
     </div>
-  )
+  );
 }
