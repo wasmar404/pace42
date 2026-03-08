@@ -7,8 +7,12 @@ import path from 'node:path';
 import { PrismaService } from '../../prisma';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { CurrentUser } from '../../auth/supabase.user';
-import { UpdatePersonalDto, UpdatePhysicalDto } from '../../me/me.dto';
+import { UpdateMeDto, UpdatePersonalDto, UpdatePhysicalDto } from '../../me/me.dto';
 import { createSupabaseClients } from '../../auth/supabase.auth';
+
+function fallbackUsername(userId: string): string {
+  return `user_${userId.replace(/-/g, '').slice(0, 10)}`;
+}
 
 @Controller('me')
 @UseGuards(SupabaseAuthGuard)
@@ -41,6 +45,7 @@ export class MeController {
       where: { userId: user.userId },
       create: {
         userId: user.userId,
+        username: fallbackUsername(user.userId),
         firstName: dto.firstName,
         lastName: dto.lastName,
         dateOfBirth: new Date(dto.dateOfBirth),
@@ -57,12 +62,45 @@ export class MeController {
     return { profile };
   }
 
+  // Convenience endpoint for the frontend: update any profile fields in one request.
+  @Put()
+  async updateMe(@CurrentUser() user: { userId: string }, @Body() dto: UpdateMeDto) {
+    const profile = await this.prisma.profile.upsert({
+      where: { userId: user.userId },
+      create: {
+        userId: user.userId,
+        username: fallbackUsername(user.userId),
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+        gender: dto.gender,
+        level: dto.level,
+        weightKg: dto.weightKg,
+        heightCm: dto.heightCm,
+        onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
+      },
+      update: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+        gender: dto.gender,
+        level: dto.level,
+        weightKg: dto.weightKg,
+        heightCm: dto.heightCm,
+        onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
+      },
+    });
+
+    return { profile };
+  }
+
   @Put('physical')
   async updatePhysical(@CurrentUser() user: { userId: string }, @Body() dto: UpdatePhysicalDto) {
     const profile = await this.prisma.profile.upsert({
       where: { userId: user.userId },
       create: {
         userId: user.userId,
+        username: fallbackUsername(user.userId),
         level: dto.level,
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
@@ -118,6 +156,7 @@ export class MeController {
       where: { userId: user.userId },
       create: {
         userId: user.userId,
+        username: fallbackUsername(user.userId),
         avatarUrl,
       },
       update: {
@@ -126,5 +165,15 @@ export class MeController {
     });
 
     return { avatarUrl };
+  }
+
+  @Get('activities')
+  async myActivities(@CurrentUser() user: { userId: string }) {
+    const activities = await this.prisma.activity.findMany({
+      where: { userId: user.userId },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    return { activities };
   }
 }

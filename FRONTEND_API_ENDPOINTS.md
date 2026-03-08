@@ -1,105 +1,142 @@
-# Frontend API Endpoints
+# Frontend APIs (Strava Replica)
 
-This repo uses **Supabase Auth** for authentication and a **NestJS backend** for profile/onboarding APIs.
+The frontend talks to two "API surfaces":
 
-Your frontend calls two "API surfaces":
+1) Supabase Auth (directly from the browser)
+2) Your backend (NestJS) for app endpoints + uploads
 
-1) Supabase Auth (via `@supabase/supabase-js`)
-2) Backend REST endpoints (via `fetch` in `front_end/src/backendApi.js`)
+Backend base URL
 
----
+- `VITE_BACKEND_URL` (default in code: `http://localhost:3004`)
+- All backend routes are prefixed with `/api`.
 
-## Backend (NestJS) REST API
+Auth header
 
-Base URL
-
-- Default: `http://localhost:3004`
-- Configurable in frontend with: `VITE_BACKEND_URL`
-
-Auth
-
-- All endpoints below require:
+- Protected backend routes require:
 
 ```
 Authorization: Bearer <supabase_access_token>
 ```
 
-The frontend automatically adds this header in:
-
-- `front_end/src/backendApi.js`
-
-Endpoints
-
-### Get current user + profile
-
-- `GET /api/me`
-- Response:
-  - `{ user: { id, email }, profile }`
-
-### Save personal info
-
-- `PUT /api/me/personal`
-- JSON body:
-
-```json
-{
-  "firstName": "string",
-  "lastName": "string",
-  "dateOfBirth": "YYYY-MM-DD",
-  "gender": "male|female|other|prefer_not_to_say" 
-}
-```
-
-### Save physical info
-
-- `PUT /api/me/physical`
-- JSON body:
-
-```json
-{
-  "level": "string",
-  "weightKg": 70.5,
-  "heightCm": 180.2
-}
-```
-
-Validation notes:
-- `weightKg` max is `500`
-- `heightCm` max is `300`
-
-### Upload avatar
-
-- `POST /api/me/avatar`
-- Content-Type: `multipart/form-data`
-- Form field name: `file`
-- Allowed types: `image/jpeg`, `image/png`, `image/webp`
-- Response:
-  - `{ avatarUrl }`
-
 ---
 
-## Supabase Auth (used by the frontend)
+## Supabase Auth (frontend)
 
-These are not backend endpoints you host; they are calls made by the Supabase client.
-
-Configured by:
-
-- `front_end/src/supabaseClient.js`
-- `front_end/.env`:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-
-Frontend flows
+Used in the frontend via `@supabase/supabase-js`.
 
 - Signup: `supabase.auth.signUp({ email, password, options: { emailRedirectTo } })`
 - Login: `supabase.auth.signInWithPassword({ email, password })`
 - Google OAuth: `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })`
 - Resend verification email: `supabase.auth.resend({ type: 'signup', email })`
 - Forgot password: `supabase.auth.resetPasswordForEmail(email, { redirectTo })`
-- Reset password: `supabase.auth.updateUser({ password: newPassword })`
+- Reset password: `supabase.auth.updateUser({ password })`
 - Logout: `supabase.auth.signOut()`
 
-Frontend routes used by Supabase redirects
+Redirect routes (allowlist in Supabase Dashboard):
 
 - `/auth/callback`
+- `/verification`
 - `/reset-password`
+
+---
+
+## Profile + User API (backend)
+
+### Get my user + profile
+
+- `GET /api/me`
+- Auth: required
+
+### Update my profile (single endpoint)
+
+- `PUT /api/me`
+- Auth: required
+- Body: partial update (any fields may be omitted)
+
+```json
+{
+  "firstName": "A",
+  "lastName": "B",
+  "dateOfBirth": "2000-01-01",
+  "gender": "male",
+  "level": "beginner",
+  "weightKg": 70.5,
+  "heightCm": 180.2,
+  "onboardingCompletedAt": "2026-03-07T00:00:00.000Z"
+}
+```
+
+### Update personal info (legacy)
+
+- `PUT /api/me/personal`
+- Auth: required
+
+### Update physical info (legacy)
+
+- `PUT /api/me/physical`
+- Auth: required
+
+### Upload avatar
+
+- `POST /api/me/avatar`
+- Auth: required
+- multipart field: `file`
+
+### Public user profile
+
+- `GET /api/users/:id`
+- Auth: optional
+
+### Public user activities
+
+- `GET /api/users/:id/activities`
+- Auth: optional
+
+---
+
+## Activities API (backend)
+
+### Create manual activity
+
+- `POST /api/activities`
+- Auth: required
+
+```json
+{
+  "sport": "run",
+  "title": "Morning run",
+  "description": "easy",
+  "startedAt": "2026-03-07T06:00:00.000Z",
+  "durationSeconds": 1800,
+  "distanceMeters": 5000,
+  "visibility": "public"
+}
+```
+
+### Get activity
+
+- `GET /api/activities/:id`
+- Auth: optional
+
+### My activities
+
+- `GET /api/me/activities`
+- Auth: required
+
+### Delete activity
+
+- `DELETE /api/activities/:id`
+- Auth: required (owner)
+
+### Upload activity photo
+
+- `POST /api/activities/:id/media`
+- Auth: required
+- multipart field: `file`
+
+### Import activity from GPX
+
+- `POST /api/activities/import/gpx`
+- Auth: required
+- multipart field: `file`
+- optional fields: `title`, `description`, `visibility`, `sport`
