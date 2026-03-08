@@ -22,11 +22,26 @@ export default function Login() {
         if (error) {
             setError(error.message)
         } else {
-            navigate("/personal-info")
+            navigate("/home")
         }
 
         setLoading(false)
         }
+
+    const onGoogle = async () => {
+        setError(null)
+        const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback?next=/home`,
+            },
+        })
+        if (oauthError) {
+            setError(oauthError.message)
+            return
+        }
+        if (data?.url) window.location.href = data.url
+    }
 
     return (
         <div className="login-page">
@@ -41,6 +56,16 @@ export default function Login() {
 
             <div className="center-card dark">
                 <h1 className="title">Log In</h1>
+
+                <div className="social-buttons">
+                    <button className="social-btn google" type="button" onClick={onGoogle}>
+                        <span>Continue with Google</span>
+                    </button>
+                </div>
+
+                <div className="divider">
+                    <span>or</span>
+                </div>
 
                 <form className="login-form" onSubmit={onLogin}>
                     <label className="input-label">Email</label>

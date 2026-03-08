@@ -9,9 +9,9 @@ export default function AuthCallback() {
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search)
     const next = params.get('next')
-    if (!next) return '/personal-info'
-    if (!next.startsWith('/')) return '/personal-info'
-    if (next.startsWith('//')) return '/personal-info'
+    if (!next) return '/home'
+    if (!next.startsWith('/')) return '/home'
+    if (next.startsWith('//')) return '/home'
     return next
   }, [location.search])
 

@@ -49,7 +49,7 @@ export default function PersonalInfo() {
         gender,
         });
 
-        navigate("/personal-info1");
+        navigate("/home");
     } catch (err) {
         setError("Failed to save info");
     }

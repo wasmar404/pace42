@@ -20,8 +20,15 @@ export default function ProtectedRoute({ children }) {
 
     void run()
 
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+      setHasSession(Boolean(session))
+      setLoading(false)
+    })
+
     return () => {
       cancelled = true
+      sub?.subscription?.unsubscribe()
     }
   }, [])
 
