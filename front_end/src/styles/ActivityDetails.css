@@ -1,0 +1,170 @@
+.activity-page {
+  min-height: 100vh;
+  font-family: var(--p42-font);
+  color: var(--p42-ink);
+  background:
+    radial-gradient(780px 420px at 14% 12%, rgba(16, 185, 129, 0.12), transparent 58%),
+    radial-gradient(860px 520px at 86% 26%, rgba(252, 76, 2, 0.16), transparent 60%),
+    linear-gradient(180deg, #fffaf2 0%, #f7f2e9 55%, #fffaf2 100%);
+}
+
+.activity-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 16px 60px;
+}
+
+.activity-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 4px 16px;
+}
+
+.activity-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: rgba(11, 18, 32, 0.75);
+  font-family: var(--p42-mono);
+  font-weight: 760;
+  letter-spacing: 0.4px;
+}
+
+.activity-back:hover {
+  color: var(--p42-ink);
+}
+
+.activity-card {
+  border-radius: 24px;
+  border: 1px solid rgba(11, 18, 32, 0.14);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--p42-shadow);
+  overflow: hidden;
+  animation: actLift 520ms cubic-bezier(.2,.9,.2,1) both;
+}
+
+.activity-card-head {
+  padding: 18px;
+  border-bottom: 1px solid rgba(11, 18, 32, 0.10);
+  background:
+    radial-gradient(700px 280px at 8% 0%, rgba(252, 76, 2, 0.14), transparent 55%),
+    radial-gradient(520px 240px at 95% 20%, rgba(16, 185, 129, 0.10), transparent 60%);
+}
+
+.activity-title {
+  margin: 0;
+  font-family: var(--p42-serif);
+  letter-spacing: -0.03em;
+  font-size: 2.0rem;
+}
+
+.activity-sub {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: rgba(11, 18, 32, 0.72);
+  font-weight: 750;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 18, 32, 0.14);
+  background: rgba(255, 255, 255, 0.65);
+  font-family: var(--p42-mono);
+  font-weight: 760;
+  letter-spacing: 0.35px;
+  font-size: 0.85rem;
+}
+
+.pill.accent {
+  border-color: rgba(252, 76, 2, 0.30);
+  background: rgba(252, 76, 2, 0.10);
+}
+
+.activity-body {
+  padding: 18px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.stat {
+  border-radius: 18px;
+  border: 1px solid rgba(11, 18, 32, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  padding: 14px;
+}
+
+.stat-k {
+  font-family: var(--p42-mono);
+  font-weight: 760;
+  letter-spacing: 0.55px;
+  color: rgba(11, 18, 32, 0.70);
+  font-size: 0.82rem;
+}
+
+.stat-v {
+  margin-top: 6px;
+  font-family: var(--p42-serif);
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  font-size: 1.65rem;
+}
+
+.activity-desc {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(11, 18, 32, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+  line-height: 1.6;
+  font-weight: 680;
+  color: rgba(11, 18, 32, 0.82);
+}
+
+.activity-empty {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px dashed rgba(11, 18, 32, 0.22);
+  color: rgba(11, 18, 32, 0.70);
+  background: rgba(255, 255, 255, 0.55);
+  font-family: var(--p42-mono);
+}
+
+.activity-error {
+  margin-top: 14px;
+  padding: 12px 12px;
+  border-radius: 18px;
+  background: rgba(239, 68, 68, 0.10);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #991b1b;
+  font-weight: 800;
+}
+
+@media (min-width: 860px) {
+  .stat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@keyframes actLift {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
