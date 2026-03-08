@@ -1,8 +1,10 @@
 import NavBar from '../components/NavBar'
 
+import '../styles/Home.css'
+
 export default function Home() {
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div className="home">
       <NavBar />
     </div>
   )

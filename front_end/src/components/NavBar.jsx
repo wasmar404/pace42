@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Bell, MessageCircle, Search } from 'lucide-react'
 
 import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
 import '../styles/NavBar.css'
+import logo from '../assets/logo-removebg-preview.png'
+
+const PROFILE_CACHE_KEY = 'pace42.meSummary'
+const CACHE_MAX_AGE_MS = 2 * 60 * 1000
 
 export default function NavBar() {
   const navigate = useNavigate()
-  const location = useLocation()
 
   const [avatarUrl, setAvatarUrl] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -16,11 +20,31 @@ export default function NavBar() {
   useEffect(() => {
     let cancelled = false
 
+    // Hydrate avatar immediately from cached profile.
+    try {
+      const raw = localStorage.getItem(PROFILE_CACHE_KEY)
+      if (raw) {
+        const cached = JSON.parse(raw)
+        const cachedAt = Number(cached?.cachedAt || 0)
+        if (cachedAt && Date.now() - cachedAt <= CACHE_MAX_AGE_MS) {
+          setAvatarUrl(cached?.data?.profile?.avatarUrl || '')
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     async function loadMe() {
       try {
-        const res = await backendGet('/api/me')
+        const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setAvatarUrl(res?.profile?.avatarUrl || '')
+
+        try {
+          localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: res }))
+        } catch {
+          // ignore
+        }
       } catch {
         // ignore (user might not be logged in yet)
       }
@@ -30,7 +54,7 @@ export default function NavBar() {
     return () => {
       cancelled = true
     }
-  }, [location.pathname])
+  }, [])
 
   useEffect(() => {
     function onDocClick(e) {
@@ -51,18 +75,25 @@ export default function NavBar() {
     <header className="nav">
       <div className="nav-inner">
         <Link to="/" className="nav-logo" aria-label="Pace42">
-          <span className="nav-logo-mark">P</span>
-          <span className="nav-logo-text">Pace42</span>
+          <img className="nav-logo-img" src={logo} alt="Pace42" />
+        </Link>
+
+        <Link to="/search" className="nav-icon" aria-label="Search">
+          <Search size={18} strokeWidth={2.4} />
         </Link>
 
         <nav className="nav-links" aria-label="Primary">
-          <Link to="/clubs" className="nav-link">Clubs</Link>
-          <Link to="/search" className="nav-link">Search</Link>
           <Link to="/training" className="nav-link">Training Logs</Link>
-          <Link to="/chat" className="nav-link">Chat</Link>
+          <Link to="/clubs" className="nav-link">Clubs</Link>
         </nav>
 
         <div className="nav-actions">
+          <Link to="/notifications" className="nav-icon" aria-label="Notifications">
+            <Bell size={18} strokeWidth={2.4} />
+          </Link>
+          <Link to="/chat" className="nav-icon" aria-label="Chat">
+            <MessageCircle size={18} strokeWidth={2.4} />
+          </Link>
           <button className="nav-ghost" type="button" onClick={logout}>Logout</button>
 
           <div className="nav-plus" ref={menuRef}>

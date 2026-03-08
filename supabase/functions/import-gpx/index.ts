@@ -14,6 +14,7 @@ type ImportBody = {
   title?: string
   description?: string
   visibility?: string
+  userJwt?: string
 }
 
 function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
@@ -69,19 +70,27 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing Supabase env vars' }), { status: 500 })
     }
 
-    const authHeader = req.headers.get('authorization') || ''
-    const authed = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
-    const { data: userData, error: userErr } = await authed.auth.getUser()
-    if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-    }
-
     const body = (await req.json()) as ImportBody
     if (!body?.gpxBucket || !body?.gpxPath) {
       return new Response(JSON.stringify({ error: 'Missing gpxBucket/gpxPath' }), { status: 400 })
+    }
+
+    const token = typeof body.userJwt === 'string' ? body.userJwt : ''
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    // In server/edge environments, always pass the JWT explicitly.
+    const authed = createClient(supabaseUrl, anonKey)
+    const { data: userData, error: userErr } = await authed.auth.getUser(token)
+    if (userErr || !userData.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      })
     }
 
     const service = createClient(supabaseUrl, serviceRoleKey)
@@ -92,23 +101,31 @@ Deno.serve(async (req) => {
     }
 
     const xml = await fileData.text()
-    const doc = new DOMParser().parseFromString(xml, 'application/xml')
-    if (!doc) return new Response(JSON.stringify({ error: 'Invalid GPX' }), { status: 400 })
 
-    const trkpts = Array.from(doc.getElementsByTagName('trkpt'))
-    if (trkpts.length < 2) return new Response(JSON.stringify({ error: 'GPX has no track points' }), { status: 400 })
+    // Avoid DOMParser dependency; parse trackpoints with a simple regex.
+    // This supports typical GPX produced by Strava/Garmin/etc.
+    const trkptRe = /<trkpt\b[^>]*\blat="([^"]+)"[^>]*\blon="([^"]+)"[^>]*>([\s\S]*?)<\/trkpt>/gi
+    const timeRe = /<time>([^<]+)<\/time>/i
 
     const points: Array<{ lat: number; lon: number; t?: number }> = []
-    for (const el of trkpts) {
-      const lat = Number(el.getAttribute('lat'))
-      const lon = Number(el.getAttribute('lon'))
+    let m: RegExpExecArray | null
+    while ((m = trkptRe.exec(xml))) {
+      const lat = Number(m[1])
+      const lon = Number(m[2])
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
-      const timeEl = el.getElementsByTagName('time')[0]
-      const t = timeEl ? Date.parse(timeEl.textContent || '') : NaN
+
+      const inner = m[3] || ''
+      const tm = timeRe.exec(inner)
+      const t = tm ? Date.parse(tm[1]) : NaN
       points.push({ lat, lon, t: Number.isFinite(t) ? t : undefined })
     }
 
-    if (points.length < 2) return new Response(JSON.stringify({ error: 'GPX points invalid' }), { status: 400 })
+    if (points.length < 2) {
+      return new Response(JSON.stringify({ error: 'GPX has no track points' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
 
     // Downsample to keep polyline reasonable
     const maxPoints = 500
@@ -147,6 +164,9 @@ Deno.serve(async (req) => {
       { headers: { 'content-type': 'application/json' } },
     )
   } catch (e) {
+    // Log full error for Supabase logs
+    // deno-lint-ignore no-console
+    console.error(e)
     const msg = e instanceof Error ? e.message : 'Unknown error'
     return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { 'content-type': 'application/json' } })
   }

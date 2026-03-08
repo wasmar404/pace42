@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient'
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 
 async function authHeader() {
   const { data } = await supabase.auth.getSession()
@@ -13,6 +13,10 @@ export async function backendGet(path) {
   const headers = await authHeader()
   const res = await fetch(`${BASE_URL}${path}`, { headers })
   const json = await res.json().catch(() => ({}))
+  if (res.status === 401) {
+    await supabase.auth.signOut().catch(() => {})
+    throw new Error('Session expired. Please log in again.')
+  }
   if (!res.ok) throw new Error(json?.error?.message || 'Request failed')
   return json
 }
@@ -25,20 +29,32 @@ export async function backendJson(method, path, body) {
     body: JSON.stringify(body),
   })
   const json = await res.json().catch(() => ({}))
+  if (res.status === 401) {
+    await supabase.auth.signOut().catch(() => {})
+    throw new Error('Session expired. Please log in again.')
+  }
   if (!res.ok) throw new Error(json?.error?.message || 'Request failed')
   return json
 }
 
-export async function backendUpload(path, file) {
+export async function backendUpload(path, fileOrForm) {
   const headers = await authHeader()
-  const form = new FormData()
-  form.append('file', file)
+
+  const form = fileOrForm instanceof FormData ? fileOrForm : new FormData()
+  if (!(fileOrForm instanceof FormData)) {
+    form.append('file', fileOrForm)
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers,
     body: form,
   })
   const json = await res.json().catch(() => ({}))
+  if (res.status === 401) {
+    await supabase.auth.signOut().catch(() => {})
+    throw new Error('Session expired. Please log in again.')
+  }
   if (!res.ok) throw new Error(json?.error?.message || 'Upload failed')
   return json
 }

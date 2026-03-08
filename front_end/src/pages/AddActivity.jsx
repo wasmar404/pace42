@@ -43,6 +43,23 @@ export default function AddActivity() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  async function runWithConcurrency(items, limit, fn) {
+    const results = []
+    const queue = [...items]
+    const workers = Array.from({ length: Math.max(1, limit) }, async () => {
+      while (queue.length) {
+        const item = queue.shift()
+        try {
+          results.push(await fn(item))
+        } catch (e) {
+          results.push(Promise.reject(e))
+        }
+      }
+    })
+    await Promise.all(workers)
+    return results
+  }
+
   const photoPreviews = useMemo(() => {
     return photos.map((f) => ({
       name: f.name,
@@ -87,8 +104,8 @@ export default function AddActivity() {
     const activityId = res?.activity?.id
     if (!activityId) throw new Error('Activity created but missing id')
 
-    for (const file of photos) {
-      await uploadActivityPhoto(activityId, file)
+    if (photos.length) {
+      await runWithConcurrency(photos, 3, (file) => uploadActivityPhoto(activityId, file))
     }
 
     navigate(`/activities/${activityId}`)
@@ -107,8 +124,8 @@ export default function AddActivity() {
     const activityId = res?.activity?.id
     if (!activityId) throw new Error('Import succeeded but missing activity id')
 
-    for (const file of photos) {
-      await uploadActivityPhoto(activityId, file)
+    if (photos.length) {
+      await runWithConcurrency(photos, 3, (file) => uploadActivityPhoto(activityId, file))
     }
 
     navigate(`/activities/${activityId}`)

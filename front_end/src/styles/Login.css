@@ -124,3 +124,44 @@
 .signup-text a:hover {
     text-decoration: underline;
 }
+
+/* Reuse the signup social button pattern */
+.social-buttons {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.social-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid #ffffff;
+    background: transparent;
+    color: #ffffff;
+}
+
+.social-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+}
+
+.divider {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem;
+    color: #d1d5db;
+    font-size: 0.75rem;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.18);
+}
