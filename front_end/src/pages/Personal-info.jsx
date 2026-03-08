@@ -19,6 +19,26 @@ export default function PersonalInfo() {
 
     const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+
+    // Validate all fields are filled
+    if (!firstName.trim()) {
+        setError("Please enter your first name");
+        return;
+    }
+    if (!lastName.trim()) {
+        setError("Please enter your last name");
+        return;
+    }
+    if (!dateOfBirth) {
+        setError("Please select your date of birth");
+        return;
+    }
+    if (!gender) {
+        setError("Please select your gender");
+        return;
+    }
+
     setLoading(true);
 
     try {
@@ -130,7 +150,10 @@ export default function PersonalInfo() {
                         placeholder="Enter your first name"
                         className="form-input"
                         value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
+                        onChange={(e) => {
+                            setFirstName(e.target.value);
+                            if (error) setError("");
+                        }}
                     />
                     <label className="input-label">Last Name</label>
                     <input
@@ -138,19 +161,28 @@ export default function PersonalInfo() {
                         placeholder="Enter your last name"
                         className="form-input"
                         value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
+                        onChange={(e) => {
+                            setLastName(e.target.value);
+                            if (error) setError("");
+                        }}
                     />
                     <label className="input-label">Date of Birth</label>
                     <input
                         type="date"
                         className="form-input"
                         value={dateOfBirth}
-                        onChange={(e) => setDateOfBirth(e.target.value)}
+                        onChange={(e) => {
+                            setDateOfBirth(e.target.value);
+                            if (error) setError("");
+                        }}
                     />
                     <label className="input-label">Gender</label>
                     <select
                         value={gender}
-                        onChange={(e) => setGender(e.target.value)}
+                        onChange={(e) => {
+                            setGender(e.target.value);
+                            if (error) setError("");
+                        }}
                         className="form-input"
                     >
                         <option value="" disabled>
@@ -159,7 +191,11 @@ export default function PersonalInfo() {
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                     </select>
-                    <button type="submit" className="sign-button full">
+
+                    {error && <p className="error-message">{error}</p>}
+
+                    <button type="submit" className="sign-button full" disabled={loading}>
+                        {loading ? "Saving..." : "Continue"}
                     </button>
                 </form>
             </div>

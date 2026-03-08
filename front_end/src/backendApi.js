@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient'
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
 
 async function authHeader() {
   const { data } = await supabase.auth.getSession()
@@ -29,14 +29,10 @@ export async function backendJson(method, path, body) {
   return json
 }
 
-export async function backendUpload(path, fileOrForm) {
+export async function backendUpload(path, file) {
   const headers = await authHeader()
-
-  const form = fileOrForm instanceof FormData ? fileOrForm : new FormData()
-  if (!(fileOrForm instanceof FormData)) {
-    form.append('file', fileOrForm)
-  }
-
+  const form = new FormData()
+  form.append('file', file)
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers,
