@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { backendJson, backendUpload } from "../backendApi";
+import "../styles/Personal-info.css";
 
 export default function PersonalInfo() {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function PersonalInfo() {
     const [lastName, setLastName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
     const [gender, setGender] = useState("");
+    const [bio, setBio] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
@@ -47,6 +49,7 @@ export default function PersonalInfo() {
         lastName,
         dateOfBirth,
         gender,
+        bio,
         });
 
         navigate("/home");
@@ -191,6 +194,18 @@ export default function PersonalInfo() {
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                     </select>
+                    <label className="input-label">Bio</label>
+                    <textarea
+                        placeholder="Tell us about yourself"
+                        className="form-input"
+                        value={bio}
+                        onChange={(e) => {
+                            setBio(e.target.value);
+                            if (error) setError("");
+                        }}
+                        rows={3}
+                        style={{ resize: "vertical" }}
+                    />
 
                     {error && <p className="error-message">{error}</p>}
 
