@@ -18,7 +18,7 @@ export default function Landing() {
                 <div className="center-card">
                     <img src="/src/assets/logo.png" alt="Pace42 Logo" className="logo" />
                     <p className="tagline">
-                        Track your progress and cheer each other on. Join over 100 million active people on Pace42 for free.
+                        Track your progress and cheer each other on. Join Pace42 for free.
                     </p>
                     <div className="Buttons">
                         <Link to="/login">
