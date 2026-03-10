@@ -1,19 +1,219 @@
-import { BadRequestException, Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 
 import { OptionalSupabaseAuthGuard } from '../../auth/supabase.optional.guard';
+import { SupabaseAuthGuard } from '../../auth/supabase.guard';
+import { CurrentUser } from '../../auth/supabase.user';
 import { PrismaService } from '../../prisma';
+
+function isUuidV4(value: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value);
+}
 
 @Controller('users')
 export class UsersController {
+  private readonly summaryCache = new Map<string, { expiresAt: number; data: any }>();
+
   constructor(
     private readonly prisma: PrismaService,
   ) {}
 
-  @Get(':id')
+  @Get(':id([0-9a-fA-F-]{36})/summary')
+  @UseGuards(OptionalSupabaseAuthGuard)
+  async getUserSummary(@Param('id') id: string, @Req() req: Request) {
+    if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
+
+    const viewerId = (req as any)?.user?.userId as string | undefined;
+    const isSelf = viewerId === id;
+
+    const cacheKey = `${viewerId ?? 'anon'}:${id}`;
+    const cached = this.summaryCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) return cached.data;
+
+    const [profile, followersCount, followingCount] = await Promise.all([
+      this.prisma.profile.findUnique({
+        where: { userId: id },
+        select: {
+          userId: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+          level: true,
+          bio: true,
+        },
+      }),
+      this.prisma.follow.count({ where: { followingId: id } }),
+      this.prisma.follow.count({ where: { followerId: id } }),
+    ]);
+
+    if (!profile) throw new BadRequestException('User not found');
+
+    let isFollowing = false;
+    if (viewerId && !isSelf) {
+      const follow = await this.prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: viewerId,
+            followingId: id,
+          },
+        },
+        select: { followerId: true },
+      });
+      isFollowing = Boolean(follow);
+    }
+
+    const visibilityFilter: string[] = ['public'];
+    if (isSelf) visibilityFilter.push('followers', 'only_me');
+    else if (isFollowing) visibilityFilter.push('followers');
+
+    const since4w = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+
+    const [recentActivities, totalVisibleActivities, last4WeeksCount, sums, recentPhotos] = await Promise.all([
+      this.prisma.activity.findMany({
+        where: {
+          userId: id,
+          visibility: { in: visibilityFilter },
+        },
+        orderBy: { startedAt: 'desc' },
+        take: 2,
+        select: {
+          id: true,
+          userId: true,
+          sport: true,
+          title: true,
+          description: true,
+          startedAt: true,
+          durationSeconds: true,
+          distanceMeters: true,
+          visibility: true,
+          source: true,
+          routePolyline: true,
+        },
+      }),
+      this.prisma.activity.count({
+        where: {
+          userId: id,
+          visibility: { in: visibilityFilter },
+        },
+      }),
+      this.prisma.activity.count({
+        where: {
+          userId: id,
+          visibility: { in: visibilityFilter },
+          startedAt: { gte: since4w },
+        },
+      }),
+      this.prisma.activity.aggregate({
+        where: {
+          userId: id,
+          visibility: { in: visibilityFilter },
+        },
+        _sum: {
+          distanceMeters: true,
+          durationSeconds: true,
+        },
+      }),
+      this.prisma.activityMedia.findMany({
+        where: {
+          userId: id,
+          kind: 'photo',
+          publicUrl: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 24,
+        select: { publicUrl: true },
+      }),
+    ]);
+
+    const resp = {
+      user: {
+        id: profile.userId,
+        username: profile.username,
+      },
+      profile: {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        avatarUrl: profile.avatarUrl,
+        level: profile.level,
+        bio: profile.bio,
+      },
+      relationship: {
+        isSelf,
+        isFollowing,
+      },
+      stats: {
+        followersCount,
+        followingCount,
+        totalActivities: totalVisibleActivities,
+        last4WeeksCount,
+        totalDistanceMeters: Number(sums?._sum?.distanceMeters ?? 0),
+        totalDurationSeconds: Number(sums?._sum?.durationSeconds ?? 0),
+        lastActivityAt: recentActivities?.[0]?.startedAt ?? null,
+      },
+      recentActivities,
+      recentPhotos: recentPhotos.map((p: { publicUrl: string | null }) => p.publicUrl).filter(Boolean),
+    };
+
+    this.summaryCache.set(cacheKey, { expiresAt: Date.now() + 5000, data: resp });
+    if (this.summaryCache.size > 5000) {
+      const firstKey = this.summaryCache.keys().next().value as string | undefined;
+      if (typeof firstKey === 'string') this.summaryCache.delete(firstKey);
+    }
+
+    return resp;
+  }
+
+  @Post(':id([0-9a-fA-F-]{36})/follow')
+  @UseGuards(SupabaseAuthGuard)
+  async followUser(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
+    if (id === user.userId) throw new BadRequestException('Cannot follow yourself');
+
+    const target = await this.prisma.profile.findUnique({ where: { userId: id }, select: { userId: true } });
+    if (!target) throw new BadRequestException('User not found');
+
+    await this.prisma.follow.upsert({
+      where: {
+        followerId_followingId: {
+          followerId: user.userId,
+          followingId: id,
+        },
+      },
+      create: {
+        followerId: user.userId,
+        followingId: id,
+      },
+      update: {},
+    });
+
+    return { ok: true };
+  }
+
+  @Delete(':id([0-9a-fA-F-]{36})/follow')
+  @UseGuards(SupabaseAuthGuard)
+  async unfollowUser(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
+    if (id === user.userId) throw new BadRequestException('Cannot unfollow yourself');
+
+    await this.prisma.follow.deleteMany({
+      where: {
+        followerId: user.userId,
+        followingId: id,
+      },
+    });
+
+    return { ok: true };
+  }
+
+  @Get(':id([0-9a-fA-F-]{36})')
   @UseGuards(OptionalSupabaseAuthGuard)
   async getUser(@Param('id') id: string) {
     if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
 
     const data = await this.prisma.profile.findUnique({
       where: { userId: id },
@@ -45,10 +245,11 @@ export class UsersController {
     };
   }
 
-  @Get(':id/activities')
+  @Get(':id([0-9a-fA-F-]{36})/activities')
   @UseGuards(OptionalSupabaseAuthGuard)
   async getUserActivities(@Param('id') id: string, @Req() req: Request) {
     if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
 
     const viewerId = (req as any)?.user?.userId as string | undefined;
     const isOwner = viewerId === id;

@@ -46,7 +46,7 @@ export class MeController {
     const cached = this.summaryCache.get(user.userId);
     if (cached && Date.now() < cached.expiresAt) return cached.data;
 
-    const [profile, recentActivities, last4WeeksCount, totalActivities, recentPhotos] = await Promise.all([
+    const [profile, recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] = await Promise.all([
       this.prisma.profile.findUnique({ where: { userId: user.userId } }),
       this.prisma.activity.findMany({
         where: { userId: user.userId },
@@ -85,6 +85,9 @@ export class MeController {
         take: 24,
         select: { publicUrl: true },
       }),
+
+      this.prisma.follow.count({ where: { followingId: user.userId } }),
+      this.prisma.follow.count({ where: { followerId: user.userId } }),
     ]);
 
     const resp = {
@@ -96,6 +99,8 @@ export class MeController {
       stats: {
         last4WeeksCount,
         totalActivities,
+        followersCount,
+        followingCount,
       },
       recentActivities,
       recentPhotos: recentPhotos.map((p) => p.publicUrl).filter(Boolean),
@@ -122,12 +127,14 @@ export class MeController {
         lastName: dto.lastName,
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
+        bio: dto.bio,
       },
       update: {
         firstName: dto.firstName,
         lastName: dto.lastName,
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
+        bio: dto.bio,
       },
     });
 
@@ -147,6 +154,7 @@ export class MeController {
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         gender: dto.gender,
         level: dto.level,
+        bio: dto.bio,
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
@@ -157,6 +165,7 @@ export class MeController {
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         gender: dto.gender,
         level: dto.level,
+        bio: dto.bio,
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
