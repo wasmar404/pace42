@@ -35,6 +35,11 @@ export class UpdateMeDto {
   level?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  bio?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
@@ -68,4 +73,9 @@ export class UpdatePersonalDto {
   @IsOptional()
   @IsIn(['male', 'female', 'other', 'prefer_not_to_say'])
   gender?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  bio?: string;
 }
