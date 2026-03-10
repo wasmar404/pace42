@@ -10,6 +10,7 @@ datasource db {
 
 model Profile {
   userId                String    @id @map("user_id") @db.Uuid
+  username              String    @unique @db.Text
   avatarUrl             String?   @map("avatar_url")
   firstName             String?   @map("first_name") @db.VarChar(100)
   lastName              String?   @map("last_name") @db.VarChar(100)
@@ -18,8 +19,59 @@ model Profile {
   level                 String?   @db.VarChar(50)
   weightKg              Decimal?  @map("weight_kg") @db.Decimal(5, 2)
   heightCm              Decimal?  @map("height_cm") @db.Decimal(5, 2)
+  bio                   String?   @db.Text
   onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("profiles")
+}
+
+model Activity {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  sport           String   @db.Text
+  title           String?  @db.Text
+  description     String?  @db.Text
+  startedAt       DateTime @map("started_at") @db.Timestamptz(6)
+  durationSeconds Int      @map("duration_seconds")
+  distanceMeters  Int      @map("distance_meters")
+  visibility      String   @db.Text
+  source          String   @db.Text
+  routePolyline   String?  @map("route_polyline") @db.Text
+  mapImageUrl     String?  @map("map_image_url") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  media ActivityMedia[]
+
+  @@index([userId])
+  @@index([startedAt])
+  @@index([visibility])
+  @@map("activities")
+}
+
+model ActivityMedia {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId    String   @map("activity_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  kind          String   @db.Text
+  storageBucket String   @map("storage_bucket") @db.Text
+  storagePath   String   @map("storage_path") @db.Text
+  publicUrl     String?  @map("public_url") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([userId])
+  @@map("activity_media")
+}
+
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([followerId, followingId])
+  @@map("follows")
 }
