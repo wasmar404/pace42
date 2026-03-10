@@ -12,6 +12,8 @@ import Home from "./pages/Home";
 import AddActivity from "./pages/AddActivity";
 import ActivityDetails from "./pages/ActivityDetails";
 import Profile from "./pages/Profile";
+import Search from "./pages/Search";
+import UserProfile from "./pages/UserProfile";
 
 function App() {
   return (
@@ -62,6 +64,24 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <Search />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/users/:id"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
             </ProtectedRoute>
           }
         />

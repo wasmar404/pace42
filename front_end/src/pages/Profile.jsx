@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   MapPin, 
@@ -17,13 +17,15 @@ import {
 } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
-import RouteMap from '../components/RouteMap'
 import { backendGet } from '../backendApi'
+import Avatar from '../components/Avatar'
 
 import '../styles/Profile.css'
 import runners from '../assets/runners.jpg'
 import cyclists from '../assets/cyclists.jpg'
 import runners2 from '../assets/runners.jpg'
+
+const RouteMap = lazy(() => import('../components/RouteMap'))
 
 const DEFAULT_HERO = [runners, cyclists, runners2]
 
@@ -115,9 +117,12 @@ export default function Profile() {
   const [activities, setActivities] = useState([])
   const [last4WeeksCount, setLast4WeeksCount] = useState(0)
   const [totalActivities, setTotalActivities] = useState(0)
+  const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
   const [hero, setHero] = useState(DEFAULT_HERO)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [openMaps, setOpenMaps] = useState(() => new Set())
 
   useEffect(() => {
     try {
@@ -132,6 +137,8 @@ export default function Profile() {
       setActivities(data?.recentActivities || [])
       setLast4WeeksCount(Number(data?.stats?.last4WeeksCount || 0))
       setTotalActivities(Number(data?.stats?.totalActivities || 0))
+      setFollowersCount(Number(data?.stats?.followersCount || 0))
+      setFollowingCount(Number(data?.stats?.followingCount || 0))
 
       const day = new Date().toISOString().slice(0, 10)
       const seed = `${data?.user?.id || ''}:${day}`
@@ -153,6 +160,8 @@ export default function Profile() {
         setActivities(res?.recentActivities || [])
         setLast4WeeksCount(Number(res?.stats?.last4WeeksCount || 0))
         setTotalActivities(Number(res?.stats?.totalActivities || 0))
+        setFollowersCount(Number(res?.stats?.followersCount || 0))
+        setFollowingCount(Number(res?.stats?.followingCount || 0))
 
         const day = new Date().toISOString().slice(0, 10)
         const seed = `${res?.user?.id || ''}:${day}`
@@ -185,6 +194,15 @@ export default function Profile() {
   }, [me])
 
   const recent = activities.slice(0, 3)
+
+  const toggleMap = (activityId) => {
+    setOpenMaps((prev) => {
+      const next = new Set(prev)
+      if (next.has(activityId)) next.delete(activityId)
+      else next.add(activityId)
+      return next
+    })
+  }
   
   const stats = useMemo(() => {
     const totalDistance = activities.reduce((sum, a) => sum + (Number(a.distanceMeters) || 0), 0)
@@ -233,8 +251,8 @@ export default function Profile() {
             <div className="bento-item bento-profile">
               <div className="profile-card-content">
                 <div className="profile-avatar-large">
-                  {me?.profile?.avatarUrl ? (
-                    <img src={me.profile.avatarUrl} alt={displayName} />
+                  {me ? (
+                    <Avatar avatarUrl={me?.profile?.avatarUrl} seed={me?.profile?.username || me?.user?.id || displayName} alt={displayName} loading="eager" />
                   ) : (
                     <div className="avatar-placeholder">
                       <User size={40} />
@@ -275,6 +293,14 @@ export default function Profile() {
                 <div className="stat-box">
                   <span className="stat-value">{totalActivities}</span>
                   <span className="stat-label">Total</span>
+                </div>
+                <div className="stat-box">
+                  <span className="stat-value">{followersCount}</span>
+                  <span className="stat-label">Followers</span>
+                </div>
+                <div className="stat-box">
+                  <span className="stat-value">{followingCount}</span>
+                  <span className="stat-label">Following</span>
                 </div>
                 <div className="stat-box highlight">
                   <span className="stat-value">{formatDistance(stats.totalDistance)}</span>
@@ -383,7 +409,16 @@ export default function Profile() {
 
                         {activity.routePolyline && (
                           <div className="workout-map">
-                            <RouteMap polyline={activity.routePolyline} height={180} />
+                            <button type="button" className="map-toggle" onClick={() => toggleMap(activity.id)}>
+                              {openMaps.has(activity.id) ? 'Hide map' : 'Show map'}
+                            </button>
+                            {openMaps.has(activity.id) ? (
+                              <Suspense fallback={<div className="map-fallback">Loading map...</div>}>
+                                <RouteMap polyline={activity.routePolyline} height={180} />
+                              </Suspense>
+                            ) : (
+                              <div className="map-fallback">Route available</div>
+                            )}
                           </div>
                         )}
                         

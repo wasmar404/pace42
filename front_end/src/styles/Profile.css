@@ -61,17 +61,21 @@
   font-size: 14px;
 }
 
-/* Hero Section with Bento Grid */
+/* Hero Section */
 .profile-hero {
   margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-bento {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  grid-template-rows: 200px 140px;
+  grid-template-rows: 260px auto;
+  grid-template-areas:
+    "main stack"
+    "stats profile";
   gap: 16px;
-  height: 360px;
 }
 
 .bento-item {
@@ -80,17 +84,18 @@
   overflow: hidden;
   background: var(--color-surface);
   box-shadow: var(--shadow-md);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, margin 0.3s ease;
 }
 
 .bento-item:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+  margin-top: -2px;
+  margin-bottom: 2px;
 }
 
 /* Main Image */
 .bento-main {
-  grid-row: span 2;
+  grid-area: main;
 }
 
 .bento-main img {
@@ -102,20 +107,23 @@
 .bento-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.4) 0%, transparent 50%);
 }
 
 /* Stacked Images */
 .bento-stack {
+  grid-area: stack;
   display: flex;
   flex-direction: column;
   gap: 16px;
   background: transparent;
   box-shadow: none;
+  overflow: visible;
 }
 
 .bento-stack:hover {
-  transform: none;
+  margin-top: 0;
+  margin-bottom: 0;
   box-shadow: none;
 }
 
@@ -125,6 +133,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-md);
   transition: transform 0.3s ease;
+  background: var(--color-surface);
 }
 
 .stack-img:hover {
@@ -139,6 +148,7 @@
 
 /* Profile Card */
 .bento-profile {
+  grid-area: profile;
   background: linear-gradient(135deg, #1c1917 0%, #292524 100%);
   color: white;
   display: flex;
@@ -164,7 +174,7 @@
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid rgba(255,255,255,0.1);
+  border: 4px solid rgba(255, 255, 255, 0.1);
   background: var(--color-surface);
   display: flex;
   align-items: center;
@@ -225,6 +235,7 @@
 
 /* Stats Card */
 .bento-stats {
+  grid-area: stats;
   background: var(--color-surface);
   padding: 20px;
   display: flex;
@@ -233,7 +244,7 @@
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
   width: 100%;
 }
@@ -278,20 +289,30 @@
 /* Main Content Layout */
 .profile-content {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 24px;
+  align-items: start;
+  position: relative;
+  z-index: 2;
 }
 
 .content-main {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .content-sidebar {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  height: fit-content;
+  min-width: 320px;
+  z-index: 3;
 }
 
 /* Cards */
@@ -301,11 +322,22 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--color-border);
+  position: relative;
+}
+
+.content-card {
   overflow: hidden;
   transition: box-shadow 0.2s ease;
 }
 
-.content-card:hover {
+.sidebar-card {
+  overflow: visible;
+  padding: 16px;
+  transition: box-shadow 0.2s ease;
+}
+
+.content-card:hover,
+.sidebar-card:hover {
   box-shadow: var(--shadow-md);
 }
 
@@ -361,20 +393,29 @@
   padding: 24px;
 }
 
-/* About Card */
+.about-card {
+  position: relative;
+}
+
 .bio-text {
+  margin: 0 0 16px 0;
   font-size: 15px;
   line-height: 1.6;
   color: var(--color-text-secondary);
-  margin: 0 0 20px 0;
 }
 
 .profile-meta-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 12px;
+  color: var(--color-text-secondary);
   font-size: 14px;
-  color: var(--color-text-muted);
+}
+
+.profile-meta-item svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 /* Empty State */
@@ -542,6 +583,7 @@
 .workout-arrow {
   color: var(--color-text-muted);
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .workout-item:hover .workout-arrow {
@@ -553,6 +595,29 @@
   margin-top: 16px;
   border-radius: var(--radius-md);
   overflow: hidden;
+  display: grid;
+  gap: 10px;
+}
+
+.map-toggle {
+  justify-self: start;
+  border: 1px solid rgba(11, 18, 32, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.map-fallback {
+  height: 180px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(11, 18, 32, 0.10);
+  display: grid;
+  place-items: center;
+  color: rgba(11, 18, 32, 0.62);
+  background: rgba(11, 18, 32, 0.03);
 }
 
 .workout-description {
@@ -603,14 +668,12 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Sidebar Cards */
-.sidebar-card {
-  padding: 20px;
-}
-
 .goal-header,
 .mini-stats h3 {
   display: flex;
@@ -619,7 +682,7 @@
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text);
-  margin: 0 0 20px 0;
+  margin: 0 0 12px 0;
 }
 
 .goal-header svg {
@@ -633,9 +696,9 @@
 
 .progress-ring {
   position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 16px;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 12px;
 }
 
 .progress-ring svg {
@@ -668,7 +731,7 @@
 
 .progress-value {
   display: block;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--color-text);
   line-height: 1;
@@ -691,14 +754,14 @@
 .mini-stat-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .mini-stat {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: 10px;
   background: var(--color-surface-hover);
   border-radius: var(--radius-md);
   transition: background 0.2s ease;
@@ -718,23 +781,27 @@
   justify-content: center;
   color: var(--color-primary);
   box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 .mini-stat-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .mini-value {
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .mini-label {
   font-size: 12px;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 /* Responsive */
@@ -768,25 +835,42 @@
   }
 
   .content-sidebar {
+    position: relative;
+    top: 0;
     order: -1;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: visible;
     padding-bottom: 8px;
+    min-width: auto;
   }
 
   .sidebar-card {
     min-width: 280px;
+    flex-shrink: 0;
   }
 }
 
 @media (max-width: 640px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .bento-profile {
-    flex-direction: column;
     text-align: center;
+  }
+
+  .profile-card-content {
+    flex-direction: column;
   }
 
   .profile-badges {
     justify-content: center;
+  }
+
+  .workout-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .workout-metrics {
@@ -795,5 +879,22 @@
 
   .metric span {
     font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .profile-container {
+    padding: 12px;
+  }
+
+  .card-header,
+  .card-body,
+  .sidebar-card {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
