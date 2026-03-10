@@ -12,6 +12,7 @@ create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   username text,
   avatar_url text,
+  is_private boolean not null default false,
   first_name varchar(100),
   last_name varchar(100),
   date_of_birth date,
@@ -28,6 +29,7 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists username text;
 alter table public.profiles add column if not exists bio text;
 alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists is_private boolean not null default false;
 
 -- Backfill username for existing rows, then enforce uniqueness + not null.
 update public.profiles

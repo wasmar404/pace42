@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsIn,
   IsNumber,
@@ -56,6 +57,10 @@ export class UpdateMeDto {
   @IsOptional()
   @IsDateString()
   onboardingCompletedAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrivate?: boolean;
 }
 
 export class UpdatePersonalDto {

@@ -12,6 +12,7 @@ model Profile {
   userId                String    @id @map("user_id") @db.Uuid
   username              String    @unique @db.Text
   avatarUrl             String?   @map("avatar_url")
+  isPrivate             Boolean   @default(false) @map("is_private")
   firstName             String?   @map("first_name") @db.VarChar(100)
   lastName              String?   @map("last_name") @db.VarChar(100)
   dateOfBirth           DateTime? @map("date_of_birth") @db.Date

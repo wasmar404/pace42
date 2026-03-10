@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, MessageCircle, Search } from 'lucide-react'
+import { Bell, MessageCircle, Search, Settings } from 'lucide-react'
 
 import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
@@ -258,6 +258,10 @@ export default function NavBar() {
           <Link to="/chat" className="nav-icon" aria-label="Chat">
             <MessageCircle size={18} strokeWidth={2.4} />
           </Link>
+
+          <Link to="/settings" className="nav-icon" aria-label="Settings">
+            <Settings size={18} strokeWidth={2.4} />
+          </Link>
           <button className="nav-ghost" type="button" onClick={logout}>Logout</button>
 
           <div className="nav-plus" ref={menuRef}>
@@ -281,9 +285,16 @@ export default function NavBar() {
             </div>
           </div>
 
-          <Link to="/profile" className="nav-avatar" aria-label="Profile">
-            <Avatar avatarUrl={avatarUrl} seed={avatarSeed} alt="Profile" loading="eager" />
-          </Link>
+          <div className="nav-avatar-wrap" aria-label="Profile menu">
+            <Link to="/profile" className="nav-avatar" aria-label="Profile">
+              <Avatar avatarUrl={avatarUrl} seed={avatarSeed} alt="Profile" loading="eager" />
+            </Link>
+
+            <div className="nav-avatar-menu" role="menu" aria-label="Profile">
+              <Link to="/profile" className="nav-avatar-item" role="menuitem">My Profile</Link>
+              <Link to="/settings" className="nav-avatar-item" role="menuitem">Settings</Link>
+            </div>
+          </div>
         </div>
       </div>
     </header>

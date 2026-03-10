@@ -45,7 +45,12 @@ export class ActivitiesController {
     const startedAt = new Date(dto.startedAt);
     if (Number.isNaN(startedAt.getTime())) throw new BadRequestException('Invalid startedAt');
 
-    const visibility = dto.visibility ?? 'public';
+    let visibility = dto.visibility ?? 'public';
+    if (!['public', 'followers', 'only_me'].includes(visibility)) visibility = 'public';
+
+    // Account privacy overrides activity visibility.
+    const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });
+    if (p?.isPrivate && visibility === 'public') visibility = 'followers';
 
     const { ms: createMs, result: activity } = await time('prisma.activity.create(manual)', () =>
       this.prisma.activity.create({
@@ -100,6 +105,25 @@ export class ActivitiesController {
     if (!activity) throw new NotFoundException('Activity not found');
 
     if (activity.visibility === 'public') {
+      // Account privacy overrides activity visibility.
+      const viewerId = (req as any)?.user?.userId as string | undefined;
+      if (activity.userId !== viewerId) {
+        const p = await this.prisma.profile.findUnique({ where: { userId: activity.userId }, select: { isPrivate: true } });
+        if (p?.isPrivate) {
+          if (!viewerId) throw new NotFoundException('Activity not found');
+          const follow = await this.prisma.follow.findUnique({
+            where: {
+              followerId_followingId: {
+                followerId: viewerId,
+                followingId: activity.userId,
+              },
+            },
+            select: { followerId: true },
+          });
+          if (!follow) throw new NotFoundException('Activity not found');
+        }
+      }
+
       // eslint-disable-next-line no-console
       console.log(`[activity.get] find=${findMs.toFixed(1)}ms total=${msSince(reqStart).toFixed(1)}ms route=${wantRoute ? '1' : '0'}`);
       return { activity };
@@ -276,6 +300,10 @@ export class ActivitiesController {
     const startedAt = new Date(parsed.startedAt);
     if (Number.isNaN(startedAt.getTime())) throw new BadRequestException('Invalid startedAt from parser');
 
+    let finalVisibility = visibility ?? 'public';
+    const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });
+    if (p?.isPrivate && finalVisibility === 'public') finalVisibility = 'followers';
+
     const { ms: createMs, result: activity } = await time('prisma.activity.create(gpx)', () =>
       this.prisma.activity.create({
         data: {
@@ -286,7 +314,7 @@ export class ActivitiesController {
           startedAt,
           durationSeconds: parsed.durationSeconds,
           distanceMeters: parsed.distanceMeters,
-          visibility: visibility ?? 'public',
+          visibility: finalVisibility,
           source: 'gpx',
           routePolyline: parsed.polyline ?? null,
         },

@@ -2,6 +2,29 @@ import { supabase } from './supabaseClient'
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 
+function timeoutSignal(timeoutMs) {
+  const controller = new AbortController()
+  const t = setTimeout(() => controller.abort(), timeoutMs)
+  return {
+    signal: controller.signal,
+    cancel: () => clearTimeout(t),
+  }
+}
+
+async function fetchJson(url, options, timeoutMs) {
+  const { signal, cancel } = timeoutSignal(timeoutMs)
+  try {
+    const res = await fetch(url, { ...(options || {}), signal })
+    const json = await res.json().catch(() => ({}))
+    return { res, json }
+  } catch (e) {
+    if (e?.name === 'AbortError') throw new Error('Request timed out. Is the backend running?')
+    throw e
+  } finally {
+    cancel()
+  }
+}
+
 async function authHeader() {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -11,8 +34,7 @@ async function authHeader() {
 
 export async function backendGet(path) {
   const headers = await authHeader()
-  const res = await fetch(`${BASE_URL}${path}`, { headers })
-  const json = await res.json().catch(() => ({}))
+  const { res, json } = await fetchJson(`${BASE_URL}${path}`, { headers }, 20000)
   if (res.status === 401) {
     await supabase.auth.signOut().catch(() => {})
     throw new Error('Session expired. Please log in again.')
@@ -23,12 +45,11 @@ export async function backendGet(path) {
 
 export async function backendJson(method, path, body) {
   const headers = { ...(await authHeader()), 'content-type': 'application/json' }
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const { res, json } = await fetchJson(`${BASE_URL}${path}`, {
     method,
     headers,
     body: JSON.stringify(body),
-  })
-  const json = await res.json().catch(() => ({}))
+  }, 20000)
   if (res.status === 401) {
     await supabase.auth.signOut().catch(() => {})
     throw new Error('Session expired. Please log in again.')
@@ -45,12 +66,11 @@ export async function backendUpload(path, fileOrForm) {
     form.append('file', fileOrForm)
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const { res, json } = await fetchJson(`${BASE_URL}${path}`, {
     method: 'POST',
     headers,
     body: form,
-  })
-  const json = await res.json().catch(() => ({}))
+  }, 60000)
   if (res.status === 401) {
     await supabase.auth.signOut().catch(() => {})
     throw new Error('Session expired. Please log in again.')
