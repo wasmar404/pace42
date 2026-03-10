@@ -1,5 +1,22 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { 
+  Activity, 
+  Upload, 
+  Clock, 
+  MapPin, 
+  Camera, 
+  X, 
+  ChevronDown, 
+  Globe, 
+  Users, 
+  Lock,
+  Zap,
+  Trash2,
+  Calendar,
+  Timer,
+  Route
+} from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import { createActivity, importGpx, uploadActivityPhoto } from '../api/activities'
@@ -20,6 +37,21 @@ function toSeconds(hours, minutes, seconds) {
   return total > 0 ? total : null
 }
 
+const SPORT_OPTIONS = [
+  { value: 'run', label: 'Run', icon: '🏃', color: '#f97316' },
+  { value: 'walk', label: 'Walk', icon: '🚶', color: '#22c55e' },
+  { value: 'cycle', label: 'Cycle', icon: '🚴', color: '#3b82f6' },
+  { value: 'swim', label: 'Swim', icon: '🏊', color: '#06b6d4' },
+  { value: 'hike', label: 'Hike', icon: '🥾', color: '#8b5cf6' },
+  { value: 'yoga', label: 'Yoga', icon: '🧘', color: '#ec4899' },
+]
+
+const VISIBILITY_OPTIONS = [
+  { value: 'public', label: 'Everyone', icon: Globe, description: 'Visible to all' },
+  { value: 'followers', label: 'Followers', icon: Users, description: 'Only followers' },
+  { value: 'only_me', label: 'Only me', icon: Lock, description: 'Private' },
+]
+
 export default function AddActivity() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -38,10 +70,13 @@ export default function AddActivity() {
 
   const [gpxFile, setGpxFile] = useState(null)
   const [photos, setPhotos] = useState([])
+  const [isDragging, setIsDragging] = useState(false)
   const photoInputRef = useRef(null)
+  const gpxInputRef = useRef(null)
 
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [activeSection, setActiveSection] = useState('details')
 
   async function runWithConcurrency(items, limit, fn) {
     const results = []
@@ -83,6 +118,24 @@ export default function AddActivity() {
     setPhotos((prev) => prev.filter((f) => f.name !== name))
   }
 
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+    if (files.length) {
+      setPhotos((prev) => [...prev, ...files].slice(0, 8))
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
   const submitManual = async () => {
     const dur = toSeconds(hours, minutes, seconds)
     if (!dur) throw new Error('Duration must be greater than 0')
@@ -113,7 +166,6 @@ export default function AddActivity() {
 
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
-    // For now importGpx uploads the file; backend creates activity via ORM after parsing.
     const res = await importGpx(gpxFile, {
       sport,
       title,
@@ -145,160 +197,376 @@ export default function AddActivity() {
     }
   }
 
+  const selectedSport = SPORT_OPTIONS.find(s => s.value === sport)
+  const selectedVisibility = VISIBILITY_OPTIONS.find(v => v.value === visibility)
+
   return (
     <div className="add-activity">
       <NavBar />
 
       <main className="add-wrap">
+        {/* Hero Section with Aurora Background */}
         <div className="add-hero">
-          <div className="add-hero-title">
-            <h1>Add Activity</h1>
-            <p>Log it clean. Keep it honest. Share it your way.</p>
+          <div className="add-hero-content">
+            <div className="add-hero-badge">
+              <Activity size={16} />
+              <span>New Activity</span>
+            </div>
+            <h1>Log Your Workout</h1>
+            <p>Track your progress, celebrate your achievements, share your journey.</p>
           </div>
 
-          <div className="add-mode">
-            <button
-              type="button"
-              className={`add-mode-btn ${mode === 'manual' ? 'active' : ''}`}
-              onClick={() => setMode('manual')}
-            >
-              Manual
-            </button>
-            <button
-              type="button"
-              className={`add-mode-btn ${mode === 'gpx' ? 'active' : ''}`}
-              onClick={() => setMode('gpx')}
-            >
-              Upload GPX
-            </button>
+          {/* Mode Toggle */}
+          <div className="mode-toggle-container">
+            <div className="mode-toggle">
+              <button
+                type="button"
+                className={`mode-btn ${mode === 'manual' ? 'active' : ''}`}
+                onClick={() => setMode('manual')}
+              >
+                <Timer size={18} />
+                <span>Manual Entry</span>
+              </button>
+              <button
+                type="button"
+                className={`mode-btn ${mode === 'gpx' ? 'active' : ''}`}
+                onClick={() => setMode('gpx')}
+              >
+                <Upload size={18} />
+                <span>Upload GPX</span>
+              </button>
+              <div className={`mode-indicator ${mode}`} />
+            </div>
           </div>
         </div>
 
-        <form className="add-card" onSubmit={onSubmit}>
-          <div className="add-grid">
-            <div className="add-field">
-              <label>Type</label>
-              <select value={sport} onChange={(e) => setSport(e.target.value)}>
-                <option value="run">Run</option>
-                <option value="walk">Walk</option>
-              </select>
-            </div>
-
-            <div className="add-field">
-              <label>Visibility</label>
-              <select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
-                <option value="public">Everyone</option>
-                <option value="followers">Followers</option>
-                <option value="only_me">Only me</option>
-              </select>
-            </div>
-
-            <div className="add-field span-2">
-              <label>Title</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Morning run, easy walk, ..." />
-            </div>
-
-            <div className="add-field span-2">
-              <label>Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="How did it feel? What did you learn?"
-                rows={4}
-              />
-            </div>
-
-            {mode === 'manual' ? (
-              <>
-                <div className="add-field span-2">
-                  <label>Date</label>
-                  <input
-                    type="datetime-local"
-                    value={startedAt}
-                    onChange={(e) => setStartedAt(e.target.value)}
-                  />
-                </div>
-
-                <div className="add-field">
-                  <label>Duration (h)</label>
-                  <input type="number" min={0} value={hours} onChange={(e) => setHours(e.target.value)} />
-                </div>
-                <div className="add-field">
-                  <label>Duration (m)</label>
-                  <input type="number" min={0} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
-                </div>
-                <div className="add-field">
-                  <label>Duration (s)</label>
-                  <input type="number" min={0} value={seconds} onChange={(e) => setSeconds(e.target.value)} />
-                </div>
-
-                <div className="add-field">
-                  <label>Distance (km)</label>
-                  <input
-                    type="number"
-                    min={0.01}
-                    step="0.01"
-                    value={distanceKm}
-                    onChange={(e) => setDistanceKm(e.target.value)}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="add-field span-2">
-                  <label>GPX File</label>
-                  <input
-                    type="file"
-                    accept=".gpx,application/gpx+xml,application/xml,text/xml"
-                    onChange={(e) => setGpxFile(e.target.files?.[0] || null)}
-                  />
-                  <p className="add-hint">
-                    Upload a GPX file. We’ll extract distance/duration and generate a map later.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="add-media">
-            <div className="add-media-head">
-              <h2>Photos</h2>
-              <div className="add-media-actions">
-                <button type="button" className="add-secondary" onClick={() => photoInputRef.current?.click()}>
-                  Add photos
-                </button>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={onPickPhotos}
-                  style={{ display: 'none' }}
-                />
-              </div>
-            </div>
-
-            {photoPreviews.length ? (
-              <div className="add-photo-grid">
-                {photoPreviews.map((p) => (
-                  <div className="add-photo" key={p.name}>
-                    <img src={p.url} alt={p.name} />
-                    <button type="button" className="add-photo-x" onClick={() => removePhoto(p.name)}>
-                      Remove
+        <form className="add-form" onSubmit={onSubmit}>
+          {/* Main Content Grid */}
+          <div className="form-layout">
+            {/* Left Column - Main Details */}
+            <div className="form-main">
+              {/* Sport Selection */}
+              <section className="form-section">
+                <label className="section-label">Activity Type</label>
+                <div className="sport-grid">
+                  {SPORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`sport-card ${sport === option.value ? 'active' : ''}`}
+                      onClick={() => setSport(option.value)}
+                      style={{ '--sport-color': option.color }}
+                    >
+                      <span className="sport-icon">{option.icon}</span>
+                      <span className="sport-label">{option.label}</span>
+                      {sport === option.value && (
+                        <div className="sport-indicator" />
+                      )}
                     </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Title & Description */}
+              <section className="form-section">
+                <div className="input-group">
+                  <label htmlFor="title">Title <span className="optional">optional</span></label>
+                  <input
+                    id="title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Morning run, easy walk..."
+                    className="text-input"
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="description">Description <span className="optional">optional</span></label>
+                  <textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="How did it feel? What did you learn? Share your thoughts..."
+                    rows={3}
+                    className="text-input"
+                  />
+                </div>
+              </section>
+
+              {/* Manual Entry Fields */}
+              {mode === 'manual' ? (
+                <section className="form-section">
+                  <label className="section-label">Activity Details</label>
+                  
+                  <div className="details-grid">
+                    {/* Date Time */}
+                    <div className="input-group span-2">
+                      <label htmlFor="datetime">
+                        <Calendar size={16} />
+                        Date & Time
+                      </label>
+                      <input
+                        id="datetime"
+                        type="datetime-local"
+                        value={startedAt}
+                        onChange={(e) => setStartedAt(e.target.value)}
+                        className="text-input"
+                      />
+                    </div>
+
+                    {/* Duration */}
+                    <div className="input-group span-2">
+                      <label>
+                        <Clock size={16} />
+                        Duration
+                      </label>
+                      <div className="duration-inputs">
+                        <div className="duration-field">
+                          <input
+                            type="number"
+                            min={0}
+                            max={99}
+                            value={hours}
+                            onChange={(e) => setHours(e.target.value)}
+                            className="text-input"
+                          />
+                          <span className="duration-label">hr</span>
+                        </div>
+                        <span className="duration-separator">:</span>
+                        <div className="duration-field">
+                          <input
+                            type="number"
+                            min={0}
+                            max={59}
+                            value={minutes}
+                            onChange={(e) => setMinutes(e.target.value)}
+                            className="text-input"
+                          />
+                          <span className="duration-label">min</span>
+                        </div>
+                        <span className="duration-separator">:</span>
+                        <div className="duration-field">
+                          <input
+                            type="number"
+                            min={0}
+                            max={59}
+                            value={seconds}
+                            onChange={(e) => setSeconds(e.target.value)}
+                            className="text-input"
+                          />
+                          <span className="duration-label">sec</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Distance */}
+                    <div className="input-group">
+                      <label htmlFor="distance">
+                        <Route size={16} />
+                        Distance
+                      </label>
+                      <div className="distance-input">
+                        <input
+                          id="distance"
+                          type="number"
+                          min={0.01}
+                          step="0.01"
+                          value={distanceKm}
+                          onChange={(e) => setDistanceKm(e.target.value)}
+                          className="text-input"
+                        />
+                        <span className="distance-unit">km</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="add-hint">Add up to 8 photos (optional).</p>
-            )}
+                </section>
+              ) : (
+                <section className="form-section">
+                  <label className="section-label">GPX File</label>
+                  <div 
+                    className={`gpx-upload ${gpxFile ? 'has-file' : ''} ${isDragging ? 'dragging' : ''}`}
+                    onClick={() => gpxInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                  >
+                    <input
+                      ref={gpxInputRef}
+                      type="file"
+                      accept=".gpx,application/gpx+xml,application/xml,text/xml"
+                      onChange={(e) => setGpxFile(e.target.files?.[0] || null)}
+                      hidden
+                    />
+                    {gpxFile ? (
+                      <div className="gpx-file-info">
+                        <div className="gpx-icon">
+                          <MapPin size={32} />
+                        </div>
+                        <div className="gpx-details">
+                          <span className="gpx-name">{gpxFile.name}</span>
+                          <span className="gpx-size">{(gpxFile.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="gpx-remove"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setGpxFile(null)
+                          }}
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="gpx-upload-icon">
+                          <Upload size={40} />
+                        </div>
+                        <p className="gpx-upload-title">Drop your GPX file here</p>
+                        <p className="gpx-upload-subtitle">or click to browse</p>
+                        <p className="gpx-upload-hint">Supports .gpx files up to 10MB</p>
+                      </>
+                    )}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            {/* Right Column - Sidebar */}
+            <div className="form-sidebar">
+              {/* Visibility Card */}
+              <section className="sidebar-card">
+                <label className="sidebar-label">Visibility</label>
+                <div className="visibility-options">
+                  {VISIBILITY_OPTIONS.map((option) => {
+                    const Icon = option.icon
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`visibility-option ${visibility === option.value ? 'active' : ''}`}
+                        onClick={() => setVisibility(option.value)}
+                      >
+                        <div className="visibility-icon">
+                          <Icon size={20} />
+                        </div>
+                        <div className="visibility-info">
+                          <span className="visibility-name">{option.label}</span>
+                          <span className="visibility-desc">{option.description}</span>
+                        </div>
+                        <div className="visibility-check">
+                          {visibility === option.value && <Zap size={16} />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+
+              {/* Photos Card */}
+              <section className="sidebar-card">
+                <div className="sidebar-header">
+                  <label className="sidebar-label">Photos</label>
+                  <span className="photo-count">{photos.length}/8</span>
+                </div>
+                
+                <div 
+                  className={`photo-upload-area ${isDragging ? 'dragging' : ''}`}
+                  onClick={() => photoInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={onPickPhotos}
+                    hidden
+                  />
+                  <Camera size={24} />
+                  <span>Add photos</span>
+                  <small>Drop images here</small>
+                </div>
+
+                {photoPreviews.length > 0 && (
+                  <div className="photo-grid">
+                    {photoPreviews.map((p, index) => (
+                      <div className="photo-thumb" key={p.name}>
+                        <img src={p.url} alt={p.name} />
+                        <button
+                          type="button"
+                          className="photo-remove"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removePhoto(p.name)
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                        {index === 0 && <span className="photo-primary">Cover</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Quick Stats Preview */}
+              {mode === 'manual' && distanceKm && (hours !== '0' || minutes !== '0') && (
+                <section className="sidebar-card stats-preview">
+                  <label className="sidebar-label">Preview</label>
+                  <div className="stat-row">
+                    <span className="stat-label">Pace</span>
+                    <span className="stat-value">
+                      {(() => {
+                        const totalMinutes = (Number(hours) * 60) + Number(minutes) + (Number(seconds) / 60)
+                        const pace = totalMinutes / Number(distanceKm)
+                        if (!isFinite(pace)) return '--'
+                        const pMin = Math.floor(pace)
+                        const pSec = Math.round((pace - pMin) * 60)
+                        return `${pMin}:${pSec.toString().padStart(2, '0')}/km`
+                      })()}
+                    </span>
+                  </div>
+                  <div className="stat-row">
+                    <span className="stat-label">Duration</span>
+                    <span className="stat-value">
+                      {Number(hours) > 0 ? `${hours}h ` : ''}
+                      {minutes}m
+                    </span>
+                  </div>
+                </section>
+              )}
+            </div>
           </div>
 
-          {error ? <div className="add-error">{error}</div> : null}
+          {/* Error Message */}
+          {error && (
+            <div className="form-error">
+              <div className="error-icon">!</div>
+              <span>{error}</span>
+            </div>
+          )}
 
-          <div className="add-footer">
-            <button type="submit" className="add-primary" disabled={busy}>
-              {busy ? 'Saving...' : mode === 'gpx' ? 'Import Activity' : 'Save Activity'}
+          {/* Footer Actions */}
+          <div className="form-footer">
+            <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary" disabled={busy}>
+              {busy ? (
+                <>
+                  <span className="spinner" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Activity size={20} />
+                  {mode === 'gpx' ? 'Import Activity' : 'Save Activity'}
+                </>
+              )}
             </button>
           </div>
         </form>

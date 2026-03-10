@@ -13,7 +13,7 @@
     align-items: center;
     position: relative;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    padding: 2rem 0;
+    padding: 2rem;
 }
 
 
@@ -40,7 +40,6 @@
     width: 100%;
     max-width: 400px;
     max-height: calc(100vh - 4rem);
-    margin: 2rem;
     padding: 2.5rem;
     background-color: rgba(0, 0, 0, 0.85) !important;
     border-radius: 0.5rem;
@@ -173,7 +172,7 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background-color: #1d4ed8 !important; /* blue-700 */
+    background-color: #fc4c02 !important; /* blue-700 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -184,7 +183,7 @@
 }
 
 .camera-badge:hover {
-    background-color: #1e40af; /* slightly darker on hover */
+    background-color: #c95807 !important; /* slightly darker on hover */
 }
 
 .avatar-label {
