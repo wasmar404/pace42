@@ -1,5 +1,27 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { 
+  ArrowLeft, 
+  MapPin, 
+  Calendar, 
+  Trophy, 
+  TrendingUp, 
+  Activity, 
+  Clock, 
+  Route, 
+  Zap,
+  User,
+  Users,
+  Target,
+  ChevronRight,
+  ChevronUp,
+  Share2,
+  MoreHorizontal,
+  Loader2,
+  UserPlus,
+  Globe,
+  Lock
+} from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import { followUser, getUserSummary, unfollowUser } from '../api/users'
@@ -15,6 +37,15 @@ const RouteMap = lazy(() => import('../components/RouteMap'))
 
 const DEFAULT_HERO = [runners, cyclists, runners2]
 const CACHE_MAX_AGE_MS = 2 * 60 * 1000
+
+const SPORT_ICONS = {
+  run: '🏃',
+  walk: '🚶',
+  cycle: '🚴',
+  swim: '🏊',
+  hike: '🥾',
+  yoga: '🧘',
+}
 
 function hash32(str) {
   let h = 2166136261
@@ -67,6 +98,16 @@ function formatDuration(seconds) {
   return `${r}s`
 }
 
+function formatWhen(iso) {
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return '-'
+    return d.toLocaleString(undefined, { month: 'short', day: '2-digit' })
+  } catch {
+    return '-'
+  }
+}
+
 function pacePerKm(distanceMeters, durationSeconds) {
   const dist = Number(distanceMeters)
   const dur = Number(durationSeconds)
@@ -74,7 +115,7 @@ function pacePerKm(distanceMeters, durationSeconds) {
   const secPerKm = dur / (dist / 1000)
   const m = Math.floor(secPerKm / 60)
   const s = Math.round(secPerKm % 60)
-  return `${m}:${String(s).padStart(2, '0')} /km`
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 function displayName(profile, user) {
@@ -94,7 +135,6 @@ export default function UserProfile() {
   const [openMaps, setOpenMaps] = useState(() => new Set())
 
   useEffect(() => {
-    // Instant paint from cache.
     try {
       const raw = localStorage.getItem(`pace42.userSummary.${id}`)
       if (!raw) return
@@ -143,7 +183,6 @@ export default function UserProfile() {
   }, [id])
 
   const name = useMemo(() => displayName(data?.profile, data?.user), [data])
-
   const stats = data?.stats || {}
 
   const onToggleFollow = async () => {
@@ -167,7 +206,6 @@ export default function UserProfile() {
       if (next) await followUser(id)
       else await unfollowUser(id)
     } catch (e) {
-      // rollback
       setData((prev) => {
         if (!prev) return prev
         return {
@@ -200,135 +238,401 @@ export default function UserProfile() {
     <div className="user-profile-page">
       <NavBar />
 
-      <main className="user-profile-wrap">
-        <div className="user-top">
-          <Link to="/search" className="user-back">← Back to search</Link>
+      <main className="profile-container">
+        {/* Back Navigation */}
+        <div className="back-nav">
+          <Link to="/search" className="back-link">
+            <ArrowLeft size={18} />
+            <span>Back to search</span>
+          </Link>
         </div>
 
-        {error ? <div className="user-error">{error}</div> : null}
+        {/* Error Banner */}
+        {error && (
+          <div className="profile-error-banner">
+            <div className="error-content">
+              <span className="error-icon">!</span>
+              <span>{error}</span>
+            </div>
+          </div>
+        )}
 
-        <section className="user-hero">
-          <div className="user-bento">
-            <div className="user-bento-main">
-              <img src={hero[0]} alt="" />
-              <div className="user-bento-overlay" />
+        {/* Profile Card */}
+        <section className="user-profile-card">
+          <div className="profile-card-header">
+            <div className="profile-avatar-large">
+              <Avatar 
+                avatarUrl={data?.profile?.avatarUrl} 
+                seed={data?.user?.username || data?.user?.id || name} 
+                alt={name}
+                loading="eager" 
+              />
+              <div className={`avatar-status ${data?.relationship?.isFollowing ? 'following' : ''}`} />
+            </div>
+            
+            <div className="profile-actions">
+              {!data?.relationship?.isSelf ? (
+                <button 
+                  className={`btn-follow ${data?.relationship?.isFollowing ? 'following' : ''}`}
+                  onClick={onToggleFollow}
+                  disabled={busy || loading}
+                >
+                  {busy ? (
+                    <Loader2 size={18} className="spin" />
+                  ) : data?.relationship?.isFollowing ? (
+                    <>
+                      <Users size={16} />
+                      <span>Following</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={16} />
+                      <span>Follow</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <span className="self-badge">
+                  <User size={14} />
+                  You
+                </span>
+              )}
+              <button className="btn-icon">
+                <Share2 size={18} />
+              </button>
+              <button className="btn-icon">
+                <MoreHorizontal size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="profile-info">
+            <h1>{name}</h1>
+            {data?.user?.username && (
+              <span className="profile-handle">@{data.user.username}</span>
+            )}
+            
+            <div className="profile-badges">
+              {data?.profile?.level && (
+                <span className="badge badge-level">
+                  <Trophy size={12} />
+                  Level {data.profile.level}
+                </span>
+              )}
+              {data?.relationship?.isFollowing ? (
+                <span className="badge badge-following">
+                  <Zap size={12} />
+                  Following
+                </span>
+              ) : (
+                <span className="badge badge-public">
+                  <Globe size={12} />
+                  Public
+                </span>
+              )}
+              {stats?.lastActivityAt && (
+                <span className="badge badge-recent">
+                  <Activity size={12} />
+                  Active
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Stats Grid */}
+        <section className="user-stats-grid">
+          <div className="stat-box">
+            <div className="stat-icon">
+              <Users size={18} />
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{Number(stats.followersCount || 0)}</span>
+              <span className="stat-label">Followers</span>
+            </div>
+          </div>
+          <div className="stat-box">
+            <div className="stat-icon">
+              <User size={18} />
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{Number(stats.followingCount || 0)}</span>
+              <span className="stat-label">Following</span>
+            </div>
+          </div>
+          <div className="stat-box highlight">
+            <div className="stat-icon">
+              <Activity size={18} />
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{Number(stats.totalActivities || 0)}</span>
+              <span className="stat-label">Activities</span>
+            </div>
+          </div>
+          <div className="stat-box">
+            <div className="stat-icon">
+              <Calendar size={18} />
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{Number(stats.last4WeeksCount || 0)}</span>
+              <span className="stat-label">This Month</span>
+            </div>
+          </div>
+          <div className="stat-box highlight-orange">
+            <div className="stat-icon">
+              <Route size={18} />
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{formatDistance(stats.totalDistanceMeters || 0)}</span>
+              <span className="stat-label">Km Total</span>
+            </div>
+          </div>
+          <div className="stat-box">
+            <div className="stat-icon">
+              <Clock size={18} />
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{formatDuration(stats.totalDurationSeconds || 0)}</span>
+              <span className="stat-label">Total Time</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Images */}
+        <section className="profile-hero">
+          <div className="hero-bento">
+            <div className="bento-item bento-main">
+              <img src={hero[0]} alt="Activity" />
+              <div className="bento-overlay" />
             </div>
 
-            <div className="user-bento-stack">
-              <div className="stack-img"><img src={hero[1]} alt="" /></div>
-              <div className="stack-img"><img src={hero[2]} alt="" /></div>
-            </div>
-
-            <div className="user-bento-card">
-              <div className="user-card-left">
-                <div className="user-avatar">
-                  <Avatar avatarUrl={data?.profile?.avatarUrl} seed={data?.user?.username || data?.user?.id || name} alt="" loading="eager" />
-                </div>
-                <div>
-                  <div className="user-name">{name}</div>
-                  <div className="user-handle">{data?.user?.username ? `@${data.user.username}` : ''}</div>
-                  <div className="user-chips">
-                    {data?.profile?.level ? <span className="chip">Level {data.profile.level}</span> : null}
-                    {data?.relationship?.isFollowing ? <span className="chip accent">Following</span> : <span className="chip">Public</span>}
-                    {stats?.lastActivityAt ? <span className="chip">Last: {new Date(stats.lastActivityAt).toLocaleDateString()}</span> : null}
-                  </div>
-                </div>
+            <div className="bento-item bento-stack">
+              <div className="stack-img">
+                <img src={hero[1]} alt="Activity" />
               </div>
+              <div className="stack-img">
+                <img src={hero[2]} alt="Activity" />
+              </div>
+            </div>
+          </div>
 
-              <div className="user-card-right">
-                {!data?.relationship?.isSelf ? (
-                  <button className={data?.relationship?.isFollowing ? 'user-follow following' : 'user-follow'} onClick={onToggleFollow} disabled={busy || loading}>
-                    {busy ? '...' : data?.relationship?.isFollowing ? 'Following' : 'Follow'}
-                  </button>
+          {/* Privacy Notice */}
+          {!data?.relationship?.isSelf && !data?.relationship?.isFollowing && (
+            <div className="privacy-notice">
+              <div className="notice-icon">
+                <Lock size={16} />
+              </div>
+              <p>Follow to see followers-only workouts (if the athlete enabled it).</p>
+            </div>
+          )}
+        </section>
+
+        {/* Main Content */}
+        <div className="profile-content">
+          <div className="content-main">
+            {/* About Section */}
+            <section className="content-card about-card">
+              <div className="card-header">
+                <div className="header-icon">
+                  <User size={20} />
+                </div>
+                <h2>About</h2>
+              </div>
+              <div className="card-body">
+                {data?.profile?.bio ? (
+                  <p className="bio-text">{data.profile.bio}</p>
                 ) : (
-                  <span className="user-self">This is you</span>
+                  <div className="empty-state">
+                    <p>No bio yet.</p>
+                  </div>
+                )}
+                
+                {data?.profile?.location && (
+                  <div className="profile-meta-item">
+                    <MapPin size={16} />
+                    <span>{data.profile.location}</span>
+                  </div>
                 )}
               </div>
-            </div>
+            </section>
 
-            <div className="user-bento-stats">
-              <div className="stat">
-                <div className="k">Followers</div>
-                <div className="v">{Number(stats.followersCount || 0)}</div>
-              </div>
-              <div className="stat">
-                <div className="k">Following</div>
-                <div className="v">{Number(stats.followingCount || 0)}</div>
-              </div>
-              <div className="stat">
-                <div className="k">Activities</div>
-                <div className="v">{Number(stats.totalActivities || 0)}</div>
-              </div>
-              <div className="stat">
-                <div className="k">Last 4 Weeks</div>
-                <div className="v">{Number(stats.last4WeeksCount || 0)}</div>
-              </div>
-              <div className="stat">
-                <div className="k">Total Km</div>
-                <div className="v">{formatDistance(stats.totalDistanceMeters || 0)}</div>
-              </div>
-              <div className="stat">
-                <div className="k">Total Time</div>
-                <div className="v">{formatDuration(stats.totalDurationSeconds || 0)}</div>
-              </div>
-            </div>
-          </div>
-
-          {!data?.relationship?.isSelf && !data?.relationship?.isFollowing ? (
-            <div className="user-note">Follow to see followers-only workouts (if the athlete enabled it).</div>
-          ) : null}
-        </section>
-
-        <section className="user-section">
-          <h2>About</h2>
-          <div className="user-about">
-            {data?.profile?.bio ? <p>{data.profile.bio}</p> : <p className="muted">No bio yet.</p>}
-          </div>
-        </section>
-
-        <section className="user-section">
-          <h2>Recent Workouts</h2>
-          {loading ? <div className="muted">Loading...</div> : null}
-          {!loading && !activities.length ? <div className="muted">No visible activities yet.</div> : null}
-
-          <div className="user-workouts">
-            {activities.map((a) => (
-              <Link to={`/activities/${a.id}`} className="user-workout" key={a.id}>
-                <div className="user-workout-head">
-                  <div className="title">{a.title || a.sport}</div>
-                  <div className="sub">{new Date(a.startedAt).toLocaleDateString()}</div>
+            {/* Recent Workouts */}
+            <section className="content-card workouts-card">
+              <div className="card-header">
+                <div className="header-icon">
+                  <TrendingUp size={20} />
                 </div>
+                <h2>Recent Workouts</h2>
+                <span className="activities-count">{activities.length} activities</span>
+              </div>
+              
+              <div className="card-body">
+                {loading && !activities.length ? (
+                  <div className="loading-state">
+                    <div className="spinner" />
+                    <span>Loading activities...</span>
+                  </div>
+                ) : (
+                  <div className="workouts-list">
+                    {activities.map((activity, index) => (
+                      <article 
+                        key={activity.id} 
+                        className="workout-item"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <Link to={`/activities/${activity.id}`} className="workout-link">
+                          <div className="workout-main">
+                            <div className="workout-sport">
+                              <span className="sport-emoji">
+                                {SPORT_ICONS[activity.sport] || '🏃'}
+                              </span>
+                            </div>
+                            
+                            <div className="workout-details">
+                              <div className="workout-header">
+                                <h3>{activity.title || `${activity.sport} activity`}</h3>
+                                <span className="workout-date">{formatWhen(activity.startedAt)}</span>
+                              </div>
+                              
+                              <div className="workout-metrics">
+                                <div className="metric">
+                                  <Route size={14} />
+                                  <span>{formatDistance(activity.distanceMeters)} km</span>
+                                </div>
+                                <div className="metric">
+                                  <Clock size={14} />
+                                  <span>{formatDuration(activity.durationSeconds)}</span>
+                                </div>
+                                <div className="metric">
+                                  <TrendingUp size={14} />
+                                  <span>{pacePerKm(activity.distanceMeters, activity.durationSeconds)} /km</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <ChevronRight size={20} className="workout-arrow" />
+                          </div>
+                        </Link>
 
-                <div className="user-workout-metrics">
-                  <span>{formatDistance(a.distanceMeters)} km</span>
-                  <span>·</span>
-                  <span>{formatDuration(a.durationSeconds)}</span>
-                  <span>·</span>
-                  <span>{pacePerKm(a.distanceMeters, a.durationSeconds)}</span>
-                </div>
-
-                {a.routePolyline ? (
-                  <div className="map-wrap" onClick={(e) => e.preventDefault()}>
-                    <button type="button" className="map-toggle" onClick={() => toggleMap(a.id)}>
-                      {openMaps.has(a.id) ? 'Hide map' : 'Show map'}
-                    </button>
-                    {openMaps.has(a.id) ? (
-                      <div className="map">
-                        <Suspense fallback={<div className="map placeholder">Loading map...</div>}>
-                          <RouteMap polyline={a.routePolyline} height={210} />
-                        </Suspense>
+                        {/* Expandable Map */}
+                        {activity.routePolyline && (
+                          <div className="workout-map-section">
+                            <button 
+                              type="button" 
+                              className="map-toggle-btn"
+                              onClick={() => toggleMap(activity.id)}
+                            >
+                              {openMaps.has(activity.id) ? (
+                                <>
+                                  <ChevronUp size={16} />
+                                  Hide route map
+                                </>
+                              ) : (
+                                <>
+                                  <MapPin size={16} />
+                                  Show route map
+                                </>
+                              )}
+                            </button>
+                            
+                            {openMaps.has(activity.id) && (
+                              <div className="workout-map">
+                                <Suspense fallback={
+                                  <div className="map-loading">
+                                    <div className="spinner small" />
+                                    <span>Loading map...</span>
+                                  </div>
+                                }>
+                                  <RouteMap polyline={activity.routePolyline} height={200} />
+                                </Suspense>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                    
+                    {!loading && !activities.length && (
+                      <div className="empty-state large">
+                        <div className="empty-illustration">
+                          <Activity size={48} />
+                        </div>
+                        <h3>No visible activities</h3>
+                        <p>This user hasn't shared any activities yet.</p>
                       </div>
-                    ) : (
-                      <div className="map placeholder">Route available</div>
                     )}
                   </div>
-                ) : (
-                  <div className="map placeholder">No route</div>
                 )}
-              </Link>
-            ))}
+              </div>
+            </section>
           </div>
-        </section>
+
+          {/* Sidebar */}
+          <aside className="content-sidebar">
+            {/* Monthly Progress */}
+            <div className="sidebar-card progress-card">
+              <div className="sidebar-header">
+                <Target size={20} />
+                <h3>Monthly Activity</h3>
+              </div>
+              <div className="progress-content">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ width: `${Math.min((stats.last4WeeksCount / 10) * 100, 100)}%` }}
+                  />
+                </div>
+                <div className="progress-stats">
+                  <span className="progress-current">{stats.last4WeeksCount || 0}</span>
+                  <span className="progress-target">/ 10 activities</span>
+                </div>
+                <p className="progress-subtitle">
+                  {stats.last4WeeksCount >= 10 
+                    ? '🎉 Goal reached! Amazing work!' 
+                    : 'Keep going! You\'re doing great.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="sidebar-card mini-stats">
+              <h3>Performance</h3>
+              <div className="mini-stat-list">
+                <div className="mini-stat">
+                  <div className="mini-stat-icon">
+                    <Route size={16} />
+                  </div>
+                  <div className="mini-stat-info">
+                    <span className="mini-value">{formatDistance(stats.totalDistanceMeters || 0)} km</span>
+                    <span className="mini-label">Total Distance</span>
+                  </div>
+                </div>
+                <div className="mini-stat">
+                  <div className="mini-stat-icon">
+                    <Clock size={16} />
+                  </div>
+                  <div className="mini-stat-info">
+                    <span className="mini-value">{formatDuration(stats.totalDurationSeconds || 0)}</span>
+                    <span className="mini-label">Total Time</span>
+                  </div>
+                </div>
+                <div className="mini-stat">
+                  <div className="mini-stat-icon">
+                    <Zap size={16} />
+                  </div>
+                  <div className="mini-stat-info">
+                    <span className="mini-value">
+                      {activities.length > 0 
+                        ? formatDistance((stats.totalDistanceMeters || 0) / activities.length) 
+                        : '0.00'} km
+                    </span>
+                    <span className="mini-label">Avg per activity</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
       </main>
     </div>
   )
