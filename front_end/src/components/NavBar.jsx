@@ -17,6 +17,7 @@ export default function NavBar() {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarSeed, setAvatarSeed] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifLoading, setNotifLoading] = useState(false)
   const [notifError, setNotifError] = useState('')
@@ -24,6 +25,7 @@ export default function NavBar() {
   const [notifUnread, setNotifUnread] = useState(0)
   const menuRef = useRef(null)
   const notifRef = useRef(null)
+  const avatarRef = useRef(null)
 
   const NOTIF_LAST_SEEN_KEY = 'pace42.notifications.lastSeenAt'
 
@@ -134,9 +136,10 @@ export default function NavBar() {
 
   useEffect(() => {
     function onDocClick(e) {
-      if (!menuRef.current && !notifRef.current) return
+      if (!menuRef.current && !notifRef.current && !avatarRef.current) return
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
       if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false)
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarMenuOpen(false)
     }
 
     document.addEventListener('mousedown', onDocClick)
@@ -183,6 +186,7 @@ export default function NavBar() {
 
   const toggleNotifs = () => {
     setMenuOpen(false)
+    setAvatarMenuOpen(false)
     setNotifOpen((v) => {
       const next = !v
       if (next) {
@@ -195,6 +199,18 @@ export default function NavBar() {
       }
       return next
     })
+  }
+
+  const onAvatarClick = (e) => {
+    // On touch devices, first tap opens the menu; second tap follows the link.
+    const isTouch = e?.nativeEvent?.pointerType === 'touch'
+    if (!isTouch) return
+    if (!avatarMenuOpen) {
+      e.preventDefault()
+      setMenuOpen(false)
+      setNotifOpen(false)
+      setAvatarMenuOpen(true)
+    }
   }
 
   return (
@@ -281,9 +297,38 @@ export default function NavBar() {
             </div>
           </div>
 
-          <Link to="/profile" className="nav-avatar" aria-label="Profile">
-            <Avatar avatarUrl={avatarUrl} seed={avatarSeed} alt="Profile" loading="eager" />
-          </Link>
+          <div className="nav-avatar-wrap" ref={avatarRef}>
+            <Link
+              to="/profile"
+              className="nav-avatar"
+              aria-label="Profile"
+              aria-haspopup="menu"
+              aria-expanded={avatarMenuOpen}
+              onPointerDown={onAvatarClick}
+            >
+              <Avatar avatarUrl={avatarUrl} seed={avatarSeed} alt="Profile" loading="eager" />
+            </Link>
+
+            <div className={`nav-avatar-menu ${avatarMenuOpen ? 'open' : ''}`} role="menu" aria-label="Profile menu">
+              <Link to="/profile" className="nav-avatar-item" role="menuitem" onClick={() => setAvatarMenuOpen(false)}>
+                My Profile
+              </Link>
+              <Link to="/settings" className="nav-avatar-item" role="menuitem" onClick={() => setAvatarMenuOpen(false)}>
+                Settings
+              </Link>
+              <button
+                className="nav-avatar-item"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAvatarMenuOpen(false)
+                  void logout()
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </header>

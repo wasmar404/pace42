@@ -28,9 +28,15 @@ export class MeController {
   async getMe(@CurrentUser() user?: { userId: string; email?: string }) {
     if (!user) throw new BadRequestException('Missing user');
 
-    const profile = await this.prisma.profile.findUnique({
-      where: { userId: user.userId },
-    });
+    let profile = await this.prisma.profile.findUnique({ where: { userId: user.userId } });
+    if (!profile) {
+      profile = await this.prisma.profile.create({
+        data: {
+          userId: user.userId,
+          username: fallbackUsername(user.userId),
+        },
+      });
+    }
 
     return {
       user: {
@@ -46,8 +52,17 @@ export class MeController {
     const cached = this.summaryCache.get(user.userId);
     if (cached && Date.now() < cached.expiresAt) return cached.data;
 
-    const [profile, recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] = await Promise.all([
-      this.prisma.profile.findUnique({ where: { userId: user.userId } }),
+    let profile = await this.prisma.profile.findUnique({ where: { userId: user.userId } });
+    if (!profile) {
+      profile = await this.prisma.profile.create({
+        data: {
+          userId: user.userId,
+          username: fallbackUsername(user.userId),
+        },
+      });
+    }
+
+    const [recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] = await Promise.all([
       this.prisma.activity.findMany({
         where: { userId: user.userId },
         orderBy: { startedAt: 'desc' },
