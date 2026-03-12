@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { backendJson } from '../backendApi'
+import logBg from '../assets/log-bg.jpg'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [msg, setMsg] = useState('Signing you in...')
+  const [msg, setMsg] = useState('Loading...')
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -62,8 +63,33 @@ export default function AuthCallback() {
   }, [navigate, nextPath])
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>{msg}</h1>
+    <div
+      style={{
+        padding: 24,
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundImage: `url(${logBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div
+          style={{
+            width: 84,
+            height: 84,
+            border: '10px solid rgba(232, 57, 30, 0.25)',
+            borderTop: '10px solid #e8391e',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: 20,
+          }}
+        />
+        <h1 style={{ fontSize: '5rem', color: '#e8391e' }}>{msg}</h1>
+      </div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
