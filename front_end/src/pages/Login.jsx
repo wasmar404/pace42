@@ -1,7 +1,9 @@
 import "../styles/Login.css";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 
 export default function Login() {
     const navigate = useNavigate();
@@ -9,6 +11,25 @@ export default function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search)
+            const err = params.get('error')
+            if (!err) return
+
+            const map = {
+                intra_not_registered: 'No Intra account found. Use Intra signup first.',
+                email_used_by_other_method: 'This email is already used by another sign-in method.',
+                intra_token_exchange_failed: 'Intra sign-in failed (token exchange).',
+                intra_profile_failed: 'Intra sign-in failed (profile).',
+                intra_magiclink_failed: 'Intra sign-in failed (session).',
+            }
+            setError(map[err] || err)
+        } catch {
+            // ignore
+        }
+    }, [])
 
     const onLogin = async (e) => {
         e.preventDefault()
@@ -22,7 +43,18 @@ export default function Login() {
         if (error) {
             setError(error.message)
         } else {
-            navigate("/home")
+            // Enforce: email/password accounts cannot be linked to OAuth.
+            const { data } = await supabase.auth.getUser().catch(() => ({ data: null }))
+            const providers = Array.isArray(data?.user?.app_metadata?.providers)
+                ? data.user.app_metadata.providers
+                : (data?.user?.app_metadata?.provider ? [data.user.app_metadata.provider] : [])
+
+            if (providers.includes('google')) {
+                await supabase.auth.signOut().catch(() => {})
+                setError('This account uses Google sign-in. Use "Continue with Google" instead.')
+            } else {
+                navigate("/home")
+            }
         }
 
         setLoading(false)
@@ -33,7 +65,7 @@ export default function Login() {
         const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-                redirectTo: `${window.location.origin}/auth/callback?next=/home`,
+                redirectTo: `${window.location.origin}/auth/callback?method=google&mode=login&next=/home`,
             },
         })
         if (oauthError) {
@@ -41,6 +73,11 @@ export default function Login() {
             return
         }
         if (data?.url) window.location.href = data.url
+    }
+
+    const onIntra = () => {
+        setError(null)
+        window.location.href = `${BACKEND_URL}/api/auth/intra/start?mode=login&next=${encodeURIComponent('/home')}`
     }
 
     return (
@@ -59,7 +96,12 @@ export default function Login() {
 
                 <div className="social-buttons">
                     <button className="social-btn google" type="button" onClick={onGoogle}>
+                        <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
                         <span>Continue with Google</span>
+                    </button>
+                    <button className="social-btn google" type="button" onClick={onIntra}>
+                        <img className="icon icon-42" src="/auth/42.svg" alt="" aria-hidden="true" />
+                        <span>Continue with Intra</span>
                     </button>
                 </div>
 

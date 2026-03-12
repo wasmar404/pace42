@@ -122,7 +122,6 @@ export default function Profile() {
   const [hero, setHero] = useState(DEFAULT_HERO)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [openMaps, setOpenMaps] = useState(() => new Set())
 
   useEffect(() => {
     try {
@@ -195,15 +194,6 @@ export default function Profile() {
 
   const recent = activities.slice(0, 3)
 
-  const toggleMap = (activityId) => {
-    setOpenMaps((prev) => {
-      const next = new Set(prev)
-      if (next.has(activityId)) next.delete(activityId)
-      else next.add(activityId)
-      return next
-    })
-  }
-  
   const stats = useMemo(() => {
     const totalDistance = activities.reduce((sum, a) => sum + (Number(a.distanceMeters) || 0), 0)
     const totalDuration = activities.reduce((sum, a) => sum + (Number(a.durationSeconds) || 0), 0)
@@ -409,16 +399,9 @@ export default function Profile() {
 
                         {activity.routePolyline && (
                           <div className="workout-map">
-                            <button type="button" className="map-toggle" onClick={() => toggleMap(activity.id)}>
-                              {openMaps.has(activity.id) ? 'Hide map' : 'Show map'}
-                            </button>
-                            {openMaps.has(activity.id) ? (
-                              <Suspense fallback={<div className="map-fallback">Loading map...</div>}>
-                                <RouteMap polyline={activity.routePolyline} height={180} />
-                              </Suspense>
-                            ) : (
-                              <div className="map-fallback">Route available</div>
-                            )}
+                            <Suspense fallback={<div className="map-fallback">Loading map...</div>}>
+                              <RouteMap polyline={activity.routePolyline} height={180} />
+                            </Suspense>
                           </div>
                         )}
                         
