@@ -34,8 +34,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private async authSocket(client: AuthedSocket): Promise<string> {
     const header = (client.handshake.headers?.authorization as string | undefined) ?? '';
     const tokenFromHeader = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : '';
+    const tokenFromAuth =
+      client.handshake.auth && typeof (client.handshake.auth as any).token === 'string'
+        ? String((client.handshake.auth as any).token)
+        : '';
     const tokenFromQuery = typeof client.handshake.query?.token === 'string' ? (client.handshake.query.token as string) : '';
-    const token = tokenFromHeader || tokenFromQuery;
+    const token = tokenFromHeader || tokenFromAuth || tokenFromQuery;
     if (!token) throw new Error('Missing token');
 
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
@@ -77,21 +81,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('message:send')
   async sendMessage(
     @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { conversationId?: string; text?: string },
+    @MessageBody() body: { conversationId?: string; text?: string; clientId?: string },
   ) {
     const userId = client.userId;
     if (!userId) return;
     const conversationId = String(body?.conversationId ?? '');
     const text = String(body?.text ?? '');
+    const clientId = typeof body?.clientId === 'string' ? String(body.clientId) : undefined;
     if (!conversationId) return;
 
-    const res = await this.chat.sendMessage(userId, conversationId, text);
-    const payload = { message: res.message };
-    // Emit to conversation room and both users' personal rooms.
-    this.server.to(`c:${conversationId}`).emit('message:new', payload);
-    this.server.to(`u:${userId}`).emit('message:new', payload);
-    this.server.to(`u:${res.otherUserId}`).emit('message:new', payload);
-    return payload;
+    try {
+      const res = await this.chat.sendMessage(userId, conversationId, text, clientId);
+      const payload = { message: res.message, clientId: res.clientId ?? null };
+      // Emit to both users' personal rooms only to avoid duplicates
+      // (each socket is also in a conversation room).
+      this.server.to(`u:${userId}`).emit('message:new', payload);
+      this.server.to(`u:${res.otherUserId}`).emit('message:new', payload);
+      return payload;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to send';
+      client.emit('message:error', { conversationId, clientId: clientId ?? null, error: msg });
+      return { error: msg, clientId: clientId ?? null };
+    }
   }
 
   @SubscribeMessage('conversation:read')

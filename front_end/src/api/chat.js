@@ -20,8 +20,8 @@ export function getMessages(conversationId, params = {}) {
   return backendGet(`/api/chat/conversations/${conversationId}/messages${qs ? `?${qs}` : ''}`)
 }
 
-export function sendMessage(conversationId, body) {
-  return backendJson('POST', `/api/chat/conversations/${conversationId}/messages`, { body })
+export function sendMessage(conversationId, body, clientId) {
+  return backendJson('POST', `/api/chat/conversations/${conversationId}/messages`, { body, clientId })
 }
 
 export function markRead(conversationId) {

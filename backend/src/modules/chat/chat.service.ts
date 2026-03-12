@@ -199,7 +199,7 @@ export class ChatService {
     };
   }
 
-  async sendMessage(userId: string, conversationId: string, body: string) {
+  async sendMessage(userId: string, conversationId: string, body: string, clientId?: string) {
     const text = normalizeText(String(body ?? ''));
     if (!text) throw new BadRequestException('Message is empty');
     if (text.length > 2000) throw new BadRequestException('Message too long');
@@ -254,6 +254,7 @@ export class ChatService {
         createdAt: result.createdAt.toISOString(),
       },
       otherUserId: other.userId,
+      clientId: clientId ? String(clientId) : null,
     };
   }
 

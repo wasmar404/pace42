@@ -33,7 +33,42 @@ export default function Chat() {
   const [mutualsError, setMutualsError] = useState('')
   const debounceRef = useRef(null)
 
-  const totalUnread = useMemo(() => items.reduce((a, c) => a + Number(c.unreadCount || 0), 0), [items])
+  const itemsUniq = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    for (const c of items || []) {
+      const id = c?.id
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      out.push(c)
+    }
+    return out
+  }, [items])
+
+  const conversationOtherIds = useMemo(() => {
+    const s = new Set()
+    for (const c of itemsUniq) {
+      const id = c?.otherUser?.id
+      if (id) s.add(id)
+    }
+    return s
+  }, [itemsUniq])
+
+  const mutualsToShow = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    for (const u of mutuals || []) {
+      const id = u?.id
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      // If there's already a conversation with this mutual, don't show them twice.
+      if (conversationOtherIds.has(id)) continue
+      out.push(u)
+    }
+    return out
+  }, [mutuals, conversationOtherIds])
+
+  const totalUnread = useMemo(() => itemsUniq.reduce((a, c) => a + Number(c.unreadCount || 0), 0), [itemsUniq])
 
   const refresh = async () => {
     const res = await listConversations()
@@ -184,7 +219,7 @@ export default function Chat() {
 
           {!mutualsLoading && !mutualsError ? (
             <div className="chat-mutuals">
-              {mutuals.map((u) => {
+              {mutualsToShow.map((u) => {
                 const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || (u?.username ? `@${u.username}` : 'User')
                 return (
                   <button key={u.id} type="button" className="chat-mutual" onClick={() => onPickMutual(u.id)}>
@@ -198,7 +233,7 @@ export default function Chat() {
                   </button>
                 )
               })}
-              {!mutuals.length ? (
+              {!mutualsToShow.length ? (
                 <div className="chat-empty-muted">No mutual followers yet. Follow each other to unlock chat.</div>
               ) : null}
             </div>
@@ -206,7 +241,7 @@ export default function Chat() {
         </section>
 
         <section className="chat-list">
-          {!loading && !items.length ? (
+          {!loading && !itemsUniq.length ? (
             <div className="chat-empty">
               <div className="icon"><MessageCircle size={22} /></div>
               <div>
@@ -220,7 +255,7 @@ export default function Chat() {
             </div>
           ) : null}
 
-          {items.map((c) => (
+          {itemsUniq.map((c) => (
             <Link to={`/chat/${c.id}`} className="chat-row" key={c.id}>
               <div className="av">
                 <Avatar avatarUrl={c?.otherUser?.avatarUrl} seed={c?.otherUser?.username || c?.otherUser?.id || c?.otherUser?.name} alt="" />

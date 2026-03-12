@@ -45,9 +45,9 @@ export class ChatController {
   async send(
     @CurrentUser() user: { userId: string },
     @Param('id') conversationId: string,
-    @Body() body: { body?: string },
+    @Body() body: { body?: string; clientId?: string },
   ) {
-    return await this.chat.sendMessage(user.userId, conversationId, String(body?.body ?? ''));
+    return await this.chat.sendMessage(user.userId, conversationId, String(body?.body ?? ''), body?.clientId);
   }
 
   @Post('conversations/:id/read')

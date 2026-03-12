@@ -14,10 +14,14 @@ export async function getChatSocket() {
   if (!token) throw new Error('Not authenticated')
 
   socket = io(`${BASE_URL}/chat`, {
-    transports: ['websocket'],
-    extraHeaders: {
-      Authorization: `Bearer ${token}`,
-    },
+    // Allow polling fallback (websocket-only can fail in some dev setups).
+    transports: ['websocket', 'polling'],
+    // Browsers can't send custom headers on WebSocket upgrade.
+    // Pass token via Socket.IO auth payload.
+    auth: { token },
+    reconnection: true,
+    reconnectionDelay: 400,
+    reconnectionDelayMax: 3000,
   })
 
   return socket
