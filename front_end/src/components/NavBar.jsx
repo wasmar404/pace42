@@ -247,23 +247,31 @@ export default function NavBar() {
 
               {!notifLoading && !notifError ? (
                 <div className="nav-notif-list">
-                  {notifItems.map((it, idx) => (
-                    <Link
-                      key={`${it?.type || 'n'}-${it?.actor?.id || 'a'}-${it?.createdAt || idx}`}
-                      to={it?.actor?.id ? `/users/${it.actor.id}` : '/home'}
-                      className="nav-notif-item"
-                      role="menuitem"
-                      onClick={() => setNotifOpen(false)}
-                    >
-                      <div className="nav-notif-avatar">
-                        <Avatar avatarUrl={it?.actor?.avatarUrl} seed={it?.actor?.username || it?.actor?.id || it?.actor?.name} alt="" />
-                      </div>
-                      <div className="nav-notif-text">
-                        <div className="line">{it?.text || 'Notification'}</div>
-                        <div className="time">{fmtWhen(it?.createdAt)}</div>
-                      </div>
-                    </Link>
-                  ))}
+                   {notifItems.map((it, idx) => {
+                     const to = it?.type === 'message' && it?.conversationId
+                       ? `/chat/${it.conversationId}`
+                       : it?.actor?.id
+                         ? `/users/${it.actor.id}`
+                         : '/home'
+
+                     return (
+                       <Link
+                         key={`${it?.type || 'n'}-${it?.actor?.id || 'a'}-${it?.createdAt || idx}`}
+                         to={to}
+                         className="nav-notif-item"
+                         role="menuitem"
+                         onClick={() => setNotifOpen(false)}
+                       >
+                       <div className="nav-notif-avatar">
+                         <Avatar avatarUrl={it?.actor?.avatarUrl} seed={it?.actor?.username || it?.actor?.id || it?.actor?.name} alt="" />
+                       </div>
+                       <div className="nav-notif-text">
+                         <div className="line">{it?.text || 'Notification'}</div>
+                         <div className="time">{fmtWhen(it?.createdAt)}</div>
+                       </div>
+                       </Link>
+                     )
+                   })}
 
                   {!notifItems.length ? <div className="nav-notif-empty">No notifications yet.</div> : null}
                 </div>
