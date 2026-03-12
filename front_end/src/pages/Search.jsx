@@ -5,7 +5,6 @@ import { Search, UserPlus, UserCheck, Loader2, AlertCircle } from 'lucide-react'
 import NavBar from '../components/NavBar'
 import { followUser, searchUsers, unfollowUser } from '../api/users'
 import Avatar from '../components/Avatar'
-import cyclistsBg from '../assets/cyclists.jpg'
 import '../styles/Search.css'
 
 function displayName(u) {
@@ -28,6 +27,17 @@ export default function SearchPage() {
   useEffect(() => {
     // Focus input on mount
     inputRef.current?.focus()
+
+    const onKey = (e) => {
+      if (e.key === '/' && !(e.metaKey || e.ctrlKey || e.altKey)) {
+        const tag = String(document.activeElement?.tagName || '').toLowerCase()
+        if (tag === 'input' || tag === 'textarea') return
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   useEffect(() => {
@@ -76,15 +86,20 @@ export default function SearchPage() {
     }
   }
 
+  const showEmpty = !loading && trimmed.length >= 2 && !results.length
+  const showResults = results.length > 0
+  const showPanel = trimmed.length >= 2 || loading
+
   return (
-    <div className="search-page" style={{ backgroundImage: `url(${cyclistsBg})` }}>
+    <div className="search-page">
       <NavBar />
 
       <main className="search-container">
-        <div className="search-header">
+        <header className="search-header">
+          <div className="search-kicker">Scout Board</div>
           <h1 className="search-title">Find Athletes</h1>
-          <p className="search-subtitle">Connect with runners, cyclists, and athletes. Follow to see their activities and achievements.</p>
-        </div>
+          <p className="search-subtitle">Search by name or handle. Follow to unlock followers-only activities and mutual chat.</p>
+        </header>
 
         <div className="search-input-wrapper">
           <div className="search-input-box">
@@ -118,7 +133,7 @@ export default function SearchPage() {
             ) : trimmed.length >= 2 ? (
               <span className="status-results">{results.length} athlete{results.length !== 1 ? 's' : ''} found</span>
             ) : (
-              <span className="status-hint">Type 2+ characters to search</span>
+              <span className="status-hint">Type 2+ characters to search (press / to focus)</span>
             )}
           </div>
         </div>
@@ -130,77 +145,74 @@ export default function SearchPage() {
           </div>
         )}
 
-        <div className="search-results-container">
-          {results.map((u) => (
-            <div className="athlete-card" key={u.id}>
-              <Link className="athlete-info" to={`/users/${u.id}`}>
-                <div className="athlete-avatar-wrapper">
-                  <Avatar 
-                    avatarUrl={u.avatarUrl} 
-                    seed={u.username || u.id || displayName(u)} 
-                    alt={displayName(u)}
-                    size={56}
-                  />
-                  {u.isFollowing && <div className="following-badge" />}
-                </div>
-                
-                <div className="athlete-details">
-                  <div className="athlete-name">{displayName(u)}</div>
-                  <div className="athlete-meta">
-                    {u.username && <span className="athlete-username">@{u.username}</span>}
-                    {u.level && (
-                      <>
-                        <span className="meta-dot">·</span>
-                        <span className="athlete-level">{u.level}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </Link>
-
-              <button
-                className={`follow-button ${u.isFollowing ? 'following' : ''}`}
-                type="button"
-                onClick={() => toggleFollow(u)}
-                aria-label={u.isFollowing ? 'Unfollow user' : 'Follow user'}
-              >
-                {u.isFollowing ? (
-                  <>
-                    <UserCheck size={16} />
-                    <span>Following</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={16} />
-                    <span>Follow</span>
-                  </>
-                )}
-              </button>
-            </div>
-          ))}
-
-          {!loading && trimmed.length >= 2 && !results.length && (
-            <div className="search-empty-state">
-              <div className="empty-icon">
-                <Search size={48} strokeWidth={1.5} />
+        {showPanel ? (
+          <section className="search-results-container" aria-label="Search results">
+            {loading ? (
+              <div className="search-grid" aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <div key={idx} className="athlete-card skeleton" style={{ animationDelay: `${idx * 40}ms` }} />
+                ))}
               </div>
-              <h3>No athletes found</h3>
-              <p>Try searching with a different name or username</p>
-            </div>
-          )}
+            ) : null}
 
-          {!loading && trimmed.length < 2 && !results.length && (
-            <div className="search-initial-state">
-              <div className="initial-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M14.5 9.5L9.5 14.5M9.5 9.5L14.5 14.5" />
-                </svg>
+            {showResults ? (
+              <div className="search-grid">
+                {results.map((u, idx) => (
+                  <article className="athlete-card" key={u.id} style={{ animationDelay: `${idx * 30}ms` }}>
+                    <Link className="athlete-info" to={`/users/${u.id}`}>
+                      <div className="athlete-avatar-wrapper">
+                        <Avatar
+                          avatarUrl={u.avatarUrl}
+                          seed={u.username || u.id || displayName(u)}
+                          alt={displayName(u)}
+                          size={56}
+                        />
+                        {u.isFollowing ? <div className="following-badge" title="Following" /> : null}
+                      </div>
+
+                      <div className="athlete-details">
+                        <div className="athlete-name">{displayName(u)}</div>
+                        <div className="athlete-meta">
+                          {u.username ? <span className="athlete-username">@{u.username}</span> : null}
+                          {u.level ? <span className="athlete-level">{u.level}</span> : null}
+                        </div>
+                      </div>
+                    </Link>
+
+                    <button
+                      className={`follow-button ${u.isFollowing ? 'following' : ''}`}
+                      type="button"
+                      onClick={() => toggleFollow(u)}
+                      aria-label={u.isFollowing ? 'Unfollow user' : 'Follow user'}
+                    >
+                      {u.isFollowing ? (
+                        <>
+                          <UserCheck size={16} />
+                          <span>Following</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={16} />
+                          <span>Follow</span>
+                        </>
+                      )}
+                    </button>
+                  </article>
+                ))}
               </div>
-              <p>Start typing to discover athletes</p>
-            </div>
-          )}
-        </div>
+            ) : null}
+
+            {showEmpty ? (
+              <div className="search-empty-state">
+                <div className="empty-icon">
+                  <Search size={46} strokeWidth={1.35} />
+                </div>
+                <h3>No athletes found</h3>
+                <p>Try a different name, a shorter handle, or remove symbols.</p>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </main>
     </div>
   )

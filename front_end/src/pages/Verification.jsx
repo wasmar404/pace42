@@ -59,6 +59,9 @@ export default function Verification() {
       const { error: resendError } = await supabase.auth.resend({
         type: "signup",
         email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/verification?next=/personal-info`,
+        },
       });
       if (resendError) throw resendError;
       setMessage("Verification email re-sent. Check your inbox.");

@@ -12,8 +12,11 @@ import Home from "./pages/Home";
 import AddActivity from "./pages/AddActivity";
 import ActivityDetails from "./pages/ActivityDetails";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import Search from "./pages/Search";
 import UserProfile from "./pages/UserProfile";
+import Chat from "./pages/Chat";
+import ChatThread from "./pages/ChatThread";
 
 function App() {
   return (
@@ -69,6 +72,15 @@ function App() {
         />
 
         <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/search"
           element={
             <ProtectedRoute>
@@ -82,6 +94,24 @@ function App() {
           element={
             <ProtectedRoute>
               <UserProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/chat/:id"
+          element={
+            <ProtectedRoute>
+              <ChatThread />
             </ProtectedRoute>
           }
         />

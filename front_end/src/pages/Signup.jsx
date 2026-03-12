@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
+
 
 export default function Signup() {
     const navigate = useNavigate();
@@ -39,7 +41,7 @@ export default function Signup() {
         const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-                redirectTo: `${window.location.origin}/auth/callback?next=/personal-info`,
+                redirectTo: `${window.location.origin}/auth/callback?method=google&mode=signup&next=/personal-info`,
             },
         });
         if (oauthError) {
@@ -48,6 +50,11 @@ export default function Signup() {
         }
         if (data?.url) window.location.href = data.url;
     };
+
+    const onIntra = () => {
+        setError("")
+        window.location.href = `${BACKEND_URL}/api/auth/intra/start?mode=signup&next=${encodeURIComponent('/personal-info')}`
+    }
 
     return (
         <div className="Signup">
@@ -68,9 +75,13 @@ export default function Signup() {
                 </p>
                 <div className="social-buttons">
                     <button className="social-btn google" type="button" onClick={onGoogle}>
+                        <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
                         <span>Sign Up With Google</span>
                     </button>
-        
+                    <button className="social-btn google" type="button" onClick={onIntra}>
+                        <img className="icon icon-42" src="/auth/42.svg" alt="" aria-hidden="true" />
+                        <span>Sign Up With Intra</span>
+                    </button>
                 </div>
 
                 <div className="divider">

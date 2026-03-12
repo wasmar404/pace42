@@ -132,7 +132,6 @@ export default function UserProfile() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [hero, setHero] = useState(DEFAULT_HERO)
-  const [openMaps, setOpenMaps] = useState(() => new Set())
 
   useEffect(() => {
     try {
@@ -225,14 +224,6 @@ export default function UserProfile() {
 
   const activities = data?.recentActivities || []
 
-  const toggleMap = (activityId) => {
-    setOpenMaps((prev) => {
-      const next = new Set(prev)
-      if (next.has(activityId)) next.delete(activityId)
-      else next.add(activityId)
-      return next
-    })
-  }
 
   return (
     <div className="user-profile-page">
@@ -514,41 +505,20 @@ export default function UserProfile() {
                           </div>
                         </Link>
 
-                        {/* Expandable Map */}
-                        {activity.routePolyline && (
-                          <div className="workout-map-section">
-                            <button 
-                              type="button" 
-                              className="map-toggle-btn"
-                              onClick={() => toggleMap(activity.id)}
+                        {activity.routePolyline ? (
+                          <div className="workout-map">
+                            <Suspense
+                              fallback={
+                                <div className="map-loading">
+                                  <div className="spinner small" />
+                                  <span>Loading map...</span>
+                                </div>
+                              }
                             >
-                              {openMaps.has(activity.id) ? (
-                                <>
-                                  <ChevronUp size={16} />
-                                  Hide route map
-                                </>
-                              ) : (
-                                <>
-                                  <MapPin size={16} />
-                                  Show route map
-                                </>
-                              )}
-                            </button>
-                            
-                            {openMaps.has(activity.id) && (
-                              <div className="workout-map">
-                                <Suspense fallback={
-                                  <div className="map-loading">
-                                    <div className="spinner small" />
-                                    <span>Loading map...</span>
-                                  </div>
-                                }>
-                                  <RouteMap polyline={activity.routePolyline} height={200} />
-                                </Suspense>
-                              </div>
-                            )}
+                              <RouteMap polyline={activity.routePolyline} height={200} />
+                            </Suspense>
                           </div>
-                        )}
+                        ) : null}
                       </article>
                     ))}
                     
