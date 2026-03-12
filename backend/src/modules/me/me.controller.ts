@@ -28,9 +28,15 @@ export class MeController {
   async getMe(@CurrentUser() user?: { userId: string; email?: string }) {
     if (!user) throw new BadRequestException('Missing user');
 
-    const profile = await this.prisma.profile.findUnique({
-      where: { userId: user.userId },
-    });
+    let profile = await this.prisma.profile.findUnique({ where: { userId: user.userId } });
+    if (!profile) {
+      profile = await this.prisma.profile.create({
+        data: {
+          userId: user.userId,
+          username: fallbackUsername(user.userId),
+        },
+      });
+    }
 
     return {
       user: {
@@ -46,8 +52,17 @@ export class MeController {
     const cached = this.summaryCache.get(user.userId);
     if (cached && Date.now() < cached.expiresAt) return cached.data;
 
-    const [profile, recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] = await Promise.all([
-      this.prisma.profile.findUnique({ where: { userId: user.userId } }),
+    let profile = await this.prisma.profile.findUnique({ where: { userId: user.userId } });
+    if (!profile) {
+      profile = await this.prisma.profile.create({
+        data: {
+          userId: user.userId,
+          username: fallbackUsername(user.userId),
+        },
+      });
+    }
+
+    const [recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] = await Promise.all([
       this.prisma.activity.findMany({
         where: { userId: user.userId },
         orderBy: { startedAt: 'desc' },
@@ -104,6 +119,9 @@ export class MeController {
       },
       recentActivities,
       recentPhotos: recentPhotos.map((p) => p.publicUrl).filter(Boolean),
+      settings: {
+        isPrivate: Boolean(profile?.isPrivate ?? false),
+      },
     };
 
     // Very short TTL to reduce repeated hits during page transitions.
@@ -155,6 +173,7 @@ export class MeController {
         gender: dto.gender,
         level: dto.level,
         bio: dto.bio,
+        isPrivate: dto.isPrivate ?? false,
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
@@ -166,6 +185,7 @@ export class MeController {
         gender: dto.gender,
         level: dto.level,
         bio: dto.bio,
+        ...(typeof dto.isPrivate === 'boolean' ? { isPrivate: dto.isPrivate } : {}),
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
@@ -231,6 +251,25 @@ export class MeController {
     });
 
     return { avatarUrl };
+  }
+
+  @Post('delete-account')
+  async deleteAccount(
+    @CurrentUser() user: { userId: string },
+    @Body() body: { confirm?: string },
+  ) {
+    const confirm = String(body?.confirm ?? '').trim().toUpperCase();
+    if (confirm !== 'DELETE') throw new BadRequestException('Type DELETE to confirm');
+
+    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
+    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
+    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
+
+    const { error } = await service.auth.admin.deleteUser(user.userId);
+    if (error) throw new BadRequestException(error.message);
+
+    return { ok: true };
   }
 
   @Get('activities')

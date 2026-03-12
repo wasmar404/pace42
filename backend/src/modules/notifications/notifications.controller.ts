@@ -17,16 +17,30 @@ export class NotificationsController {
     const sinceMs = Number(since ?? 0);
     if (!Number.isFinite(sinceMs) || sinceMs < 0) throw new BadRequestException('Invalid since');
 
-    const count = await this.prisma.follow.count({
-      where: {
-        followingId: user.userId,
-        createdAt: {
-          gt: new Date(sinceMs || 0),
-        },
-      },
-    });
+    const sinceDate = new Date(sinceMs || 0);
 
-    return { unread: count };
+    const [followCount, unreadMessageConvos] = await Promise.all([
+      this.prisma.follow.count({
+        where: {
+          followingId: user.userId,
+          createdAt: {
+            gt: sinceDate,
+          },
+        },
+      }),
+      this.prisma.conversationParticipant.count({
+        where: {
+          userId: user.userId,
+          unreadCount: { gt: 0 },
+          conversation: {
+            lastMessageAt: { gt: sinceDate },
+            lastSenderId: { not: user.userId },
+          },
+        },
+      }),
+    ]);
+
+    return { unread: followCount + unreadMessageConvos };
   }
 
   @Get()
@@ -43,7 +57,40 @@ export class NotificationsController {
       },
     });
 
-    const actorIds = Array.from(new Set(follows.map((f) => f.followerId)));
+    const convoNotifs = await this.prisma.conversationParticipant.findMany({
+      where: {
+        userId: user.userId,
+        unreadCount: { gt: 0 },
+        conversation: {
+          lastMessageAt: { not: null },
+          lastSenderId: { not: user.userId },
+        },
+      },
+      take: 20,
+      orderBy: {
+        conversation: {
+          lastMessageAt: 'desc',
+        },
+      },
+      select: {
+        conversationId: true,
+        unreadCount: true,
+        conversation: {
+          select: {
+            lastMessageAt: true,
+            lastMessageText: true,
+            lastSenderId: true,
+          },
+        },
+      },
+    });
+
+    const actorIds = Array.from(
+      new Set([
+        ...follows.map((f) => f.followerId),
+        ...convoNotifs.map((c) => c.conversation.lastSenderId).filter(Boolean) as string[],
+      ]),
+    );
     const actors = actorIds.length
       ? await this.prisma.profile.findMany({
           where: { userId: { in: actorIds } },
@@ -59,8 +106,8 @@ export class NotificationsController {
 
     const byId = new Map(actors.map((a) => [a.userId, a] as const));
 
-    return {
-      items: follows.map((f) => {
+    const items = [
+      ...follows.map((f) => {
         const a = byId.get(f.followerId);
         const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
         return {
@@ -75,6 +122,35 @@ export class NotificationsController {
           text: `${name} started following you`,
         };
       }),
-    };
+      ...convoNotifs
+        .filter((c) => c.conversation.lastMessageAt && c.conversation.lastSenderId)
+        .map((c) => {
+          const senderId = c.conversation.lastSenderId as string;
+          const a = byId.get(senderId);
+          const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
+          const preview = String(c.conversation.lastMessageText ?? '').trim();
+          const clip = preview.length > 90 ? `${preview.slice(0, 90)}…` : preview;
+          return {
+            type: 'message',
+            createdAt: (c.conversation.lastMessageAt as Date).toISOString(),
+            conversationId: c.conversationId,
+            actor: {
+              id: senderId,
+              username: a?.username ?? null,
+              name,
+              avatarUrl: a?.avatarUrl ?? null,
+            },
+            text: clip ? `${name}: ${clip}` : `New message from ${name}`,
+          };
+        }),
+    ];
+
+    items.sort((a: any, b: any) => {
+      const ta = Date.parse(a.createdAt);
+      const tb = Date.parse(b.createdAt);
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
+
+    return { items: items.slice(0, 20) };
   }
 }

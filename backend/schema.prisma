@@ -10,7 +10,7 @@ datasource db {
 
 model Profile {
   userId                String    @id @map("user_id") @db.Uuid
-  username              String    @unique @db.Text
+  username              String    @unique
   avatarUrl             String?   @map("avatar_url")
   firstName             String?   @map("first_name") @db.VarChar(100)
   lastName              String?   @map("last_name") @db.VarChar(100)
@@ -19,30 +19,30 @@ model Profile {
   level                 String?   @db.VarChar(50)
   weightKg              Decimal?  @map("weight_kg") @db.Decimal(5, 2)
   heightCm              Decimal?  @map("height_cm") @db.Decimal(5, 2)
-  bio                   String?   @db.Text
+  bio                   String?
   onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  isPrivate             Boolean   @default(false) @map("is_private")
 
   @@map("profiles")
 }
 
 model Activity {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  sport           String   @db.Text
-  title           String?  @db.Text
-  description     String?  @db.Text
-  startedAt       DateTime @map("started_at") @db.Timestamptz(6)
-  durationSeconds Int      @map("duration_seconds")
-  distanceMeters  Int      @map("distance_meters")
-  visibility      String   @db.Text
-  source          String   @db.Text
-  routePolyline   String?  @map("route_polyline") @db.Text
-  mapImageUrl     String?  @map("map_image_url") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  media ActivityMedia[]
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  sport           String
+  title           String?
+  description     String?
+  startedAt       DateTime        @map("started_at") @db.Timestamptz(6)
+  durationSeconds Int             @map("duration_seconds")
+  distanceMeters  Int             @map("distance_meters")
+  visibility      String
+  source          String
+  routePolyline   String?         @map("route_polyline")
+  mapImageUrl     String?         @map("map_image_url")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  media           ActivityMedia[]
 
   @@index([userId])
   @@index([startedAt])
@@ -54,13 +54,12 @@ model ActivityMedia {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   activityId    String   @map("activity_id") @db.Uuid
   userId        String   @map("user_id") @db.Uuid
-  kind          String   @db.Text
-  storageBucket String   @map("storage_bucket") @db.Text
-  storagePath   String   @map("storage_path") @db.Text
-  publicUrl     String?  @map("public_url") @db.Text
+  kind          String
+  storageBucket String   @map("storage_bucket")
+  storagePath   String   @map("storage_path")
+  publicUrl     String?  @map("public_url")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activity      Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
   @@index([activityId])
   @@index([userId])
@@ -74,4 +73,44 @@ model Follow {
 
   @@id([followerId, followingId])
   @@map("follows")
+}
+
+model Conversation {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lastMessageAt   DateTime?                 @map("last_message_at") @db.Timestamptz(6)
+  lastMessageText String?                   @map("last_message_text")
+  lastSenderId    String?                   @map("last_sender_id") @db.Uuid
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  participants    ConversationParticipant[]
+  messages        Message[]
+
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  conversationId String       @map("conversation_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  unreadCount    Int          @default(0) @map("unread_count")
+  lastReadAt     DateTime?    @map("last_read_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  senderId       String       @map("sender_id") @db.Uuid
+  body           String
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
 }
