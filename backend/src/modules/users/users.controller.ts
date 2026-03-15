@@ -43,6 +43,7 @@ export class UsersController {
           level: true,
           bio: true,
           isPrivate: true,
+          onboardingCompletedAt: true,
         },
       }),
       this.prisma.follow.count({ where: { followingId: id } }),
@@ -50,6 +51,7 @@ export class UsersController {
     ]);
 
     if (!profile) throw new BadRequestException('User not found');
+    if (!isSelf && !profile.onboardingCompletedAt) throw new BadRequestException('User not found');
 
     let isFollowing = false;
     if (viewerId && !isSelf) {
@@ -177,8 +179,9 @@ export class UsersController {
     if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
     if (id === user.userId) throw new BadRequestException('Cannot follow yourself');
 
-    const target = await this.prisma.profile.findUnique({ where: { userId: id }, select: { userId: true } });
+    const target = await this.prisma.profile.findUnique({ where: { userId: id }, select: { userId: true, onboardingCompletedAt: true } });
     if (!target) throw new BadRequestException('User not found');
+    if (!target.onboardingCompletedAt) throw new BadRequestException('User not found');
 
     await this.prisma.follow.upsert({
       where: {
@@ -230,10 +233,12 @@ export class UsersController {
         avatarUrl: true,
         level: true,
         bio: true,
+        onboardingCompletedAt: true,
       },
     });
 
     if (!data) throw new BadRequestException('User not found');
+    if (!data.onboardingCompletedAt) throw new BadRequestException('User not found');
 
     return {
       user: {

@@ -9,6 +9,17 @@ export default function AuthCallback() {
   const location = useLocation()
   const [msg, setMsg] = useState('Loading...')
 
+  const errorFromProvider = useMemo(() => {
+    try {
+      const params = new URLSearchParams(location.search)
+      const err = params.get('error')
+      const desc = params.get('error_description')
+      return desc || err || ''
+    } catch {
+      return ''
+    }
+  }, [location.search])
+
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search)
     // mode=login|signup (used to prevent "login" from creating new OAuth accounts)
@@ -35,32 +46,57 @@ export default function AuthCallback() {
 
   useEffect(() => {
     async function run() {
-      const { data } = await supabase.auth.getSession()
+      if (errorFromProvider) {
+        setMsg(errorFromProvider)
+        navigate(`/login?error=${encodeURIComponent('oauth_failed')}&message=${encodeURIComponent(errorFromProvider)}`)
+        return
+      }
 
-      if (data.session) {
-        const user = data.session.user
-        const providers = (user?.identities || []).map((i) => i.provider)
-        const hasGoogle = providers.includes('google')
-        const hasEmail = providers.includes('email')
+      // For PKCE flows, make sure we exchange the code.
+      try {
+        const params = new URLSearchParams(location.search)
+        const code = params.get('code')
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(window.location.href)
+        }
+      } catch (e) {
+        const m = e?.message || 'OAuth session exchange failed'
+        setMsg(m)
+        navigate(`/login?error=${encodeURIComponent('oauth_failed')}&message=${encodeURIComponent(m)}`)
+        return
+      }
 
+      // Wait briefly for the session to persist.
+      let session = null
+      for (let i = 0; i < 12; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data } = await supabase.auth.getSession()
+        session = data?.session || null
+        if (session) break
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 120))
+      }
+
+      if (session) {
         // Enforce auth policies server-side (duplicate emails, mixed providers, OAuth-login gating).
         try {
           await backendJson('POST', '/api/auth/policy/enforce', { mode, method })
         } catch (e) {
-          setMsg(e?.message || 'Sign-in blocked by policy')
+          const m = e?.message || 'Sign-in blocked by policy'
+          setMsg(m)
           await supabase.auth.signOut().catch(() => {})
-          navigate('/login')
+          navigate(`/login?error=${encodeURIComponent('policy')}&message=${encodeURIComponent(m)}`)
           return
         }
 
         navigate(nextPath)
       } else {
-        navigate('/login')
+        navigate(`/login?error=${encodeURIComponent('no_session')}&message=${encodeURIComponent('No session found after OAuth redirect. Try again.')}`)
       }
     }
 
     void run()
-  }, [navigate, nextPath])
+  }, [navigate, nextPath, mode, method, location.search, errorFromProvider])
 
   return (
     <div

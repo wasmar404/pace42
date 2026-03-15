@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/Verification.css";
 import { supabase } from "../supabaseClient";
@@ -6,9 +6,12 @@ import { supabase } from "../supabaseClient";
 export default function Verification() {
   const navigate = useNavigate();
   const location = useLocation();
+  const codeRef = useRef(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -37,6 +40,8 @@ export default function Verification() {
       if (data.session) {
         navigate(nextPath, { replace: true });
       }
+
+      setTimeout(() => codeRef.current?.focus(), 0);
     }
 
     void run();
@@ -46,10 +51,48 @@ export default function Verification() {
     };
   }, [navigate, nextPath]);
 
+  const onVerifyCode = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Enter your email first.");
+      return;
+    }
+    const token = String(code || "").replace(/\s+/g, "").trim();
+    if (token.length < 6) {
+      setError("Enter the 6-digit code.");
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setVerifying(true);
+    try {
+      const { data, error: vErr } = await supabase.auth.verifyOtp({
+        type: "signup",
+        email,
+        token,
+      });
+      if (vErr) throw vErr;
+
+      // verifyOtp should create a session; still, be defensive.
+      if (data?.session) {
+        navigate(nextPath, { replace: true });
+      } else {
+        navigate(nextPath, { replace: true });
+      }
+    } catch (err) {
+      setError(err?.message || "Invalid code");
+      setCode("");
+      setTimeout(() => codeRef.current?.focus(), 0);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const onResend = async (e) => {
     e.preventDefault();
     if (!email) {
-      setError("Enter your email to resend the verification email.");
+      setError("Enter your email to resend the code.");
       return;
     }
     setError("");
@@ -64,7 +107,7 @@ export default function Verification() {
         },
       });
       if (resendError) throw resendError;
-      setMessage("Verification email re-sent. Check your inbox.");
+      setMessage("Code re-sent. Check your inbox.");
     } catch (err) {
       setError(err?.message || "Failed to resend email");
     } finally {
@@ -88,12 +131,9 @@ export default function Verification() {
       {/* Center Card */}
       <div className="center-card dark">
 
-        <h1 className="title">Verification Code</h1>
+        <h1 className="title">Verify Your Email</h1>
 
-        <p className="subtitle">
-          Check your email and click the verification link to confirm your account.
-          After you confirm, you'll be redirected back into the app automatically.
-        </p>
+        <p className="subtitle">Check your email for a 6-digit code and enter it here.</p>
 
         <label className="input-label">Email</label>
         <input
@@ -103,6 +143,25 @@ export default function Verification() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
+        <form onSubmit={onVerifyCode}>
+          <label className="input-label">6-digit code</label>
+          <input
+            ref={codeRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123 456"
+            className="form-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            disabled={verifying}
+          />
+
+          <button className="verify-btn" type="submit" disabled={verifying || !email || code.replace(/\s+/g, "").length < 6}>
+            {verifying ? "Verifying..." : "Verify"}
+          </button>
+        </form>
 
         {message ? <p className="subtitle">{message}</p> : null}
         {error ? <p className="subtitle">{error}</p> : null}

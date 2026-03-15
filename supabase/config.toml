@@ -11,12 +11,19 @@ additional_redirect_urls = [
   "http://localhost:3000"
 ]
 
+[auth.rate_limit]
+# Local dev: allow lots of confirmation/resend emails without hitting 429.
+# (Gmail itself still has its own sending limits.)
+email_sent = 1000
+
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations =  true
+enable_confirmations = true
 secure_password_change = false
-max_frequency = "1s"
+# Dev-only: set low/zero to avoid local throttling.
+# Note: this is NOT the same as Gmail's own sending limits.
+max_frequency = "0s"
 otp_length = 6
 otp_expiry = 3600
 

@@ -4,22 +4,10 @@ import { MessageCircle, Plus } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
+import TimeText from '../components/ui/TimeText'
 import { getOrCreateConversation, listConversations, searchMutuals } from '../api/chat'
 import { getChatSocket } from '../chat/socket'
 import '../styles/Chat.css'
-
-function fmtWhen(iso) {
-  const t = Date.parse(iso)
-  if (!Number.isFinite(t)) return ''
-  const diff = Date.now() - t
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  const days = Math.floor(hrs / 24)
-  return `${days}d`
-}
 
 export default function Chat() {
   const navigate = useNavigate()
@@ -263,7 +251,7 @@ export default function Chat() {
               <div className="main">
                 <div className="top">
                   <div className="name">{c?.otherUser?.name || 'User'}</div>
-                  <div className="time">{c?.lastMessageAt ? fmtWhen(c.lastMessageAt) : ''}</div>
+                  <div className="time">{c?.lastMessageAt ? <TimeText iso={c.lastMessageAt} variant="relative" /> : ''}</div>
                 </div>
                 <div className="sub">
                   <div className="msg">{c?.lastMessageText || 'Say hello'}</div>

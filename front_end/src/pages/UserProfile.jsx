@@ -384,15 +384,7 @@ export default function UserProfile() {
             </div>
           </div>
 
-          {/* Privacy Notice */}
-          {!data?.relationship?.isSelf && !data?.relationship?.isFollowing && (
-            <div className="privacy-notice">
-              <div className="notice-icon">
-                <Lock size={16} />
-              </div>
-              <p>Follow to see followers-only workouts (if the athlete enabled it).</p>
-            </div>
-          )}
+          {/* Privacy notice removed per UX preference */}
         </section>
 
         {/* Main Content */}

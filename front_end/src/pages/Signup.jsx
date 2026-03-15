@@ -18,7 +18,7 @@ export default function Signup() {
         setError("");
         setLoading(true);
         try {
-            const { error: signUpError } = await supabase.auth.signUp({
+            const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
@@ -28,7 +28,13 @@ export default function Signup() {
                 },
             });
             if (signUpError) throw signUpError;
-            navigate("/verification", { state: { email } });
+
+            // If email confirmations are disabled (common in local dev), Supabase returns a session.
+            if (data?.session) {
+                navigate("/personal-info", { replace: true });
+            } else {
+                navigate("/verification", { state: { email } });
+            }
         } catch (err) {
             setError(err?.message || "Signup failed");
         } finally {

@@ -23,9 +23,11 @@ export default function NavBar() {
   const [notifError, setNotifError] = useState('')
   const [notifItems, setNotifItems] = useState([])
   const [notifUnread, setNotifUnread] = useState(0)
+  const [chatUnread, setChatUnread] = useState(0)
   const menuRef = useRef(null)
   const notifRef = useRef(null)
   const avatarRef = useRef(null)
+  const avatarCloseTimerRef = useRef(null)
 
   const NOTIF_LAST_SEEN_KEY = 'pace42.notifications.lastSeenAt'
 
@@ -44,6 +46,16 @@ export default function NavBar() {
       const res = await backendGet(`/api/notifications/unread?since=${encodeURIComponent(String(since))}`)
       const n = Number(res?.unread || 0)
       setNotifUnread(Number.isFinite(n) ? n : 0)
+    } catch {
+      // ignore
+    }
+  }
+
+  const refreshChatUnread = async () => {
+    try {
+      const res = await backendGet('/api/chat/unread')
+      const n = Number(res?.unreadMessages || 0)
+      setChatUnread(Number.isFinite(n) ? n : 0)
     } catch {
       // ignore
     }
@@ -114,6 +126,7 @@ export default function NavBar() {
     const tick = async () => {
       if (cancelled) return
       if (!notifOpen) await refreshUnread()
+      await refreshChatUnread()
     }
 
     void tick()
@@ -121,6 +134,7 @@ export default function NavBar() {
 
     const onFocus = () => {
       if (!notifOpen) void refreshUnread()
+      void refreshChatUnread()
     }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
@@ -144,6 +158,12 @@ export default function NavBar() {
 
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (avatarCloseTimerRef.current) clearTimeout(avatarCloseTimerRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -176,6 +196,7 @@ export default function NavBar() {
   useEffect(() => {
     // Update unread count after initial mount.
     computeUnread(notifItems)
+    void refreshChatUnread()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -211,6 +232,17 @@ export default function NavBar() {
       setNotifOpen(false)
       setAvatarMenuOpen(true)
     }
+  }
+
+  const onAvatarEnter = () => {
+    if (avatarCloseTimerRef.current) clearTimeout(avatarCloseTimerRef.current)
+    setAvatarMenuOpen(true)
+  }
+
+  const onAvatarLeave = () => {
+    if (avatarCloseTimerRef.current) clearTimeout(avatarCloseTimerRef.current)
+    // Small delay prevents flicker when crossing tiny gaps.
+    avatarCloseTimerRef.current = setTimeout(() => setAvatarMenuOpen(false), 140)
   }
 
   return (
@@ -281,8 +313,9 @@ export default function NavBar() {
             </div>
           </div>
 
-          <Link to="/chat" className="nav-icon" aria-label="Chat">
+          <Link to="/chat" className="nav-icon nav-chat-btn" aria-label="Chat">
             <MessageCircle size={18} strokeWidth={2.4} />
+            {chatUnread > 0 ? <span className="nav-badge" aria-hidden="true" /> : null}
           </Link>
           <button className="nav-ghost" type="button" onClick={logout}>Logout</button>
 
@@ -307,7 +340,7 @@ export default function NavBar() {
             </div>
           </div>
 
-          <div className="nav-avatar-wrap" ref={avatarRef}>
+          <div className="nav-avatar-wrap" ref={avatarRef} onMouseEnter={onAvatarEnter} onMouseLeave={onAvatarLeave}>
             <Link
               to="/profile"
               className="nav-avatar"

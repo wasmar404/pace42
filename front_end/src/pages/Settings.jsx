@@ -4,6 +4,7 @@ import { AlertTriangle, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircl
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
+import SegmentedControl from '../components/ui/SegmentedControl'
 import { backendGet, backendJson, backendUpload } from '../backendApi'
 import { supabase } from '../supabaseClient'
 import { setTheme, setUnits, useThemeValue, useUnitsValue } from '../preferences'
@@ -548,28 +549,20 @@ export default function Settings() {
                   <div className="settings-row-help">Choose how distances are displayed.</div>
                 </div>
                 <div className="settings-row-actions">
-                  <div className="seg">
-                    <button
-                      className={units === 'km' ? 'seg-btn on' : 'seg-btn'}
-                      type="button"
-                      onClick={() => {
-                        setUnitsState('km')
-                        setUnits('km')
-                      }}
-                    >
-                      km
-                    </button>
-                    <button
-                      className={units === 'mi' ? 'seg-btn on' : 'seg-btn'}
-                      type="button"
-                      onClick={() => {
-                        setUnitsState('mi')
-                        setUnits('mi')
-                      }}
-                    >
-                      mi
-                    </button>
-                  </div>
+                  <SegmentedControl
+                    value={units}
+                    ariaLabel="Units"
+                    options={[
+                      { value: 'km', label: 'km' },
+                      { value: 'mi', label: 'mi' },
+                    ]}
+                    onChange={(v) => {
+                      const next = v === 'mi' ? 'mi' : 'km'
+                      setUnitsState(next)
+                      setUnits(next)
+                    }}
+                    disabled={busy || loading}
+                  />
                   <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>
                 </div>
               </div>
@@ -580,28 +573,20 @@ export default function Settings() {
                   <div className="settings-row-help">Switch between light and dark.</div>
                 </div>
                 <div className="settings-row-actions">
-                  <div className="seg">
-                    <button
-                      className={theme === 'light' ? 'seg-btn on' : 'seg-btn'}
-                      type="button"
-                      onClick={() => {
-                        setThemeState('light')
-                        setTheme('light')
-                      }}
-                    >
-                      Light
-                    </button>
-                    <button
-                      className={theme === 'dark' ? 'seg-btn on' : 'seg-btn'}
-                      type="button"
-                      onClick={() => {
-                        setThemeState('dark')
-                        setTheme('dark')
-                      }}
-                    >
-                      Dark
-                    </button>
-                  </div>
+                  <SegmentedControl
+                    value={theme}
+                    ariaLabel="Theme"
+                    options={[
+                      { value: 'light', label: 'Light' },
+                      { value: 'dark', label: 'Dark' },
+                    ]}
+                    onChange={(v) => {
+                      const next = v === 'dark' ? 'dark' : 'light'
+                      setThemeState(next)
+                      setTheme(next)
+                    }}
+                    disabled={busy || loading}
+                  />
                   <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>
                 </div>
               </div>

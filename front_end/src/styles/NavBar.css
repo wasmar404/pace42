@@ -190,6 +190,10 @@ body {
   position: relative;
 }
 
+.nav-chat-btn {
+  position: relative;
+}
+
 .nav-badge {
   position: absolute;
   right: 9px;
@@ -398,6 +402,9 @@ body {
 
 .nav-avatar-wrap {
   position: relative;
+  /* Keep hover active when moving into the dropdown (bridge the small gap). */
+  padding-bottom: 12px;
+  margin-bottom: -12px;
 }
 
 .nav-avatar-menu {

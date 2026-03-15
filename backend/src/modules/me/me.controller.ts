@@ -136,6 +136,12 @@ export class MeController {
 
   @Put('personal')
   async updatePersonal(@CurrentUser() user: { userId: string }, @Body() dto: UpdatePersonalDto) {
+    const existing = await this.prisma.profile.findUnique({
+      where: { userId: user.userId },
+      select: { onboardingCompletedAt: true },
+    });
+    const completedAt = existing?.onboardingCompletedAt ?? new Date();
+
     const profile = await this.prisma.profile.upsert({
       where: { userId: user.userId },
       create: {
@@ -146,6 +152,7 @@ export class MeController {
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         bio: dto.bio,
+        onboardingCompletedAt: completedAt,
       },
       update: {
         firstName: dto.firstName,
@@ -153,6 +160,7 @@ export class MeController {
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         bio: dto.bio,
+        onboardingCompletedAt: completedAt,
       },
     });
 

@@ -10,6 +10,19 @@ function normalizeText(v: string): string {
 export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getUnreadSummary(userId: string) {
+    const agg = await this.prisma.conversationParticipant.aggregate({
+      where: { userId, unreadCount: { gt: 0 } },
+      _count: { _all: true },
+      _sum: { unreadCount: true },
+    });
+
+    return {
+      unreadConversations: agg._count?._all ?? 0,
+      unreadMessages: agg._sum?.unreadCount ?? 0,
+    };
+  }
+
   async isMutualFollow(a: string, b: string): Promise<boolean> {
     if (!a || !b || a === b) return false;
     const [ab, ba] = await Promise.all([

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import NavBar from '../components/NavBar'
+import Pill from '../components/ui/Pill'
+import TimeText from '../components/ui/TimeText'
 import { getActivity } from '../api/activities'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
@@ -23,15 +25,7 @@ function formatVisibility(v) {
 
 // format helpers live in ../utils/format
 
-function formatWhen(iso) {
-  try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return '-'
-    return d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return '-'
-  }
-}
+// time formatting lives in ../components/ui/TimeText
 
 export default function ActivityDetails() {
   const { id } = useParams()
@@ -113,10 +107,10 @@ export default function ActivityDetails() {
           <div className="activity-card-head">
             <h1 className="activity-title">{title}</h1>
             <div className="activity-sub">
-              <span className="pill accent">{formatSport(activity?.sport)}</span>
-              <span className="pill">{formatWhen(activity?.startedAt)}</span>
-              <span className="pill">{formatVisibility(activity?.visibility)}</span>
-              <span className="pill">{activity?.source || '-'}</span>
+              <Pill accent>{formatSport(activity?.sport)}</Pill>
+              <Pill><TimeText iso={activity?.startedAt} variant="datetime-long" /></Pill>
+              <Pill>{formatVisibility(activity?.visibility)}</Pill>
+              <Pill>{activity?.source || '-'}</Pill>
             </div>
           </div>
 

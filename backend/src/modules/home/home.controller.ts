@@ -204,6 +204,9 @@ export class HomeController {
         userId: {
           not: user.userId,
         },
+        onboardingCompletedAt: { not: null },
+        firstName: { not: null },
+        lastName: { not: null },
       },
       orderBy: { updatedAt: 'desc' },
       take: 50,

@@ -16,6 +16,7 @@ export default function Login() {
         try {
             const params = new URLSearchParams(window.location.search)
             const err = params.get('error')
+            const message = params.get('message')
             if (!err) return
 
             const map = {
@@ -25,7 +26,7 @@ export default function Login() {
                 intra_profile_failed: 'Intra sign-in failed (profile).',
                 intra_magiclink_failed: 'Intra sign-in failed (session).',
             }
-            setError(map[err] || err)
+            setError(message || map[err] || err)
         } catch {
             // ignore
         }

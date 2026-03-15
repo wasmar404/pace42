@@ -63,9 +63,23 @@ export class AuthPolicyController {
     const createdAtMs = Date.parse(String(user.created_at ?? ''));
     const ageMs = Number.isFinite(createdAtMs) ? Date.now() - createdAtMs : Number.POSITIVE_INFINITY;
 
-    const providers: string[] =
-      Array.isArray(user.app_metadata?.providers) ? user.app_metadata.providers :
-        user.app_metadata?.provider ? [String(user.app_metadata.provider)] : [];
+    const identityProviders: string[] = Array.isArray(user.identities)
+      ? Array.from(
+          new Set(
+            (user.identities as any[])
+              .map((i) => String(i?.provider ?? '').toLowerCase())
+              .filter(Boolean),
+          ),
+        )
+      : [];
+
+    const providers: string[] = identityProviders.length
+      ? identityProviders
+      : Array.isArray(user.app_metadata?.providers)
+          ? (user.app_metadata.providers as any[]).map((p) => String(p ?? '').toLowerCase()).filter(Boolean)
+          : user.app_metadata?.provider
+              ? [String(user.app_metadata.provider).toLowerCase()]
+              : [];
 
     const email = String(user.email ?? '').trim().toLowerCase();
 
