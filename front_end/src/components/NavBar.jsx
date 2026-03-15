@@ -236,7 +236,7 @@ export default function NavBar() {
               {notifUnread > 0 ? <span className="nav-badge" aria-hidden="true" /> : null}
             </button>
 
-            <div className={`nav-notif-menu ${notifOpen ? 'open' : ''}`} role="menu" aria-label="Notifications">
+            <div className={`nav-notif-menu ${notifOpen ? 'is-open' : ''}`} role="menu" aria-label="Notifications">
               <div className="nav-notif-head">
                 <div className="title">Notifications</div>
                 <button className="nav-notif-x" type="button" onClick={() => setNotifOpen(false)}>Close</button>
@@ -295,7 +295,7 @@ export default function NavBar() {
               +
             </button>
 
-            <div className={`nav-plus-menu ${menuOpen ? 'open' : ''}`} role="menu">
+            <div className={`nav-plus-menu ${menuOpen ? 'is-open' : ''}`} role="menu">
               <Link to="/activities/new?mode=gpx" className="nav-plus-item" role="menuitem" onClick={() => setMenuOpen(false)}>
                 Upload workout (GPX)
               </Link>
@@ -317,7 +317,7 @@ export default function NavBar() {
               <Avatar avatarUrl={avatarUrl} seed={avatarSeed} alt="Profile" loading="eager" />
             </Link>
 
-            <div className={`nav-avatar-menu ${avatarMenuOpen ? 'open' : ''}`} role="menu" aria-label="Profile menu">
+            <div className={`nav-avatar-menu ${avatarMenuOpen ? 'is-open' : ''}`} role="menu" aria-label="Profile menu">
               <Link to="/profile" className="nav-avatar-item" role="menuitem" onClick={() => setAvatarMenuOpen(false)}>
                 My Profile
               </Link>
