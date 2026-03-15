@@ -26,3 +26,23 @@ export function importGpx(file, meta = {}) {
 
   return backendUpload('/api/activities/import/gpx', form)
 }
+
+export function giveKudos(activityId) {
+  return backendJson('POST', `/api/activities/${activityId}/kudos`, {})
+}
+
+export function removeKudos(activityId) {
+  return backendJson('DELETE', `/api/activities/${activityId}/kudos`, {})
+}
+
+export function listKudos(activityId) {
+  return backendGet(`/api/activities/${activityId}/kudos`)
+}
+
+export function getComments(activityId) {
+  return backendGet(`/api/activities/${activityId}/comments`)
+}
+
+export function addComment(activityId, body) {
+  return backendJson('POST', `/api/activities/${activityId}/comments`, { body })
+}

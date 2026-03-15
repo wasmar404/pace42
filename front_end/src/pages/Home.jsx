@@ -9,6 +9,7 @@ import {
   Mountain,
   Target,
   Users,
+  X,
 } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
@@ -16,6 +17,7 @@ import Avatar from '../components/Avatar'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getGoals, getHomeFeed, getRecommendedUsers } from '../api/home'
+import { addComment, getComments, giveKudos, listKudos, removeKudos } from '../api/activities'
 
 import '../styles/Home.css'
 
@@ -105,21 +107,45 @@ function AnnouncementCard({ item }) {
   )
 }
 
-function ActivityCard({ item, meId }) {
-  const [kudos, setKudos] = useState(false)
-  const [kudosCount, setKudosCount] = useState(Number(item?.social?.kudosCount || 0))
-
+function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate }) {
   const a = item?.activity
   const athlete = item?.athlete
-  const title = a?.title || `${sportLabel(a?.sport)} activity`
   const mine = athlete?.id && meId && athlete.id === meId
 
-  const onKudos = () => {
-    setKudos((v) => {
-      const next = !v
-      setKudosCount((c) => Math.max(0, c + (next ? 1 : -1)))
-      return next
+  const social = item?.social || {}
+  const kudosOn = Boolean(social.viewerHasKudo)
+  const kudosCount = Number(social.kudosCount || 0)
+  const commentCount = Number(social.commentCount || 0)
+  const [kudosBusy, setKudosBusy] = useState(false)
+
+  const title = a?.title || `${sportLabel(a?.sport)} activity`
+
+  const onKudos = async () => {
+    if (!a?.id || kudosBusy) return
+    const next = !kudosOn
+
+    onSocialUpdate(a.id, {
+      viewerHasKudo: next,
+      kudosCount: Math.max(0, kudosCount + (next ? 1 : -1)),
     })
+
+    setKudosBusy(true)
+    try {
+      const res = next ? await giveKudos(a.id) : await removeKudos(a.id)
+      onSocialUpdate(a.id, {
+        viewerHasKudo: Boolean(res?.viewerHasKudo),
+        kudosCount: typeof res?.kudosCount === 'number' ? res.kudosCount : kudosCount,
+        commentCount: typeof res?.commentCount === 'number' ? res.commentCount : commentCount,
+      })
+    } catch {
+      // revert
+      onSocialUpdate(a.id, {
+        viewerHasKudo: kudosOn,
+        kudosCount,
+      })
+    } finally {
+      setKudosBusy(false)
+    }
   }
 
   return (
@@ -131,6 +157,7 @@ function ActivityCard({ item, meId }) {
           </span>
           <span className="who">
             <span className="name">{athlete?.name || 'Athlete'}</span>
+            <span className="act-title">{title}</span>
             <span className="meta">
               <span className="pill">{sportLabel(a?.sport)}</span>
               <span className="time">
@@ -147,9 +174,6 @@ function ActivityCard({ item, meId }) {
       </header>
 
       <div className="feed-body">
-        <h3 className="title">
-          <Link to={`/activities/${a?.id}`}>{title}</Link>
-        </h3>
         {a?.description ? <p className="desc">{a.description}</p> : null}
 
         <div className="stats">
@@ -184,14 +208,15 @@ function ActivityCard({ item, meId }) {
       </div>
 
       <footer className="feed-foot">
-        <button className={kudos ? 'kudos on' : 'kudos'} type="button" onClick={onKudos}>
+        <button className={kudosOn ? 'kudos on' : 'kudos'} type="button" onClick={onKudos} disabled={kudosBusy}>
           <Heart size={16} />
           <span>Kudos</span>
           <span className="count">{kudosCount}</span>
         </button>
-        <button className="comment" type="button" disabled title="Comments coming soon">
+        <button className="comment" type="button" onClick={() => onOpenSocial(a?.id, 'comments')}>
           <MessageCircle size={16} />
-          Comment
+          Comments
+          <span className="count">{commentCount}</span>
         </button>
       </footer>
     </article>
@@ -207,6 +232,171 @@ function Widget({ icon, title, children }) {
       </header>
       <div className="w-b">{children}</div>
     </section>
+  )
+}
+
+function SocialModal({ open, item, tab, onTab, onClose, onSocialUpdate }) {
+  const a = item?.activity
+  const athlete = item?.athlete
+  const activityId = a?.id
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [comments, setComments] = useState([])
+  const [kudos, setKudos] = useState([])
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      if (!open || !activityId) return
+      setError('')
+      setLoading(true)
+      try {
+        if (tab === 'kudos') {
+          const res = await listKudos(activityId)
+          if (!cancelled) setKudos(res?.items || [])
+        } else {
+          const res = await getComments(activityId)
+          if (!cancelled) setComments(res?.items || [])
+        }
+      } catch (e) {
+        if (!cancelled) setError(e?.message || 'Failed to load')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [open, activityId, tab])
+
+  const onSend = async () => {
+    const body = text.trim()
+    if (!activityId || !body || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const res = await addComment(activityId, body)
+      setText('')
+      onSocialUpdate(activityId, {
+        kudosCount: typeof res?.kudosCount === 'number' ? res.kudosCount : item?.social?.kudosCount,
+        commentCount: typeof res?.commentCount === 'number' ? res.commentCount : item?.social?.commentCount,
+      })
+      const list = await getComments(activityId)
+      setComments(list?.items || [])
+    } catch (e) {
+      setError(e?.message || 'Failed to comment')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) return null
+
+  const kudosCount = Number(item?.social?.kudosCount || 0)
+  const commentCount = Number(item?.social?.commentCount || 0)
+  const title = a?.title || `${sportLabel(a?.sport)} activity`
+
+  return (
+    <div className="social-backdrop" role="dialog" aria-modal="true" onMouseDown={onClose}>
+      <div className="social-modal" onMouseDown={(e) => e.stopPropagation()}>
+        <header className="sm-head">
+          <div className="sm-left">
+            <div className="sm-av">
+              <Avatar avatarUrl={athlete?.avatarUrl} seed={athlete?.username || athlete?.id || athlete?.name} alt="" />
+            </div>
+            <div className="sm-title">
+              <div className="t1">{athlete?.name || 'Athlete'}</div>
+              <div className="t2">{title}</div>
+            </div>
+          </div>
+          <button className="sm-close" type="button" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="sm-tabs" role="tablist" aria-label="Social tabs">
+          <button className={tab === 'kudos' ? 'sm-tab on' : 'sm-tab'} type="button" onClick={() => onTab('kudos')} role="tab">
+            Kudos ({kudosCount})
+          </button>
+          <button className={tab === 'comments' ? 'sm-tab on' : 'sm-tab'} type="button" onClick={() => onTab('comments')} role="tab">
+            Comments ({commentCount})
+          </button>
+        </div>
+
+        <div className="sm-body">
+          {loading ? <div className="sm-hint">Loading...</div> : null}
+          {error ? <div className="sm-err">{error}</div> : null}
+
+          {!loading && !error && tab === 'kudos' ? (
+            <div className="sm-list">
+              {kudos.map((k, idx) => (
+                <div key={`${k?.actor?.id || 'k'}-${k?.createdAt || idx}`} className="sm-row">
+                  <div className="av">
+                    <Avatar avatarUrl={k?.actor?.avatarUrl} seed={k?.actor?.username || k?.actor?.id || k?.actor?.name} alt="" />
+                  </div>
+                  <div className="main">
+                    <div className="who">{k?.actor?.name || 'Athlete'}</div>
+                    {k?.actor?.username ? <div className="sub">@{k.actor.username}</div> : null}
+                  </div>
+                  <div className="time">{fmtWhen(k?.createdAt)}</div>
+                </div>
+              ))}
+              {!kudos.length ? <div className="sm-hint">No kudos yet.</div> : null}
+            </div>
+          ) : null}
+
+          {!loading && !error && tab === 'comments' ? (
+            <div className="sm-list">
+              {comments.map((c) => (
+                <div key={c.id} className="sm-row">
+                  <div className="av">
+                    <Avatar avatarUrl={c?.actor?.avatarUrl} seed={c?.actor?.username || c?.actor?.id || c?.actor?.name} alt="" />
+                  </div>
+                  <div className="main">
+                    <div className="who">{c?.actor?.name || 'Athlete'}</div>
+                    <div className="txt">{c?.body || ''}</div>
+                  </div>
+                  <div className="time">{fmtWhen(c?.createdAt)}</div>
+                </div>
+              ))}
+              {!comments.length ? <div className="sm-hint">Be the first to comment.</div> : null}
+            </div>
+          ) : null}
+        </div>
+
+        {tab === 'comments' ? (
+          <footer className="sm-compose">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Add a comment"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void onSend()
+                }
+              }}
+            />
+            <button type="button" onClick={onSend} disabled={!text.trim() || busy}>
+              Post
+            </button>
+          </footer>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -261,8 +451,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const [socialId, setSocialId] = useState('')
+  const [socialTab, setSocialTab] = useState('comments')
+
   const meId = me?.user?.id
-  const latest = me?.recentActivities?.[0] || null
 
   const avatarSeed = useMemo(() => {
     const p = me?.profile
@@ -307,6 +499,38 @@ export default function Home() {
     return Math.max(0, Math.min(100, Math.round((d / g) * 100)))
   }, [goals])
 
+  const onSocialUpdate = (activityId, patch) => {
+    setFeed((prev) =>
+      (prev || []).map((it) => {
+        if (it?.type !== 'activity') return it
+        if (it?.id !== activityId) return it
+        return {
+          ...it,
+          social: {
+            ...(it.social || {}),
+            ...(patch || {}),
+          },
+        }
+      }),
+    )
+  }
+
+  const onOpenSocial = (activityId, tab) => {
+    if (!activityId) return
+    setSocialId(String(activityId))
+    setSocialTab(tab === 'kudos' ? 'kudos' : 'comments')
+  }
+
+  const onCloseSocial = () => {
+    setSocialId('')
+    setSocialTab('comments')
+  }
+
+  const socialItem = useMemo(() => {
+    if (!socialId) return null
+    return (feed || []).find((it) => it?.type === 'activity' && it?.id === socialId) || null
+  }, [socialId, feed])
+
   const onFollowRec = async (id) => {
     try {
       await followUser(id)
@@ -341,7 +565,7 @@ export default function Home() {
                   it?.type === 'announcement' ? (
                     <AnnouncementCard key={it.id} item={it} />
                   ) : (
-                    <ActivityCard key={it.id} item={it} meId={meId} />
+                    <ActivityCard key={it.id} item={it} meId={meId} onOpenSocial={onOpenSocial} onSocialUpdate={onSocialUpdate} />
                   ),
                 )}
 
@@ -408,6 +632,15 @@ export default function Home() {
             </Widget>
           </aside>
         </div>
+
+        <SocialModal
+          open={Boolean(socialId)}
+          item={socialItem}
+          tab={socialTab}
+          onTab={setSocialTab}
+          onClose={onCloseSocial}
+          onSocialUpdate={onSocialUpdate}
+        />
       </main>
     </div>
   )

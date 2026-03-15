@@ -35,6 +35,55 @@ export class ActivitiesController {
     private readonly prisma: PrismaService,
   ) {}
 
+  private async ensureCanViewActivity(params: { viewerId?: string; activityId: string }) {
+    const { viewerId, activityId } = params;
+    const activity = await this.prisma.activity.findUnique({
+      where: { id: activityId },
+      select: { id: true, userId: true, visibility: true },
+    });
+    if (!activity) throw new NotFoundException('Activity not found');
+
+    if (activity.userId === viewerId) return activity;
+
+    if (activity.visibility === 'only_me') throw new NotFoundException('Activity not found');
+
+    if (activity.visibility === 'followers') {
+      if (!viewerId) throw new NotFoundException('Activity not found');
+      const follow = await this.prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: viewerId,
+            followingId: activity.userId,
+          },
+        },
+      });
+      if (!follow) throw new NotFoundException('Activity not found');
+    }
+
+    // visibility public: allow
+    // Account privacy overrides public activities
+    if (activity.visibility === 'public') {
+      const p = await this.prisma.profile.findUnique({
+        where: { userId: activity.userId },
+        select: { isPrivate: true },
+      });
+      if (p?.isPrivate) {
+        if (!viewerId) throw new NotFoundException('Activity not found');
+        const follow = await this.prisma.follow.findUnique({
+          where: {
+            followerId_followingId: {
+              followerId: viewerId,
+              followingId: activity.userId,
+            },
+          },
+        });
+        if (!follow) throw new NotFoundException('Activity not found');
+      }
+    }
+
+    return activity;
+  }
+
   @Post()
   @UseGuards(SupabaseAuthGuard)
   async createActivity(
@@ -72,6 +121,184 @@ export class ActivitiesController {
     console.log(`[activity.create] create=${createMs.toFixed(1)}ms total=${msSince(reqStart).toFixed(1)}ms`);
 
     return { activity };
+  }
+
+  @Post(':id/kudos')
+  @UseGuards(SupabaseAuthGuard)
+  async giveKudos(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
+    const a = await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
+    if (a.userId === user.userId) throw new BadRequestException('Cannot kudo your own activity');
+
+    try {
+      await this.prisma.activityKudo.create({
+        data: {
+          activityId: id,
+          userId: user.userId,
+        },
+      });
+    } catch {
+      // ignore duplicate
+    }
+
+    const [kudosCount, commentCount] = await Promise.all([
+      this.prisma.activityKudo.count({ where: { activityId: id } }),
+      this.prisma.activityComment.count({ where: { activityId: id } }),
+    ]);
+
+    return { kudosCount, commentCount, viewerHasKudo: true };
+  }
+
+  @Get(':id/kudos')
+  @UseGuards(SupabaseAuthGuard)
+  async listKudos(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
+    await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
+
+    const kudos = await this.prisma.activityKudo.findMany({
+      where: { activityId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        userId: true,
+        createdAt: true,
+      },
+    });
+
+    const userIds = Array.from(new Set(kudos.map((k) => k.userId)));
+    const profiles = userIds.length
+      ? await this.prisma.profile.findMany({
+          where: { userId: { in: userIds } },
+          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+        })
+      : [];
+    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+
+    return {
+      items: kudos.map((k) => {
+        const p = byId.get(k.userId);
+        const name = `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || (p?.username ? `@${p.username}` : 'Athlete');
+        return {
+          createdAt: k.createdAt.toISOString(),
+          actor: {
+            id: k.userId,
+            username: p?.username ?? null,
+            name,
+            avatarUrl: p?.avatarUrl ?? null,
+          },
+        };
+      }),
+    };
+  }
+
+  @Delete(':id/kudos')
+  @UseGuards(SupabaseAuthGuard)
+  async removeKudos(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
+    await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
+
+    await this.prisma.activityKudo
+      .delete({
+        where: {
+          activityId_userId: {
+            activityId: id,
+            userId: user.userId,
+          },
+        },
+      })
+      .catch(() => {});
+
+    const [kudosCount, commentCount] = await Promise.all([
+      this.prisma.activityKudo.count({ where: { activityId: id } }),
+      this.prisma.activityComment.count({ where: { activityId: id } }),
+    ]);
+
+    return { kudosCount, commentCount, viewerHasKudo: false };
+  }
+
+  @Get(':id/comments')
+  @UseGuards(SupabaseAuthGuard)
+  async listComments(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
+    await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
+
+    const comments = await this.prisma.activityComment.findMany({
+      where: { activityId: id },
+      orderBy: { createdAt: 'asc' },
+      take: 30,
+      select: {
+        id: true,
+        userId: true,
+        body: true,
+        createdAt: true,
+      },
+    });
+
+    const userIds = Array.from(new Set(comments.map((c) => c.userId)));
+    const profiles = userIds.length
+      ? await this.prisma.profile.findMany({
+          where: { userId: { in: userIds } },
+          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+        })
+      : [];
+    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+
+    return {
+      items: comments.map((c) => {
+        const p = byId.get(c.userId);
+        const name = `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || (p?.username ? `@${p.username}` : 'Athlete');
+        return {
+          id: c.id,
+          body: c.body,
+          createdAt: c.createdAt.toISOString(),
+          actor: {
+            id: c.userId,
+            username: p?.username ?? null,
+            name,
+            avatarUrl: p?.avatarUrl ?? null,
+          },
+        };
+      }),
+    };
+  }
+
+  @Post(':id/comments')
+  @UseGuards(SupabaseAuthGuard)
+  async addComment(
+    @CurrentUser() user: { userId: string },
+    @Param('id') id: string,
+    @Body() body: { body?: string },
+  ) {
+    const a = await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
+
+    const text = String(body?.body ?? '').trim();
+    if (!text) throw new BadRequestException('Comment is empty');
+    if (text.length > 500) throw new BadRequestException('Comment too long');
+
+    const comment = await this.prisma.activityComment.create({
+      data: {
+        activityId: id,
+        userId: user.userId,
+        body: text,
+      },
+      select: { id: true, body: true, createdAt: true },
+    });
+
+    // return counts so UI can update
+    const [kudosCount, commentCount] = await Promise.all([
+      this.prisma.activityKudo.count({ where: { activityId: id } }),
+      this.prisma.activityComment.count({ where: { activityId: id } }),
+    ]);
+
+    return {
+      comment: {
+        id: comment.id,
+        body: comment.body,
+        createdAt: comment.createdAt.toISOString(),
+        actor: {
+          id: user.userId,
+        },
+      },
+      kudosCount,
+      commentCount,
+      activityOwnerId: a.userId,
+    };
   }
 
   @Get(':id')

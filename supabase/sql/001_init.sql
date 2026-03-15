@@ -183,6 +183,31 @@ alter table public.activity_media
   check (kind in ('photo', 'map', 'gpx'));
 
 -- ---------------------------------------------------------------------
+-- Activity social (kudos + comments)
+-- ---------------------------------------------------------------------
+
+create table if not exists public.activity_kudos (
+  activity_id uuid not null references public.activities(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (activity_id, user_id)
+);
+
+create index if not exists activity_kudos_user_id_idx on public.activity_kudos(user_id);
+create index if not exists activity_kudos_activity_id_idx on public.activity_kudos(activity_id);
+
+create table if not exists public.activity_comments (
+  id uuid primary key default gen_random_uuid(),
+  activity_id uuid not null references public.activities(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists activity_comments_activity_id_created_at_idx on public.activity_comments(activity_id, created_at desc);
+create index if not exists activity_comments_user_id_idx on public.activity_comments(user_id);
+
+-- ---------------------------------------------------------------------
 -- Chat (1:1)
 -- ---------------------------------------------------------------------
 

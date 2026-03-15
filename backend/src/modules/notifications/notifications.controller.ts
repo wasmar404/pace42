@@ -19,7 +19,7 @@ export class NotificationsController {
 
     const sinceDate = new Date(sinceMs || 0);
 
-    const [followCount, unreadMessageConvos] = await Promise.all([
+    const [followCount, unreadMessageConvos, kudoCount, commentCount] = await Promise.all([
       this.prisma.follow.count({
         where: {
           followingId: user.userId,
@@ -38,14 +38,29 @@ export class NotificationsController {
           },
         },
       }),
+      this.prisma.activityKudo.count({
+        where: {
+          createdAt: { gt: sinceDate },
+          userId: { not: user.userId },
+          activity: { userId: user.userId },
+        },
+      }),
+      this.prisma.activityComment.count({
+        where: {
+          createdAt: { gt: sinceDate },
+          userId: { not: user.userId },
+          activity: { userId: user.userId },
+        },
+      }),
     ]);
 
-    return { unread: followCount + unreadMessageConvos };
+    return { unread: followCount + unreadMessageConvos + kudoCount + commentCount };
   }
 
   @Get()
   async list(@CurrentUser() user: { userId: string }) {
-    const follows = await this.prisma.follow.findMany({
+    const [follows, convoNotifs, kudos, comments] = await Promise.all([
+      this.prisma.follow.findMany({
       where: {
         followingId: user.userId,
       },
@@ -55,9 +70,8 @@ export class NotificationsController {
         followerId: true,
         createdAt: true,
       },
-    });
-
-    const convoNotifs = await this.prisma.conversationParticipant.findMany({
+    }),
+      this.prisma.conversationParticipant.findMany({
       where: {
         userId: user.userId,
         unreadCount: { gt: 0 },
@@ -83,12 +97,45 @@ export class NotificationsController {
           },
         },
       },
-    });
+    }),
+      this.prisma.activityKudo.findMany({
+        where: {
+          userId: { not: user.userId },
+          activity: { userId: user.userId },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: {
+          activityId: true,
+          userId: true,
+          createdAt: true,
+          activity: { select: { title: true, sport: true } },
+        },
+      }),
+      this.prisma.activityComment.findMany({
+        where: {
+          userId: { not: user.userId },
+          activity: { userId: user.userId },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          activityId: true,
+          userId: true,
+          body: true,
+          createdAt: true,
+          activity: { select: { title: true, sport: true } },
+        },
+      }),
+    ]);
 
     const actorIds = Array.from(
       new Set([
         ...follows.map((f) => f.followerId),
         ...convoNotifs.map((c) => c.conversation.lastSenderId).filter(Boolean) as string[],
+        ...kudos.map((k) => k.userId),
+        ...comments.map((c) => c.userId),
       ]),
     );
     const actors = actorIds.length
@@ -120,6 +167,42 @@ export class NotificationsController {
             avatarUrl: a?.avatarUrl ?? null,
           },
           text: `${name} started following you`,
+        };
+      }),
+      ...kudos.map((k) => {
+        const a = byId.get(k.userId);
+        const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
+        const title = k.activity?.title || `${String(k.activity?.sport || 'activity')}`;
+        return {
+          type: 'kudo',
+          createdAt: k.createdAt.toISOString(),
+          activityId: k.activityId,
+          actor: {
+            id: k.userId,
+            username: a?.username ?? null,
+            name,
+            avatarUrl: a?.avatarUrl ?? null,
+          },
+          text: `${name} gave you kudos on ${title}`,
+        };
+      }),
+      ...comments.map((c) => {
+        const a = byId.get(c.userId);
+        const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
+        const title = c.activity?.title || `${String(c.activity?.sport || 'activity')}`;
+        const preview = String(c.body ?? '').trim();
+        const clip = preview.length > 80 ? `${preview.slice(0, 80)}…` : preview;
+        return {
+          type: 'comment',
+          createdAt: c.createdAt.toISOString(),
+          activityId: c.activityId,
+          actor: {
+            id: c.userId,
+            username: a?.username ?? null,
+            name,
+            avatarUrl: a?.avatarUrl ?? null,
+          },
+          text: clip ? `${name} commented on ${title}: ${clip}` : `${name} commented on ${title}`,
         };
       }),
       ...convoNotifs

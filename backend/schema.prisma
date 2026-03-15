@@ -43,11 +43,38 @@ model Activity {
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   media           ActivityMedia[]
+  kudos           ActivityKudo[]
+  comments        ActivityComment[]
 
   @@index([userId])
   @@index([startedAt])
   @@index([visibility])
   @@map("activities")
+}
+
+model ActivityKudo {
+  activityId String   @map("activity_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, userId])
+  @@index([userId])
+  @@index([activityId])
+  @@map("activity_kudos")
+}
+
+model ActivityComment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId, createdAt])
+  @@index([userId])
+  @@map("activity_comments")
 }
 
 model ActivityMedia {

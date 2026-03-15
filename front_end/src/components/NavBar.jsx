@@ -250,9 +250,11 @@ export default function NavBar() {
                    {notifItems.map((it, idx) => {
                      const to = it?.type === 'message' && it?.conversationId
                        ? `/chat/${it.conversationId}`
-                       : it?.actor?.id
-                         ? `/users/${it.actor.id}`
-                         : '/home'
+                       : (it?.type === 'comment' || it?.type === 'kudo') && it?.activityId
+                         ? `/activities/${it.activityId}`
+                         : it?.actor?.id
+                           ? `/users/${it.actor.id}`
+                           : '/home'
 
                      return (
                        <Link

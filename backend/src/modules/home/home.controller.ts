@@ -65,7 +65,7 @@ export class HomeController {
     const activityIds = activities.map((a) => a.id);
     const actorIds = Array.from(new Set(activities.map((a) => a.userId)));
 
-    const [actors, media] = await Promise.all([
+    const [actors, media, kudosCounts, commentCounts, myKudos] = await Promise.all([
       actorIds.length
         ? this.prisma.profile.findMany({
             where: { userId: { in: actorIds } },
@@ -79,6 +79,26 @@ export class HomeController {
             select: { activityId: true, publicUrl: true },
           })
         : Promise.resolve([]),
+      activityIds.length
+        ? this.prisma.activityKudo.groupBy({
+            by: ['activityId'],
+            where: { activityId: { in: activityIds } },
+            _count: { _all: true },
+          })
+        : Promise.resolve([]),
+      activityIds.length
+        ? this.prisma.activityComment.groupBy({
+            by: ['activityId'],
+            where: { activityId: { in: activityIds } },
+            _count: { _all: true },
+          })
+        : Promise.resolve([]),
+      activityIds.length
+        ? this.prisma.activityKudo.findMany({
+            where: { activityId: { in: activityIds }, userId: user.userId },
+            select: { activityId: true },
+          })
+        : Promise.resolve([]),
     ]);
 
     const actorById = new Map(actors.map((a) => [a.userId, a] as const));
@@ -87,6 +107,18 @@ export class HomeController {
       if (!m.publicUrl) continue;
       if (!mediaByActivity.has(m.activityId)) mediaByActivity.set(m.activityId, m.publicUrl);
     }
+
+    const kudosByActivity = new Map<string, number>();
+    for (const r of kudosCounts as any[]) {
+      kudosByActivity.set(r.activityId, Number(r._count?._all ?? 0));
+    }
+
+    const commentsByActivity = new Map<string, number>();
+    for (const r of commentCounts as any[]) {
+      commentsByActivity.set(r.activityId, Number(r._count?._all ?? 0));
+    }
+
+    const myKudosSet = new Set((myKudos as any[]).map((k) => k.activityId));
 
     const items: any[] = [];
 
@@ -127,8 +159,9 @@ export class HomeController {
           imageUrl: mediaByActivity.get(a.id) ?? null,
         },
         social: {
-          kudosCount: 0,
-          commentCount: 0,
+          kudosCount: kudosByActivity.get(a.id) ?? 0,
+          commentCount: commentsByActivity.get(a.id) ?? 0,
+          viewerHasKudo: myKudosSet.has(a.id),
         },
       });
     }
