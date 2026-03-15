@@ -176,6 +176,7 @@ export default function ChatThread() {
   }, [id])
 
   const canSend = useMemo(() => text.trim().length > 0 && !sending, [text, sending])
+  const hasAlert = loading || Boolean(error)
 
   const onSend = async () => {
     const t = text.trim()
@@ -269,8 +270,10 @@ export default function ChatThread() {
             </div>
           </header>
 
-          {loading ? <div className="chat-banner">Loading...</div> : null}
-          {error ? <div className="chat-banner err">{error}</div> : null}
+          <div className={hasAlert ? 'thread-alerts on' : 'thread-alerts'} aria-live="polite">
+            {loading ? <div className="chat-banner">Loading...</div> : null}
+            {error ? <div className="chat-banner err">{error}</div> : null}
+          </div>
 
           <section className="thread" aria-label="Messages">
             {messages.map((m) => {

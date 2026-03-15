@@ -300,6 +300,22 @@
   overflow: hidden;
 }
 
+.thread-alerts {
+  padding: 0 14px;
+}
+
+.thread-alerts.on {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(11, 18, 32, 0.10);
+  background: rgba(255, 255, 255, 0.44);
+  display: grid;
+  gap: 10px;
+}
+
+.thread-alerts .chat-banner {
+  margin-top: 0;
+}
+
 .thread-head {
   display: grid;
   grid-template-columns: 1fr minmax(260px, 2fr) 1fr;
