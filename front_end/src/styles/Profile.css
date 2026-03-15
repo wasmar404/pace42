@@ -20,6 +20,20 @@
   --shadow-glow: 0 0 20px rgba(252, 76, 2, 0.2);
 }
 
+:root[data-theme="dark"] {
+  --color-bg: #0b1220;
+  --color-surface: rgba(255, 255, 255, 0.06);
+  --color-surface-hover: rgba(255, 255, 255, 0.10);
+  --color-border: rgba(255, 250, 242, 0.14);
+  --color-text: rgba(255, 250, 242, 0.92);
+  --color-text-secondary: rgba(255, 250, 242, 0.72);
+  --color-text-muted: rgba(255, 250, 242, 0.52);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-md: 0 10px 30px rgb(0 0 0 / 0.40);
+  --shadow-lg: 0 18px 60px rgb(0 0 0 / 0.50);
+  --shadow-glow: 0 0 22px rgba(252, 76, 2, 0.24);
+}
+
 .profile-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #fafaf9 0%, #f5f5f4 100%);

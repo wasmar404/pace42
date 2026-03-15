@@ -6,6 +6,45 @@
     linear-gradient(180deg, #fffaf2 0%, #f7f2e9 55%, #fffaf2 100%);
 }
 
+:root[data-theme="dark"] .home {
+  background:
+    radial-gradient(800px 420px at 12% 16%, rgba(252, 76, 2, 0.20), transparent 55%),
+    radial-gradient(900px 520px at 88% 24%, rgba(16, 185, 129, 0.16), transparent 60%),
+    linear-gradient(180deg, #0b1220 0%, #070b14 55%, #0b1220 100%);
+  color: rgba(255, 250, 242, 0.92);
+}
+
+:root[data-theme="dark"] .home::before {
+  opacity: 0.20;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 250, 242, 0.08) 0px,
+      rgba(255, 250, 242, 0.08) 1px,
+      transparent 1px,
+      transparent 28px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 250, 242, 0.07) 0px,
+      rgba(255, 250, 242, 0.07) 1px,
+      transparent 1px,
+      transparent 22px
+    );
+}
+
+:root[data-theme="dark"] .dash-top h1 {
+  color: rgba(255, 250, 242, 0.92);
+}
+
+:root[data-theme="dark"] .feed-card,
+:root[data-theme="dark"] .w,
+:root[data-theme="dark"] .ath {
+  border-color: rgba(255, 250, 242, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.40);
+}
+
 /* subtle "track paper" texture */
 .home::before {
   content: "";

@@ -8,6 +8,57 @@
     #f7f4ef;
 }
 
+:root[data-theme="dark"] .settings-page {
+  background:
+    radial-gradient(1200px 900px at 12% 0%, rgba(252, 76, 2, 0.18), transparent 60%),
+    radial-gradient(900px 700px at 90% 15%, rgba(16, 185, 129, 0.14), transparent 55%),
+    #0b1220;
+  color: rgba(255, 250, 242, 0.92);
+}
+
+:root[data-theme="dark"] .settings-page::before {
+  opacity: 0.22;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 250, 242, 0.08) 0px,
+      rgba(255, 250, 242, 0.08) 1px,
+      transparent 1px,
+      transparent 30px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 250, 242, 0.08) 0px,
+      rgba(255, 250, 242, 0.08) 1px,
+      transparent 1px,
+      transparent 30px
+    );
+}
+
+:root[data-theme="dark"] .settings-nav,
+:root[data-theme="dark"] .settings-card,
+:root[data-theme="dark"] .settings-me,
+:root[data-theme="dark"] .settings-toast-inner {
+  border-color: rgba(255, 250, 242, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.40);
+}
+
+:root[data-theme="dark"] .settings-card-title,
+:root[data-theme="dark"] .settings-row-help,
+:root[data-theme="dark"] .settings-row-label,
+:root[data-theme="dark"] .settings-me-name,
+:root[data-theme="dark"] .settings-me-sub,
+:root[data-theme="dark"] .settings-nav-links a,
+:root[data-theme="dark"] .settings-nav-note {
+  color: rgba(255, 250, 242, 0.86);
+}
+
+:root[data-theme="dark"] .settings-nav-links a {
+  border-color: rgba(255, 250, 242, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .settings-page::before {
   content: "";
   position: fixed;

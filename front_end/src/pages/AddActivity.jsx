@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { 
   Activity, 
@@ -20,12 +20,16 @@ import {
 
 import NavBar from '../components/NavBar'
 import { createActivity, importGpx, uploadActivityPhoto } from '../api/activities'
+import { getUnits, useUnitsValue } from '../preferences'
+import { distanceInUnits, formatPaceOrSpeed } from '../utils/format'
 import '../styles/AddActivity.css'
 
-function toMeters(km) {
-  const n = Number(km)
+function toMeters(value, units) {
+  const n = Number(value)
   if (!Number.isFinite(n)) return null
-  return Math.max(1, Math.round(n * 1000))
+  const u = units === 'mi' ? 'mi' : 'km'
+  const meters = u === 'mi' ? n * 1609.344 : n * 1000
+  return Math.max(1, Math.round(meters))
 }
 
 function toSeconds(hours, minutes, seconds) {
@@ -35,6 +39,12 @@ function toSeconds(hours, minutes, seconds) {
   if (![h, m, s].every(Number.isFinite)) return null
   const total = Math.round(h * 3600 + m * 60 + s)
   return total > 0 ? total : null
+}
+
+function fmtInputNumber(n) {
+  if (!Number.isFinite(n)) return ''
+  const s = n.toFixed(2)
+  return s.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')
 }
 
 const SPORT_OPTIONS = [
@@ -57,6 +67,9 @@ export default function AddActivity() {
   const [params, setParams] = useSearchParams()
   const mode = (params.get('mode') || 'manual').toLowerCase()
 
+  const units = useUnitsValue()
+  const prevUnitsRef = useRef(units)
+
   const [sport, setSport] = useState('run')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -66,7 +79,23 @@ export default function AddActivity() {
   const [hours, setHours] = useState('0')
   const [minutes, setMinutes] = useState('30')
   const [seconds, setSeconds] = useState('0')
-  const [distanceKm, setDistanceKm] = useState('5')
+  const [distanceKm, setDistanceKm] = useState(() => (getUnits() === 'mi' ? '3.1' : '5'))
+
+  useEffect(() => {
+    const prev = prevUnitsRef.current
+    if (prev === units) return
+
+    const n = Number(distanceKm)
+    if (Number.isFinite(n) && n > 0) {
+      const meters = toMeters(n, prev)
+      if (meters) {
+        const next = distanceInUnits(meters, units)
+        setDistanceKm(fmtInputNumber(next))
+      }
+    }
+
+    prevUnitsRef.current = units
+  }, [units])
 
   const [gpxFile, setGpxFile] = useState(null)
   const [photos, setPhotos] = useState([])
@@ -139,7 +168,7 @@ export default function AddActivity() {
   const submitManual = async () => {
     const dur = toSeconds(hours, minutes, seconds)
     if (!dur) throw new Error('Duration must be greater than 0')
-    const meters = toMeters(distanceKm)
+    const meters = toMeters(distanceKm, units)
     if (!meters) throw new Error('Distance must be a number')
     if (!startedAt) throw new Error('Choose a date/time')
 
@@ -376,7 +405,7 @@ export default function AddActivity() {
                           onChange={(e) => setDistanceKm(e.target.value)}
                           className="text-input"
                         />
-                        <span className="distance-unit">km</span>
+                        <span className="distance-unit">{units}</span>
                       </div>
                     </div>
                   </div>
@@ -518,15 +547,13 @@ export default function AddActivity() {
                 <section className="sidebar-card stats-preview">
                   <label className="sidebar-label">Preview</label>
                   <div className="stat-row">
-                    <span className="stat-label">Pace</span>
+                    <span className="stat-label">Pace/Speed</span>
                     <span className="stat-value">
                       {(() => {
-                        const totalMinutes = (Number(hours) * 60) + Number(minutes) + (Number(seconds) / 60)
-                        const pace = totalMinutes / Number(distanceKm)
-                        if (!isFinite(pace)) return '--'
-                        const pMin = Math.floor(pace)
-                        const pSec = Math.round((pace - pMin) * 60)
-                        return `${pMin}:${pSec.toString().padStart(2, '0')}/km`
+                        const meters = toMeters(distanceKm, units)
+                        const secs = toSeconds(hours, minutes, seconds)
+                        if (!meters || !secs) return '--'
+                        return formatPaceOrSpeed(sport, meters, secs, units)
                       })()}
                     </span>
                   </div>

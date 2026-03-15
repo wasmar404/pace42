@@ -10,6 +10,34 @@
     #f7f4ef;
 }
 
+:root[data-theme="dark"] .mfa-page {
+  background:
+    radial-gradient(1200px 900px at 12% 0%, rgba(252, 76, 2, 0.20), transparent 60%),
+    radial-gradient(900px 700px at 90% 20%, rgba(16, 185, 129, 0.16), transparent 55%),
+    #0b1220;
+}
+
+:root[data-theme="dark"] .mfa-card {
+  border-color: rgba(255, 250, 242, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 30px 86px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme="dark"] .mfa-kicker,
+:root[data-theme="dark"] .mfa-card h1,
+:root[data-theme="dark"] .mfa-card p,
+:root[data-theme="dark"] .mfa-note,
+:root[data-theme="dark"] .mfa-form label,
+:root[data-theme="dark"] .mfa-link {
+  color: rgba(255, 250, 242, 0.86);
+}
+
+:root[data-theme="dark"] .mfa-form input {
+  border-color: rgba(255, 250, 242, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 250, 242, 0.92);
+}
+
 .mfa-card {
   width: min(520px, 100%);
   border-radius: 22px;

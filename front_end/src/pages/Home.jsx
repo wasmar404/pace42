@@ -18,6 +18,8 @@ import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getGoals, getHomeFeed, getRecommendedUsers } from '../api/home'
 import { addComment, getComments, giveKudos, listKudos, removeKudos } from '../api/activities'
+import { useUnitsValue } from '../preferences'
+import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
 import '../styles/Home.css'
 
@@ -34,40 +36,7 @@ function fmtWhen(iso) {
   }
 }
 
-function formatDistance(meters) {
-  const n = Number(meters)
-  if (!Number.isFinite(n)) return '-'
-  const km = n / 1000
-  return `${km.toFixed(km < 10 ? 2 : 1)} km`
-}
-
-function formatDuration(seconds) {
-  const n = Number(seconds)
-  if (!Number.isFinite(n)) return '-'
-  const s = Math.max(0, Math.round(n))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
-}
-
-function paceOrSpeed(sport, distanceMeters, durationSeconds) {
-  const dist = Number(distanceMeters)
-  const dur = Number(durationSeconds)
-  if (!Number.isFinite(dist) || !Number.isFinite(dur) || dist <= 0 || dur <= 0) return '-'
-  const km = dist / 1000
-  const hours = dur / 3600
-
-  if (String(sport).toLowerCase() === 'ride' || String(sport).toLowerCase() === 'cycle') {
-    const kph = km / hours
-    return `${kph.toFixed(1)} km/h`
-  }
-
-  const secPerKm = dur / km
-  const mm = Math.floor(secPerKm / 60)
-  const ss = Math.round(secPerKm % 60)
-  return `${mm}:${String(ss).padStart(2, '0')} /km`
-}
+// format helpers live in ../utils/format
 
 function sportLabel(s) {
   const v = String(s || '').toLowerCase()
@@ -107,7 +76,7 @@ function AnnouncementCard({ item }) {
   )
 }
 
-function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate }) {
+function ActivityCard({ item, meId, units, onOpenSocial, onSocialUpdate }) {
   const a = item?.activity
   const athlete = item?.athlete
   const mine = athlete?.id && meId && athlete.id === meId
@@ -179,7 +148,7 @@ function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate }) {
         <div className="stats">
           <div className="stat">
             <div className="k">Distance</div>
-            <div className="v">{formatDistance(a?.distanceMeters)}</div>
+            <div className="v">{formatDistance(a?.distanceMeters, units)}</div>
           </div>
           <div className="stat">
             <div className="k">Time</div>
@@ -187,7 +156,7 @@ function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate }) {
           </div>
           <div className="stat">
             <div className="k">Pace/Speed</div>
-            <div className="v">{paceOrSpeed(a?.sport, a?.distanceMeters, a?.durationSeconds)}</div>
+            <div className="v">{formatPaceOrSpeed(a?.sport, a?.distanceMeters, a?.durationSeconds, units)}</div>
           </div>
         </div>
 
@@ -442,6 +411,7 @@ function AthleteSummaryWidget({ me, avatarSeed }) {
 }
 
 export default function Home() {
+  const units = useUnitsValue()
   const [me, setMe] = useState(null)
   const [feed, setFeed] = useState([])
   const [feedSource, setFeedSource] = useState('')
@@ -565,7 +535,7 @@ export default function Home() {
                   it?.type === 'announcement' ? (
                     <AnnouncementCard key={it.id} item={it} />
                   ) : (
-                    <ActivityCard key={it.id} item={it} meId={meId} onOpenSocial={onOpenSocial} onSocialUpdate={onSocialUpdate} />
+                    <ActivityCard key={it.id} item={it} meId={meId} units={units} onOpenSocial={onOpenSocial} onSocialUpdate={onSocialUpdate} />
                   ),
                 )}
 
@@ -595,7 +565,7 @@ export default function Home() {
                   <div>
                     <div className="k">Last {goals?.windowDays || 7} days</div>
                     <div className="v">
-                      {formatDistance(goals?.distanceMeters || 0)} / {formatDistance(goals?.goalDistanceMeters || 0)}
+                      {formatDistance(goals?.distanceMeters || 0, units)} / {formatDistance(goals?.goalDistanceMeters || 0, units)}
                     </div>
                   </div>
                   <div className="pct">{goalPct}%</div>

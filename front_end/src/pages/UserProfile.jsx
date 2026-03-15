@@ -26,6 +26,8 @@ import {
 import NavBar from '../components/NavBar'
 import { followUser, getUserSummary, unfollowUser } from '../api/users'
 import Avatar from '../components/Avatar'
+import { useUnitsValue } from '../preferences'
+import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
 import runners from '../assets/runners.jpg'
 import cyclists from '../assets/cyclists.jpg'
@@ -79,24 +81,6 @@ function pickHero(photos, seedStr) {
   return picked
 }
 
-function formatDistance(meters) {
-  const n = Number(meters)
-  if (!Number.isFinite(n)) return '0.00'
-  const km = n / 1000
-  return km.toFixed(km < 10 ? 2 : 1)
-}
-
-function formatDuration(seconds) {
-  const n = Number(seconds)
-  if (!Number.isFinite(n)) return '0s'
-  const s = Math.max(0, Math.round(n))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${r}s`
-  return `${r}s`
-}
 
 function formatWhen(iso) {
   try {
@@ -108,15 +92,7 @@ function formatWhen(iso) {
   }
 }
 
-function pacePerKm(distanceMeters, durationSeconds) {
-  const dist = Number(distanceMeters)
-  const dur = Number(durationSeconds)
-  if (!Number.isFinite(dist) || !Number.isFinite(dur) || dist <= 0) return '-'
-  const secPerKm = dur / (dist / 1000)
-  const m = Math.floor(secPerKm / 60)
-  const s = Math.round(secPerKm % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+// format helpers live in ../utils/format
 
 function displayName(profile, user) {
   const first = (profile?.firstName || '').trim()
@@ -127,6 +103,7 @@ function displayName(profile, user) {
 
 export default function UserProfile() {
   const { id } = useParams()
+  const units = useUnitsValue()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -374,8 +351,8 @@ export default function UserProfile() {
               <Route size={18} />
             </div>
             <div className="stat-content">
-              <span className="stat-value">{formatDistance(stats.totalDistanceMeters || 0)}</span>
-              <span className="stat-label">Km Total</span>
+              <span className="stat-value">{formatDistance(stats.totalDistanceMeters || 0, units)}</span>
+              <span className="stat-label">Total distance</span>
             </div>
           </div>
           <div className="stat-box">
@@ -488,7 +465,7 @@ export default function UserProfile() {
                               <div className="workout-metrics">
                                 <div className="metric">
                                   <Route size={14} />
-                                  <span>{formatDistance(activity.distanceMeters)} km</span>
+                                  <span>{formatDistance(activity.distanceMeters, units)}</span>
                                 </div>
                                 <div className="metric">
                                   <Clock size={14} />
@@ -496,7 +473,7 @@ export default function UserProfile() {
                                 </div>
                                 <div className="metric">
                                   <TrendingUp size={14} />
-                                  <span>{pacePerKm(activity.distanceMeters, activity.durationSeconds)} /km</span>
+                                  <span>{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}</span>
                                 </div>
                               </div>
                             </div>
@@ -573,7 +550,7 @@ export default function UserProfile() {
                     <Route size={16} />
                   </div>
                   <div className="mini-stat-info">
-                    <span className="mini-value">{formatDistance(stats.totalDistanceMeters || 0)} km</span>
+                    <span className="mini-value">{formatDistance(stats.totalDistanceMeters || 0, units)}</span>
                     <span className="mini-label">Total Distance</span>
                   </div>
                 </div>
@@ -592,9 +569,9 @@ export default function UserProfile() {
                   </div>
                   <div className="mini-stat-info">
                     <span className="mini-value">
-                      {activities.length > 0 
-                        ? formatDistance((stats.totalDistanceMeters || 0) / activities.length) 
-                        : '0.00'} km
+                      {activities.length > 0
+                        ? formatDistance((stats.totalDistanceMeters || 0) / activities.length, units)
+                        : formatDistance(0, units)}
                     </span>
                     <span className="mini-label">Avg per activity</span>
                   </div>

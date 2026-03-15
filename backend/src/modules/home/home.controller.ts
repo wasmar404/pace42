@@ -35,7 +35,8 @@ export class HomeController {
 
     const hasFollowing = followingIds.length > 0;
 
-    const activities = await this.prisma.activity.findMany({
+    // Over-fetch a bit for explore so we can filter out private accounts.
+    const seedActivities = await this.prisma.activity.findMany({
       where: hasFollowing
         ? {
             userId: { in: followingIds },
@@ -46,7 +47,7 @@ export class HomeController {
             userId: { not: user.userId },
           },
       orderBy: { startedAt: 'desc' },
-      take: limit,
+      take: hasFollowing ? limit : Math.min(150, limit * 3),
       select: {
         id: true,
         userId: true,
@@ -62,16 +63,29 @@ export class HomeController {
       },
     });
 
-    const activityIds = activities.map((a) => a.id);
-    const actorIds = Array.from(new Set(activities.map((a) => a.userId)));
+    const seedActorIds = Array.from(new Set(seedActivities.map((a) => a.userId)));
 
-    const [actors, media, kudosCounts, commentCounts, myKudos] = await Promise.all([
-      actorIds.length
-        ? this.prisma.profile.findMany({
-            where: { userId: { in: actorIds } },
-            select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+    const actors = seedActorIds.length
+      ? await this.prisma.profile.findMany({
+          where: { userId: { in: seedActorIds } },
+          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true, isPrivate: true },
+        })
+      : [];
+
+    const actorById = new Map(actors.map((a) => [a.userId, a] as const));
+
+    const activities = hasFollowing
+      ? seedActivities.slice(0, limit)
+      : seedActivities
+          .filter((a) => {
+            const p = actorById.get(a.userId);
+            return p ? !p.isPrivate : false;
           })
-        : Promise.resolve([]),
+          .slice(0, limit);
+
+    const activityIds = activities.map((a) => a.id);
+
+    const [media, kudosCounts, commentCounts, myKudos] = await Promise.all([
       activityIds.length
         ? this.prisma.activityMedia.findMany({
             where: { activityId: { in: activityIds } },
@@ -100,8 +114,6 @@ export class HomeController {
           })
         : Promise.resolve([]),
     ]);
-
-    const actorById = new Map(actors.map((a) => [a.userId, a] as const));
     const mediaByActivity = new Map<string, string>();
     for (const m of media) {
       if (!m.publicUrl) continue;

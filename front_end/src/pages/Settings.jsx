@@ -6,6 +6,7 @@ import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
 import { backendGet, backendJson, backendUpload } from '../backendApi'
 import { supabase } from '../supabaseClient'
+import { setTheme, setUnits, useThemeValue, useUnitsValue } from '../preferences'
 import '../styles/Settings.css'
 
 const PROFILE_CACHE_KEY = 'pace42.meSummary'
@@ -37,7 +38,10 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
 
-  const [units, setUnits] = useState(() => localStorage.getItem('pace42.units') || 'km')
+  const unitsPref = useUnitsValue()
+  const themePref = useThemeValue()
+  const [units, setUnitsState] = useState(unitsPref)
+  const [theme, setThemeState] = useState(themePref)
 
   const [deleteConfirm, setDeleteConfirm] = useState('')
 
@@ -226,13 +230,18 @@ export default function Settings() {
   }
 
   const onSaveUnits = () => {
-    try {
-      localStorage.setItem('pace42.units', units)
-    } catch {
-      // ignore
-    }
+    setUnits(units)
+    setTheme(theme)
     setNotice('Preferences saved.')
   }
+
+  useEffect(() => {
+    setUnitsState(unitsPref)
+  }, [unitsPref])
+
+  useEffect(() => {
+    setThemeState(themePref)
+  }, [themePref])
 
   const onChangeEmail = async (e) => {
     e.preventDefault()
@@ -543,16 +552,54 @@ export default function Settings() {
                     <button
                       className={units === 'km' ? 'seg-btn on' : 'seg-btn'}
                       type="button"
-                      onClick={() => setUnits('km')}
+                      onClick={() => {
+                        setUnitsState('km')
+                        setUnits('km')
+                      }}
                     >
                       km
                     </button>
                     <button
                       className={units === 'mi' ? 'seg-btn on' : 'seg-btn'}
                       type="button"
-                      onClick={() => setUnits('mi')}
+                      onClick={() => {
+                        setUnitsState('mi')
+                        setUnits('mi')
+                      }}
                     >
                       mi
+                    </button>
+                  </div>
+                  <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Theme</div>
+                  <div className="settings-row-help">Switch between light and dark.</div>
+                </div>
+                <div className="settings-row-actions">
+                  <div className="seg">
+                    <button
+                      className={theme === 'light' ? 'seg-btn on' : 'seg-btn'}
+                      type="button"
+                      onClick={() => {
+                        setThemeState('light')
+                        setTheme('light')
+                      }}
+                    >
+                      Light
+                    </button>
+                    <button
+                      className={theme === 'dark' ? 'seg-btn on' : 'seg-btn'}
+                      type="button"
+                      onClick={() => {
+                        setThemeState('dark')
+                        setTheme('dark')
+                      }}
+                    >
+                      Dark
                     </button>
                   </div>
                   <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>

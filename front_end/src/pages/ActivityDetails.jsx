@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 
 import NavBar from '../components/NavBar'
 import { getActivity } from '../api/activities'
+import { useUnitsValue } from '../preferences'
+import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/ActivityDetails.css'
 
 const CACHE_MAX_AGE_MS = 2 * 60 * 1000
@@ -19,24 +21,7 @@ function formatVisibility(v) {
   return v
 }
 
-function formatDistance(meters) {
-  const n = Number(meters)
-  if (!Number.isFinite(n)) return '-'
-  const km = n / 1000
-  return `${km.toFixed(km < 10 ? 2 : 1)} km`
-}
-
-function formatDuration(seconds) {
-  const n = Number(seconds)
-  if (!Number.isFinite(n)) return '-'
-  const s = Math.max(0, Math.round(n))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${r}s`
-  return `${r}s`
-}
+// format helpers live in ../utils/format
 
 function formatWhen(iso) {
   try {
@@ -50,6 +35,7 @@ function formatWhen(iso) {
 
 export default function ActivityDetails() {
   const { id } = useParams()
+  const units = useUnitsValue()
   const [activity, setActivity] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -109,8 +95,8 @@ export default function ActivityDetails() {
 
   const title = useMemo(() => {
     if (!activity) return 'Activity'
-    return activity.title || `${formatSport(activity.sport)} · ${formatDistance(activity.distanceMeters)}`
-  }, [activity])
+    return activity.title || `${formatSport(activity.sport)} · ${formatDistance(activity.distanceMeters, units)}`
+  }, [activity, units])
 
   return (
     <div className="activity-page">
@@ -140,29 +126,19 @@ export default function ActivityDetails() {
             {activity ? (
               <>
                 <div className="stat-grid">
-                  <div className="stat">
-                    <div className="stat-k">DISTANCE</div>
-                    <div className="stat-v">{formatDistance(activity.distanceMeters)}</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-k">DURATION</div>
-                    <div className="stat-v">{formatDuration(activity.durationSeconds)}</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-k">PACE</div>
-                    <div className="stat-v">
-                      {(() => {
-                        const dist = Number(activity.distanceMeters)
-                        const dur = Number(activity.durationSeconds)
-                        if (!Number.isFinite(dist) || !Number.isFinite(dur) || dist <= 0) return '-'
-                        const secPerKm = dur / (dist / 1000)
-                        const m = Math.floor(secPerKm / 60)
-                        const s = Math.round(secPerKm % 60)
-                        return `${m}:${String(s).padStart(2, '0')} /km`
-                      })()}
+                    <div className="stat">
+                      <div className="stat-k">DISTANCE</div>
+                      <div className="stat-v">{formatDistance(activity.distanceMeters, units)}</div>
+                    </div>
+                    <div className="stat">
+                      <div className="stat-k">DURATION</div>
+                      <div className="stat-v">{formatDuration(activity.durationSeconds)}</div>
+                    </div>
+                    <div className="stat">
+                      <div className="stat-k">PACE/SPEED</div>
+                      <div className="stat-v">{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}</div>
                     </div>
                   </div>
-                </div>
 
                 {activity.description ? (
                   <div className="activity-desc">{activity.description}</div>
