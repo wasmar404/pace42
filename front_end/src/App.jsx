@@ -20,6 +20,7 @@ import Chat from "./pages/Chat";
 import ChatThread from "./pages/ChatThread";
 import Clubs from "./pages/Clubs";
 import ClubDetails from "./pages/ClubDetails";
+import ApiDocs from "./pages/ApiDocs";
 
 function App() {
   return (
@@ -134,6 +135,15 @@ function App() {
           element={
             <ProtectedRoute>
               <ClubDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/api-docs"
+          element={
+            <ProtectedRoute>
+              <ApiDocs />
             </ProtectedRoute>
           }
         />

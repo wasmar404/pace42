@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
+import { AlertTriangle, Download, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle, KeyRound } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
@@ -327,6 +327,44 @@ export default function Settings() {
     }
   }
 
+  const onExportData = async () => {
+    setNotice('')
+    setError('')
+    setBusy(true)
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (!token) throw new Error('Not authenticated')
+
+      const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
+      const r = await fetch(`${base}/api/me/export.zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (r.status === 401) {
+        await supabase.auth.signOut().catch(() => {})
+        throw new Error('Session expired. Please log in again.')
+      }
+      if (!r.ok) throw new Error('Export failed')
+      const blob = await r.blob()
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const stamp = new Date().toISOString().slice(0, 10)
+      a.href = url
+      a.download = `pace42-export-${stamp}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+
+      setNotice('ZIP export downloaded.')
+    } catch (e) {
+      setError(e?.message || 'Failed to export')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="settings-page">
       <NavBar />
@@ -359,6 +397,8 @@ export default function Settings() {
               <a href="#password">Password</a>
               <a href="#twofa">2FA</a>
               <a href="#prefs">Preferences</a>
+              <a href="#export">Export</a>
+              <a href="#api">API</a>
               <a href="#danger">Danger Zone</a>
             </div>
 
@@ -592,7 +632,47 @@ export default function Settings() {
               </div>
             </section>
 
-            <section className="settings-card danger" id="danger" style={{ '--i': 6 }}>
+            <section className="settings-card" id="export" style={{ '--i': 6 }}>
+              <div className="settings-card-title">
+                <Download size={18} />
+                <h2>Export</h2>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Download your data</div>
+                  <div className="settings-row-help">
+                    Exports profile info, workouts, uploaded images (as URLs), comments, likes, followers/following, and settings.
+                  </div>
+                </div>
+                <div className="settings-row-actions">
+                  <button className="settings-btn primary" type="button" onClick={onExportData} disabled={busy || loading}>
+                    Export ZIP
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="settings-card" id="api" style={{ '--i': 7 }}>
+              <div className="settings-card-title">
+                <KeyRound size={18} />
+                <h2>API</h2>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Public API documentation</div>
+                  <div className="settings-row-help">How to authenticate, rate limits, and endpoints.</div>
+                </div>
+                <div className="settings-row-actions">
+                  <button className="settings-btn" type="button" onClick={() => navigate('/api-docs')} disabled={busy || loading}>
+                    Open docs
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="settings-card danger" id="danger" style={{ '--i': 8 }}>
               <div className="settings-card-title">
                 <span className="danger-dot" aria-hidden="true" />
                 <h2>Danger Zone</h2>
