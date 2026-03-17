@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import type { Response } from 'express';
+import archiver from 'archiver';
 
 import { PrismaService } from '../../prisma';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
@@ -274,6 +276,291 @@ export class MeController {
     });
 
     return { profile };
+  }
+
+  @Get('export')
+  async exportData(@CurrentUser() user: { userId: string; email?: string }) {
+    const userId = user.userId;
+
+    const [profile, activities, activityMedia, commentsGiven, commentsReceived, kudosGiven, kudosReceived, following, followers, clubMemberships, clubPosts] =
+      await Promise.all([
+        this.prisma.profile.findUnique({ where: { userId } }),
+        this.prisma.activity.findMany({
+          where: { userId },
+          orderBy: { startedAt: 'desc' },
+          select: {
+            id: true,
+            sport: true,
+            title: true,
+            description: true,
+            startedAt: true,
+            durationSeconds: true,
+            distanceMeters: true,
+            visibility: true,
+            source: true,
+            routePolyline: true,
+            mapImageUrl: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.activityMedia.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            activityId: true,
+            kind: true,
+            storageBucket: true,
+            storagePath: true,
+            publicUrl: true,
+            createdAt: true,
+          },
+        }),
+        this.prisma.activityComment.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, activityId: true, body: true, createdAt: true },
+        }),
+        this.prisma.activityComment.findMany({
+          where: { activity: { userId }, userId: { not: userId } },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, activityId: true, userId: true, body: true, createdAt: true },
+        }),
+        this.prisma.activityKudo.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: { activityId: true, createdAt: true },
+        }),
+        this.prisma.activityKudo.findMany({
+          where: { activity: { userId }, userId: { not: userId } },
+          orderBy: { createdAt: 'desc' },
+          select: { activityId: true, userId: true, createdAt: true },
+        }),
+        this.prisma.follow.findMany({
+          where: { followerId: userId },
+          orderBy: { createdAt: 'desc' },
+          select: { followingId: true, createdAt: true },
+        }),
+        this.prisma.follow.findMany({
+          where: { followingId: userId },
+          orderBy: { createdAt: 'desc' },
+          select: { followerId: true, createdAt: true },
+        }),
+        this.prisma.clubMember.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            role: true,
+            createdAt: true,
+            club: { select: { id: true, name: true, location: true, sport: true, description: true, avatarUrl: true, bannerUrl: true, isInviteOnly: true, createdAt: true } },
+          },
+        }),
+        this.prisma.clubPost.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            club: { select: { id: true, name: true } },
+            media: { orderBy: { createdAt: 'asc' }, select: { publicUrl: true, createdAt: true } },
+            activity: {
+              select: { id: true, sport: true, title: true, startedAt: true, durationSeconds: true, distanceMeters: true, visibility: true },
+            },
+          },
+        }),
+      ]);
+
+    const mediaByActivity = new Map<string, any[]>();
+    for (const m of activityMedia) {
+      const list = mediaByActivity.get(m.activityId) ?? [];
+      list.push({
+        id: m.id,
+        kind: m.kind,
+        storageBucket: m.storageBucket,
+        storagePath: m.storagePath,
+        publicUrl: m.publicUrl ?? null,
+        createdAt: m.createdAt.toISOString(),
+      });
+      mediaByActivity.set(m.activityId, list);
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      user: { id: userId, email: user.email ?? null },
+      profile: profile ?? null,
+      accountSettings: {
+        isPrivate: Boolean(profile?.isPrivate ?? false),
+      },
+      workouts: activities.map((a) => ({
+        ...a,
+        startedAt: a.startedAt.toISOString(),
+        createdAt: a.createdAt.toISOString(),
+        updatedAt: a.updatedAt.toISOString(),
+        media: mediaByActivity.get(a.id) ?? [],
+      })),
+      uploadedImages: {
+        activityMedia: activityMedia
+          .filter((m) => m.kind === 'photo' && m.publicUrl)
+          .map((m) => ({
+            activityId: m.activityId,
+            publicUrl: m.publicUrl,
+            storageBucket: m.storageBucket,
+            storagePath: m.storagePath,
+            createdAt: m.createdAt.toISOString(),
+          })),
+        clubPostMedia: clubPosts
+          .flatMap((p) => (p.media || []).map((m) => ({ clubId: p.clubId, postId: p.id, publicUrl: m.publicUrl, createdAt: m.createdAt.toISOString() })))
+          .filter((m) => m.publicUrl),
+      },
+      comments: {
+        given: commentsGiven.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+        receivedOnMyWorkouts: commentsReceived.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+      },
+      likes: {
+        given: kudosGiven.map((k) => ({ ...k, createdAt: k.createdAt.toISOString() })),
+        receivedOnMyWorkouts: kudosReceived.map((k) => ({ ...k, createdAt: k.createdAt.toISOString() })),
+      },
+      followersFollowing: {
+        followers: followers.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() })),
+        following: following.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() })),
+      },
+      clubs: {
+        memberships: clubMemberships.map((m) => ({
+          role: m.role,
+          joinedAt: m.createdAt.toISOString(),
+          club: { ...m.club, createdAt: m.club.createdAt.toISOString() },
+        })),
+        posts: clubPosts.map((p) => ({
+          id: p.id,
+          club: p.club,
+          body: p.body ?? null,
+          createdAt: p.createdAt.toISOString(),
+          media: (p.media || []).map((m) => ({ publicUrl: m.publicUrl, createdAt: m.createdAt.toISOString() })),
+          activity: p.activity
+            ? {
+                ...p.activity,
+                startedAt: p.activity.startedAt.toISOString(),
+              }
+            : null,
+        })),
+      },
+    };
+  }
+
+  @Get('export.zip')
+  async exportZip(@CurrentUser() user: { userId: string; email?: string }, @Res() res: Response) {
+    const userId = user.userId;
+
+    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
+    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
+    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
+
+    const safeSeg = (s: string) => String(s || '').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'x';
+    const extFromPath = (p: string) => {
+      const ext = path.extname(p || '').toLowerCase();
+      if (!ext) return '';
+      if (ext.length > 12) return '';
+      return ext;
+    };
+    const json = (obj: any) => JSON.stringify(obj, null, 2);
+
+    const exportObj = await this.exportData(user);
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('content-type', 'application/zip');
+    res.setHeader('content-disposition', `attachment; filename="pace42-export-${stamp}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', (err: any) => {
+      // eslint-disable-next-line no-console
+      console.error('[export.zip] archive error', err);
+      try {
+        res.status(500).end();
+      } catch {
+        // ignore
+      }
+    });
+    archive.pipe(res);
+
+    const errors: Array<{ kind: string; id?: string; detail: string }> = [];
+
+    // Core JSON files
+    archive.append(json(exportObj), { name: 'export.json' });
+    archive.append(json(exportObj?.profile ?? null), { name: 'profile.json' });
+    archive.append(json(exportObj?.accountSettings ?? {}), { name: 'account_settings.json' });
+    archive.append(json(exportObj?.followersFollowing ?? {}), { name: 'followers_following.json' });
+    archive.append(json(exportObj?.comments ?? {}), { name: 'comments.json' });
+    archive.append(json(exportObj?.likes ?? {}), { name: 'likes.json' });
+    archive.append(json(exportObj?.clubs ?? {}), { name: 'clubs.json' });
+
+    // Workouts
+    const workouts = Array.isArray(exportObj?.workouts) ? exportObj.workouts : [];
+    archive.append(json(workouts.map((w: any) => ({ id: w?.id, sport: w?.sport, startedAt: w?.startedAt }))), {
+      name: 'workouts/index.json',
+    });
+
+    // Download activity media from Storage
+    for (const w of workouts) {
+      const wid = String(w?.id || '');
+      if (!wid) continue;
+      archive.append(json(w), { name: `workouts/${safeSeg(wid)}/workout.json` });
+
+      const media = Array.isArray(w?.media) ? w.media : [];
+      for (const m of media) {
+        const mid = String(m?.id || '');
+        const bucket = String(m?.storageBucket || '');
+        const storagePath = String(m?.storagePath || '');
+        if (!mid || !bucket || !storagePath) continue;
+
+        const ext = extFromPath(storagePath) || (m?.kind === 'gpx' ? '.gpx' : '');
+        const base = m?.kind === 'gpx' ? 'gpx' : 'media';
+        const name = `workouts/${safeSeg(wid)}/${base}/${safeSeg(mid)}${ext}`;
+
+        try {
+          const { data, error } = await service.storage.from(bucket).download(storagePath);
+          if (error) throw new Error(error.message);
+          const buf = Buffer.from(await (data as any).arrayBuffer());
+          archive.append(buf, { name });
+        } catch (e: any) {
+          errors.push({ kind: 'activity_media', id: mid, detail: String(e?.message || e) });
+        }
+      }
+    }
+
+    // Club post media (stored as publicUrl only)
+    const clubPosts = Array.isArray(exportObj?.clubs?.posts) ? exportObj.clubs.posts : [];
+    for (const p of clubPosts) {
+      const postId = String(p?.id || '');
+      if (!postId) continue;
+      archive.append(json(p), { name: `club_posts/${safeSeg(postId)}/post.json` });
+      const items = Array.isArray(p?.media) ? p.media : [];
+      for (let i = 0; i < items.length; i++) {
+        const url = String(items[i]?.publicUrl || '');
+        if (!url) continue;
+        const ext = extFromPath(url) || '.jpg';
+        const name = `club_posts/${safeSeg(postId)}/media/media-${String(i + 1).padStart(2, '0')}${ext}`;
+        try {
+          const r = await fetch(url);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const buf = Buffer.from(await r.arrayBuffer());
+          archive.append(buf, { name });
+        } catch (e: any) {
+          errors.push({ kind: 'club_post_media', id: postId, detail: String(e?.message || e) });
+        }
+      }
+    }
+
+    archive.append(
+      json({
+        note: 'This export contains your Pace42 data at the time of export.',
+        exportedAt: exportObj?.exportedAt,
+      }),
+      { name: 'README.json' },
+    );
+
+    if (errors.length) archive.append(json(errors), { name: 'errors.json' });
+
+    await archive.finalize();
   }
 
   // Convenience endpoint for the frontend: update any profile fields in one request.
