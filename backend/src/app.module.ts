@@ -10,6 +10,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { AuthPolicyModule } from './modules/auth-policy/auth-policy.module';
 import { IntraAuthModule } from './modules/intra-auth/intra-auth.module';
 import { HomeModule } from './modules/home/home.module';
+import { ClubsModule } from './modules/clubs/clubs.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -28,6 +29,7 @@ import { HealthController } from './health.controller';
     AuthPolicyModule,
     IntraAuthModule,
     HomeModule,
+    ClubsModule,
   ],
   controllers: [HealthController],
 })

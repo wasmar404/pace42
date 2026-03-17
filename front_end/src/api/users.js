@@ -1,9 +1,9 @@
-import { backendGet, backendJson } from '../backendApi'
+import { backendGetOptional, backendJson } from '../backendApi'
 
 export function searchUsers(q) {
   const query = (q || '').trim()
   if (query.length < 2) return Promise.resolve({ users: [] })
-  return backendGet(`/api/search/users?q=${encodeURIComponent(query)}`)
+  return backendGetOptional(`/api/search/users?q=${encodeURIComponent(query)}`)
 }
 
 export function followUser(userId) {

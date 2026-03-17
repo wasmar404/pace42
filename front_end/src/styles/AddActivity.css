@@ -543,6 +543,38 @@ textarea.text-input {
   margin-bottom: 12px;
 }
 
+.club-post-muted {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.club-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.club-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.club-select {
+  margin-top: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+}
+
 .sidebar-header {
   display: flex;
   justify-content: space-between;

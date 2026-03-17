@@ -32,8 +32,25 @@ async function authHeader() {
   return { Authorization: `Bearer ${token}` }
 }
 
+async function optionalAuthHeader() {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export async function backendGet(path) {
   const headers = await authHeader()
+  const { res, json } = await fetchJson(`${BASE_URL}${path}`, { headers }, 20000)
+  if (res.status === 401) {
+    await supabase.auth.signOut().catch(() => {})
+    throw new Error('Session expired. Please log in again.')
+  }
+  if (!res.ok) throw new Error(json?.error?.message || 'Request failed')
+  return json
+}
+
+export async function backendGetOptional(path) {
+  const headers = await optionalAuthHeader()
   const { res, json } = await fetchJson(`${BASE_URL}${path}`, { headers }, 20000)
   if (res.status === 401) {
     await supabase.auth.signOut().catch(() => {})

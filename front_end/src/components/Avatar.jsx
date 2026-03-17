@@ -29,7 +29,7 @@ function toDataUri(svg) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
-export default function Avatar({ avatarUrl, seed, alt = '', className = '', loading = 'lazy' }) {
+export default function Avatar({ avatarUrl, seed, alt = '', className = '', loading = 'lazy', size }) {
   const seedStr = useMemo(() => String(seed || 'user'), [seed])
 
   const [src, setSrc] = useState(() => avatarUrl || cache.get(seedStr) || placeholderDataUri(seedStr))
@@ -62,5 +62,7 @@ export default function Avatar({ avatarUrl, seed, alt = '', className = '', load
     }
   }, [avatarUrl, seedStr])
 
-  return <img src={src} alt={alt} className={className} loading={loading} />
+  const style = size ? { width: `${Number(size)}px`, height: `${Number(size)}px` } : undefined
+
+  return <img src={src} alt={alt} className={className} loading={loading} style={style} />
 }

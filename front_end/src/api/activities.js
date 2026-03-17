@@ -23,6 +23,7 @@ export function importGpx(file, meta = {}) {
   if (meta?.description) form.append('description', meta.description)
   if (meta?.visibility) form.append('visibility', meta.visibility)
   if (meta?.sport) form.append('sport', meta.sport)
+  if (meta?.clubId) form.append('clubId', meta.clubId)
 
   return backendUpload('/api/activities/import/gpx', form)
 }

@@ -18,9 +18,6 @@ export class SearchController {
 
     const users = await this.prisma.profile.findMany({
       where: {
-        onboardingCompletedAt: { not: null },
-        firstName: { not: null },
-        lastName: { not: null },
         OR: [
           { username: { contains: query, mode: 'insensitive' } },
           { firstName: { contains: query, mode: 'insensitive' } },

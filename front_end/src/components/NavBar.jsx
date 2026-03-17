@@ -284,9 +284,11 @@ export default function NavBar() {
                        ? `/chat/${it.conversationId}`
                        : (it?.type === 'comment' || it?.type === 'kudo') && it?.activityId
                          ? `/activities/${it.activityId}`
-                         : it?.actor?.id
-                           ? `/users/${it.actor.id}`
-                           : '/home'
+                          : it?.type === 'club_invite'
+                            ? '/clubs'
+                          : it?.actor?.id
+                            ? `/users/${it.actor.id}`
+                            : '/home'
 
                      return (
                        <Link

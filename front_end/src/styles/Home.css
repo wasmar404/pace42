@@ -1090,6 +1090,45 @@
   font-weight: 850;
 }
 
+.inline-link {
+  color: rgba(252, 76, 2, 0.92);
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.inline-link:hover {
+  text-decoration: underline;
+}
+
+.clubs-mini {
+  display: grid;
+  gap: 10px;
+}
+
+.club-mini .n {
+  font-weight: 950;
+  color: rgba(11, 18, 32, 0.90);
+}
+
+.club-mini .s {
+  margin-top: 4px;
+  font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
+  font-size: 12px;
+  color: rgba(11, 18, 32, 0.60);
+}
+
+:root[data-theme="dark"] .muted {
+  color: rgba(255, 250, 242, 0.70);
+}
+
+:root[data-theme="dark"] .club-mini .n {
+  color: rgba(255, 250, 242, 0.92);
+}
+
+:root[data-theme="dark"] .club-mini .s {
+  color: rgba(255, 250, 242, 0.62);
+}
+
 .feed-empty {
   border-radius: 22px;
   border: 1px dashed rgba(11, 18, 32, 0.18);

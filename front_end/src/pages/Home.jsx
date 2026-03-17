@@ -10,6 +10,7 @@ import Avatar from '../components/Avatar'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getGoals, getHomeFeed, getRecommendedUsers } from '../api/home'
+import { getMyClubs } from '../api/clubs'
 import { useUnitsValue } from '../preferences'
 import { formatDistance } from '../utils/format'
 
@@ -29,6 +30,7 @@ export default function Home() {
   const [feedSource, setFeedSource] = useState('')
   const [recUsers, setRecUsers] = useState([])
   const [goals, setGoals] = useState(null)
+  const [myClubs, setMyClubs] = useState([])
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -48,20 +50,22 @@ export default function Home() {
     async function run() {
       setLoading(true)
       setError('')
-      try {
-        const [meRes, feedRes, recRes, goalsRes] = await Promise.all([
-          backendGet('/api/me/summary'),
-          getHomeFeed(20),
-          getRecommendedUsers(6),
-          getGoals(7, 30),
-        ])
-        if (cancelled) return
-        setMe(meRes)
-        setFeed((feedRes?.items || []).filter((it) => it?.type !== 'announcement'))
-        setFeedSource(feedRes?.source || '')
-        setRecUsers(recRes?.items || [])
-        setGoals(goalsRes)
-      } catch (e) {
+        try {
+          const [meRes, feedRes, recRes, goalsRes] = await Promise.all([
+            backendGet('/api/me/summary'),
+            getHomeFeed(20),
+            getRecommendedUsers(6),
+            getGoals(7, 30),
+          ])
+          const clubsRes = await getMyClubs().catch(() => null)
+          if (cancelled) return
+          setMe(meRes)
+          setFeed((feedRes?.items || []).filter((it) => it?.type !== 'announcement'))
+          setFeedSource(feedRes?.source || '')
+          setRecUsers(recRes?.items || [])
+          setGoals(goalsRes)
+          setMyClubs(clubsRes?.clubs || [])
+        } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load feed')
       } finally {
@@ -155,7 +159,21 @@ export default function Home() {
           <aside className="side side-right" aria-label="Dashboard widgets">
 
             <Widget icon={<Users size={16} />} title="Clubs">
-              <div className="muted">No clubs yet. (Coming soon)</div>
+              {!myClubs.length ? (
+                <div className="muted">
+                  No clubs yet. <Link to="/clubs" className="inline-link">Create one</Link>
+                </div>
+              ) : (
+                <div className="clubs-mini">
+                  {myClubs.slice(0, 3).map((c) => (
+                    <div key={c.id} className="club-mini">
+                      <div className="n">{c.name}</div>
+                      <div className="s">{c.memberCount} members</div>
+                    </div>
+                  ))}
+                  <Link to="/clubs" className="inline-link">View all</Link>
+                </div>
+              )}
             </Widget>
 
             <Widget icon={<Target size={16} />} title="Goals">

@@ -20,6 +20,7 @@ import {
 
 import NavBar from '../components/NavBar'
 import { createActivity, importGpx, uploadActivityPhoto } from '../api/activities'
+import { getMyClubs } from '../api/clubs'
 import { getUnits, useUnitsValue } from '../preferences'
 import { distanceInUnits, formatPaceOrSpeed } from '../utils/format'
 import '../styles/AddActivity.css'
@@ -75,6 +76,25 @@ export default function AddActivity() {
   const [description, setDescription] = useState('')
   const [startedAt, setStartedAt] = useState('')
   const [visibility, setVisibility] = useState('public')
+
+  const [myClubs, setMyClubs] = useState([])
+  const [postToClub, setPostToClub] = useState(false)
+  const [postClubId, setPostClubId] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await getMyClubs()
+        if (!cancelled) setMyClubs(res?.clubs || [])
+      } catch {
+        if (!cancelled) setMyClubs([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [hours, setHours] = useState('0')
   const [minutes, setMinutes] = useState('30')
@@ -172,6 +192,8 @@ export default function AddActivity() {
     if (!meters) throw new Error('Distance must be a number')
     if (!startedAt) throw new Error('Choose a date/time')
 
+    if (postToClub && !postClubId) throw new Error('Choose a club to post to')
+
     const payload = {
       sport,
       title: title || undefined,
@@ -180,6 +202,7 @@ export default function AddActivity() {
       durationSeconds: dur,
       distanceMeters: meters,
       visibility,
+      clubId: postToClub ? postClubId : undefined,
     }
 
     const res = await createActivity(payload)
@@ -195,11 +218,13 @@ export default function AddActivity() {
 
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
+    if (postToClub && !postClubId) throw new Error('Choose a club to post to')
     const res = await importGpx(gpxFile, {
       sport,
       title,
       description,
       visibility,
+      clubId: postToClub ? postClubId : undefined,
     })
 
     const activityId = res?.activity?.id
@@ -491,6 +516,30 @@ export default function AddActivity() {
                     )
                   })}
                 </div>
+              </section>
+
+              {/* Club posting */}
+              <section className="sidebar-card">
+                <label className="sidebar-label">Post to a club</label>
+                {!myClubs.length ? (
+                  <div className="club-post-muted">You’re not in any clubs yet.</div>
+                ) : (
+                  <>
+                    <label className="club-toggle">
+                      <input type="checkbox" checked={postToClub} onChange={(e) => setPostToClub(e.target.checked)} />
+                      <span>Share this workout in a club</span>
+                    </label>
+
+                    {postToClub ? (
+                      <select className="club-select" value={postClubId} onChange={(e) => setPostClubId(e.target.value)}>
+                        <option value="">Select a club…</option>
+                        {myClubs.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </>
+                )}
               </section>
 
               {/* Photos Card */}
