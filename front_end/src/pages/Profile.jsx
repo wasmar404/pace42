@@ -12,8 +12,6 @@ import {
   User,
   Plus,
   ChevronRight,
-  Flag,
-  Target
 } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
@@ -22,7 +20,6 @@ import Avatar from '../components/Avatar'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import { getMyPerformance } from '../api/me'
-import { importGpx } from '../api/activities'
 
 import '../styles/Profile.css'
 import runners from '../assets/runners.jpg'
@@ -102,8 +99,6 @@ export default function Profile() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [perf, setPerf] = useState(null)
-  const [perfBusy, setPerfBusy] = useState(false)
-  const gpxRef = useRef(null)
 
   useEffect(() => {
     try {
@@ -191,21 +186,6 @@ export default function Profile() {
     return `${m}:${String(r).padStart(2, '0')}`
   }
 
-  const onPickGpx = async (e) => {
-    const file = (e.target.files || [])[0]
-    e.target.value = ''
-    if (!file) return
-    setPerfBusy(true)
-    setError('')
-    try {
-      await importGpx(file, { sport: 'run', visibility: 'only_me' })
-      await refreshPerformance()
-    } catch (err) {
-      setError(err?.message || 'GPX import failed')
-    } finally {
-      setPerfBusy(false)
-    }
-  }
 
   const displayName = useMemo(() => {
     const p = me?.profile
@@ -465,18 +445,7 @@ export default function Profile() {
             <div className="sidebar-card pr-card">
               <div className="pr-head">
                 <div className="pr-k">Last 4 Weeks</div>
-                <div className="pr-actions">
-                  <input
-                    ref={gpxRef}
-                    type="file"
-                    accept=".gpx,application/gpx+xml,application/xml,text/xml"
-                    onChange={onPickGpx}
-                    style={{ display: 'none' }}
-                  />
-                  <button type="button" className="pr-btn" onClick={() => gpxRef.current?.click()} disabled={perfBusy}>
-                    {perfBusy ? 'Importing…' : 'Upload GPX'}
-                  </button>
-                </div>
+                <div className="pr-actions" />
               </div>
 
               <div className="pr-table">
@@ -512,7 +481,7 @@ export default function Profile() {
                     </div>
                   ))
                 ) : (
-                  <div className="pr-empty">Upload a GPX run (or log a run) to see PRs.</div>
+                  <div className="pr-empty">Log a run to see PRs.</div>
                 )}
               </div>
 
@@ -557,67 +526,6 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Weekly Goal Card */}
-            <div className="sidebar-card goal-card">
-              <div className="goal-header">
-                <Target size={20} />
-                <h3>Weekly Goal</h3>
-              </div>
-              <div className="goal-progress">
-                <div className="progress-ring">
-                  <svg viewBox="0 0 36 36">
-                    <path
-                      className="progress-bg"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className="progress-fill"
-                      strokeDasharray={`${Math.min((last4WeeksCount / 4) * 100, 100)}, 100`}
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  <div className="progress-text">
-                    <span className="progress-value">{last4WeeksCount}</span>
-                    <span className="progress-label">activities</span>
-                  </div>
-                </div>
-                <p className="goal-subtitle">Keep it up! You're doing great.</p>
-              </div>
-            </div>
-
-            {/* Monthly Stats */}
-            <div className="sidebar-card mini-stats">
-              <h3>This Month</h3>
-              <div className="mini-stat-list">
-                <div className="mini-stat">
-                  <div className="mini-stat-icon">
-                    <Route size={16} />
-                  </div>
-                  <div className="mini-stat-info">
-                    <span className="mini-value">{formatDistance(stats.totalDistance, units)}</span>
-                    <span className="mini-label">Distance</span>
-                  </div>
-                </div>
-                <div className="mini-stat">
-                  <div className="mini-stat-icon">
-                    <Clock size={16} />
-                  </div>
-                  <div className="mini-stat-info">
-                    <span className="mini-value">{formatDuration(stats.totalDuration)}</span>
-                    <span className="mini-label">Duration</span>
-                  </div>
-                </div>
-                <div className="mini-stat">
-                  <div className="mini-stat-icon">
-                    <Flag size={16} />
-                  </div>
-                  <div className="mini-stat-info">
-                    <span className="mini-value">{activities.length > 0 ? formatDistance(stats.avgDistance, units) : formatDistance(0, units)}</span>
-                    <span className="mini-label">Avg Distance</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </aside>
         </div>
       </main>

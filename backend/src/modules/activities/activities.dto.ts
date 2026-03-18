@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateActivityDto {
@@ -6,9 +6,10 @@ export class CreateActivityDto {
   @IsIn(['run', 'walk', 'ride'])
   sport!: string;
 
-  @IsOptional()
   @IsString()
-  title?: string;
+  @IsNotEmpty()
+  @MaxLength(120)
+  title!: string;
 
   @IsOptional()
   @IsString()

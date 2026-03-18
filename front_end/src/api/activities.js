@@ -8,6 +8,16 @@ export function getActivity(id) {
   return backendGet(`/api/activities/${id}`)
 }
 
+export function listMyActivities(params = {}) {
+  const qs = new URLSearchParams()
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return
+    qs.set(k, String(v))
+  })
+  const s = qs.toString()
+  return backendGet(`/api/activities/mine${s ? `?${s}` : ''}`)
+}
+
 export function deleteActivity(id) {
   return backendJson('DELETE', `/api/activities/${id}`, {})
 }

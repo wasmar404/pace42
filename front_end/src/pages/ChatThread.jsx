@@ -25,9 +25,16 @@ export default function ChatThread() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [rt, setRt] = useState('connecting')
+  const [presence, setPresence] = useState(null)
   const bottomRef = useRef(null)
 
   const other = convo?.otherUser
+
+  const presenceText = useMemo(() => {
+    if (!other?.id) return ''
+    if (presence?.online) return 'Online'
+    return 'Offline'
+  }, [other?.id, other?.username, presence])
 
   const seenRef = useRef(new Set())
 
@@ -85,23 +92,52 @@ export default function ChatThread() {
       try {
         s = await getChatSocket()
         setRt(s.connected ? 'connected' : 'connecting')
-        s.on('connect', () => setRt('connected'))
+
+        const watch = () => {
+          if (other?.id) s.emit('presence:watch', { userIds: [other.id] })
+        }
+
+        s.on('connect', () => {
+          setRt('connected')
+          watch()
+        })
         s.on('disconnect', () => setRt('disconnected'))
         s.on('connect_error', () => setRt('disconnected'))
+
+        const onPresence = (p) => {
+          const oid = other?.id
+          if (!oid) return
+          if (p?.userId !== oid) return
+          setPresence({ online: p?.online === true, lastSeenAt: p?.lastSeenAt || null })
+        }
+        const onPresenceState = (payload) => {
+          const oid = other?.id
+          if (!oid) return
+          const items = payload?.items
+          if (!Array.isArray(items)) return
+          const it = items.find((x) => x?.userId === oid)
+          if (!it) return
+          setPresence({ online: it?.online === true, lastSeenAt: it?.lastSeenAt || null })
+        }
+
+        s.on('presence:update', onPresence)
+        s.on('presence:state', onPresenceState)
+        watch()
+
         s.emit('conversation:join', { conversationId: id })
         s.on('message:new', (payload) => {
           const m = payload?.message
           if (!m || m.conversationId !== id) return
           const clientId = payload?.clientId || null
           setMessages((prev) => {
-            // Dedupe by server message id
-            if (m?.id && seenRef.current.has(m.id)) return prev
-            if (m?.id) seenRef.current.add(m.id)
-
             // If this confirms an optimistic message, drop the optimistic one.
-            const next = clientId
-              ? prev.filter((x) => x?.clientId !== clientId)
-              : prev
+            const next = clientId ? prev.filter((x) => x?.clientId !== clientId) : prev
+
+            // Dedupe by server message id (but still apply optimistic cleanup above).
+            if (m?.id) {
+              if (seenRef.current.has(m.id)) return next
+              seenRef.current.add(m.id)
+            }
 
             return [...next, m]
           })
@@ -129,6 +165,8 @@ export default function ChatThread() {
       try {
         s?.off('message:new')
         s?.off('message:error')
+        s?.off('presence:update')
+        s?.off('presence:state')
         s?.off('connect')
         s?.off('disconnect')
         s?.off('connect_error')
@@ -138,7 +176,7 @@ export default function ChatThread() {
       if (cancelled) {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, other?.id])
 
   // Fallback polling so messages appear without refresh.
   useEffect(() => {
@@ -244,17 +282,20 @@ export default function ChatThread() {
               </Link>
             </div>
 
-            <div className="peer">
-              <div className="av">
-                <Avatar avatarUrl={other?.avatarUrl} seed={other?.username || other?.id || other?.name} alt="" />
-              </div>
-              <div className="peer-main">
-                <div className="name">{other?.name || 'Chat'}</div>
-                <div className="sub">
-                  {other?.username ? `@${other.username}` : 'Mutual followers'}
+              <div className="peer">
+                <div className="av">
+                  <Avatar avatarUrl={other?.avatarUrl} seed={other?.username || other?.id || other?.name} alt="" />
+                  {other?.id && presence ? (
+                    <span className={presence.online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" />
+                  ) : null}
+                </div>
+                <div className="peer-main">
+                  <div className="name">{other?.name || 'Chat'}</div>
+                  <div className="sub">
+                  {presenceText}
+                  </div>
                 </div>
               </div>
-            </div>
 
             <div className="thread-right">
               <div className={`rt-pill ${rt === 'connected' ? 'ok' : 'bad'}`} title={rt === 'connected' ? 'Realtime connected' : 'Realtime offline (polling)'}>

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Download, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle, KeyRound } from 'lucide-react'
+import { AlertTriangle, Download, KeyRound, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import { backendGet, backendJson, backendUpload } from '../backendApi'
 import { supabase } from '../supabaseClient'
-import { setTheme, setUnits, useThemeValue, useUnitsValue } from '../preferences'
+import { setUnits, useUnitsValue } from '../preferences'
 import '../styles/Settings.css'
 
 const PROFILE_CACHE_KEY = 'pace42.meSummary'
@@ -40,9 +40,8 @@ export default function Settings() {
   const [isPrivate, setIsPrivate] = useState(false)
 
   const unitsPref = useUnitsValue()
-  const themePref = useThemeValue()
   const [units, setUnitsState] = useState(unitsPref)
-  const [theme, setThemeState] = useState(themePref)
+  const [weeklyGoal, setWeeklyGoal] = useState('')
 
   const [deleteConfirm, setDeleteConfirm] = useState('')
 
@@ -64,6 +63,14 @@ export default function Settings() {
         setMe(res)
         setIsPrivate(safeBool(res?.settings?.isPrivate))
         setNewEmail(res?.user?.email || '')
+
+        const goalMeters = Number(res?.profile?.weeklyGoalDistanceMeters || 0)
+        if (goalMeters > 0) {
+          const v = unitsPref === 'mi' ? goalMeters / 1609.344 : goalMeters / 1000
+          setWeeklyGoal(String(Math.round(v * 10) / 10))
+        } else {
+          setWeeklyGoal('')
+        }
 
         // MFA state
         try {
@@ -230,19 +237,32 @@ export default function Settings() {
     }
   }
 
-  const onSaveUnits = () => {
-    setUnits(units)
-    setTheme(theme)
-    setNotice('Preferences saved.')
-  }
-
   useEffect(() => {
     setUnitsState(unitsPref)
   }, [unitsPref])
 
-  useEffect(() => {
-    setThemeState(themePref)
-  }, [themePref])
+  const toWeeklyGoalMeters = (txt) => {
+    const x = Number(String(txt || '').trim())
+    if (!Number.isFinite(x) || x <= 0) return 0
+    const meters = units === 'mi' ? x * 1609.344 : x * 1000
+    return Math.round(meters)
+  }
+
+  const onSaveWeeklyGoal = async () => {
+    setNotice('')
+    setError('')
+    setBusy(true)
+    try {
+      const meters = toWeeklyGoalMeters(weeklyGoal)
+      const res = await backendJson('PUT', '/api/me', { weeklyGoalDistanceMeters: meters || 0 })
+      setMe((prev) => ({ ...(prev || {}), profile: res?.profile || prev?.profile }))
+      setNotice(meters ? 'Weekly goal updated.' : 'Weekly goal cleared.')
+    } catch (e) {
+      setError(e?.message || 'Failed to update weekly goal')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const onChangeEmail = async (e) => {
     e.preventDefault()
@@ -402,9 +422,7 @@ export default function Settings() {
               <a href="#danger">Danger Zone</a>
             </div>
 
-            <div className="settings-nav-foot">
-              <div className="settings-nav-note">Tip: keep your account private if you only want followers to see workouts.</div>
-            </div>
+            <div className="settings-nav-foot" />
           </aside>
 
           <div className="settings-panels">
@@ -603,31 +621,27 @@ export default function Settings() {
                     }}
                     disabled={busy || loading}
                   />
-                  <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>
                 </div>
               </div>
 
               <div className="settings-row">
                 <div className="settings-row-main">
-                  <div className="settings-row-label">Theme</div>
-                  <div className="settings-row-help">Switch between light and dark.</div>
+                  <div className="settings-row-label">Weekly distance goal</div>
+                  <div className="settings-row-help">Set a weekly target to show the goal widget on Home.</div>
                 </div>
                 <div className="settings-row-actions">
-                  <SegmentedControl
-                    value={theme}
-                    ariaLabel="Theme"
-                    options={[
-                      { value: 'light', label: 'Light' },
-                      { value: 'dark', label: 'Dark' },
-                    ]}
-                    onChange={(v) => {
-                      const next = v === 'dark' ? 'dark' : 'light'
-                      setThemeState(next)
-                      setTheme(next)
-                    }}
+                  <input
+                    value={weeklyGoal}
+                    onChange={(e) => setWeeklyGoal(e.target.value)}
+                    placeholder={units === 'mi' ? 'e.g. 15' : 'e.g. 25'}
+                    inputMode="decimal"
+                    style={{ width: 140 }}
                     disabled={busy || loading}
                   />
-                  <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>
+                  <div className="settings-row-help" style={{ margin: 0, whiteSpace: 'nowrap' }}>{units === 'mi' ? 'mi / week' : 'km / week'}</div>
+                  <button className="settings-btn" type="button" onClick={onSaveWeeklyGoal} disabled={busy || loading}>
+                    Save
+                  </button>
                 </div>
               </div>
             </section>

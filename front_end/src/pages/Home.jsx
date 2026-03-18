@@ -55,7 +55,7 @@ export default function Home() {
             backendGet('/api/me/summary'),
             getHomeFeed(20),
             getRecommendedUsers(6),
-            getGoals(7, 30),
+            getGoals(7),
           ])
           const clubsRes = await getMyClubs().catch(() => null)
           if (cancelled) return
@@ -176,22 +176,24 @@ export default function Home() {
               )}
             </Widget>
 
-            <Widget icon={<Target size={16} />} title="Goals">
-              <div className="goal">
-                <div className="g-top">
-                  <div>
-                    <div className="k">Last {goals?.windowDays || 7} days</div>
-                    <div className="v">
-                      {formatDistance(goals?.distanceMeters || 0, units)} / {formatDistance(goals?.goalDistanceMeters || 0, units)}
+            {goals?.goalDistanceMeters ? (
+              <Widget icon={<Target size={16} />} title="Goals">
+                <div className="goal">
+                  <div className="g-top">
+                    <div>
+                      <div className="k">Last {goals?.windowDays || 7} days</div>
+                      <div className="v">
+                        {formatDistance(goals?.distanceMeters || 0, units)} / {formatDistance(goals?.goalDistanceMeters || 0, units)}
+                      </div>
                     </div>
+                    <div className="pct">{goalPct}%</div>
                   </div>
-                  <div className="pct">{goalPct}%</div>
+                  <div className="bar" aria-hidden="true">
+                    <div className="fill" style={{ width: `${goalPct}%` }} />
+                  </div>
                 </div>
-                <div className="bar" aria-hidden="true">
-                  <div className="fill" style={{ width: `${goalPct}%` }} />
-                </div>
-              </div>
-            </Widget>
+              </Widget>
+            ) : null}
 
             <Widget icon={<Users size={16} />} title="Recommended Athletes">
               {!recUsers.length ? (

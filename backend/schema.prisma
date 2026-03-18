@@ -23,6 +23,7 @@ model Profile {
   onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   isPrivate             Boolean   @default(false) @map("is_private")
+  weeklyGoalDistanceMeters Int?   @map("weekly_goal_distance_meters")
 
   @@map("profiles")
 }

@@ -1,9 +1,10 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ImportGpxDto {
-  @IsOptional()
   @IsString()
-  title?: string;
+  @IsNotEmpty()
+  @MaxLength(120)
+  title!: string;
 
   @IsOptional()
   @IsString()

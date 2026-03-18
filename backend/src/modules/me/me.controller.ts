@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Res } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Res, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -566,6 +566,13 @@ export class MeController {
   // Convenience endpoint for the frontend: update any profile fields in one request.
   @Put()
   async updateMe(@CurrentUser() user: { userId: string }, @Body() dto: UpdateMeDto) {
+    const weeklyGoalDistanceMeters =
+      typeof dto.weeklyGoalDistanceMeters === 'number'
+        ? dto.weeklyGoalDistanceMeters > 0
+          ? Math.round(dto.weeklyGoalDistanceMeters)
+          : null
+        : undefined;
+
     const profile = await this.prisma.profile.upsert({
       where: { userId: user.userId },
       create: {
@@ -581,6 +588,7 @@ export class MeController {
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
+        weeklyGoalDistanceMeters: weeklyGoalDistanceMeters ?? undefined,
       },
       update: {
         firstName: dto.firstName,
@@ -593,6 +601,7 @@ export class MeController {
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
+        ...(weeklyGoalDistanceMeters !== undefined ? { weeklyGoalDistanceMeters } : {}),
       },
     });
 
@@ -677,12 +686,61 @@ export class MeController {
   }
 
   @Get('activities')
-  async myActivities(@CurrentUser() user: { userId: string }) {
+  async myActivities(@CurrentUser() user: { userId: string }, @Query('take') take?: string) {
+    const n = Number(take ?? 500);
+    const limit = Number.isFinite(n) ? Math.max(1, Math.min(2000, Math.floor(n))) : 500;
+
     const activities = await this.prisma.activity.findMany({
       where: { userId: user.userId },
-      orderBy: { startedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        sport: true,
+        title: true,
+        description: true,
+        startedAt: true,
+        durationSeconds: true,
+        distanceMeters: true,
+        visibility: true,
+        source: true,
+        mapImageUrl: true,
+        createdAt: true,
+      },
     });
 
-    return { activities };
+    const ids = activities.map((a) => a.id);
+    const media = ids.length
+      ? await this.prisma.activityMedia.findMany({
+          where: { activityId: { in: ids }, userId: user.userId, kind: { in: ['photo', 'gpx'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { activityId: true, kind: true, publicUrl: true },
+        })
+      : [];
+
+    const mediaByActivity = new Map<string, Array<{ kind: string; publicUrl: string | null }>>();
+    for (const m of media) {
+      const list = mediaByActivity.get(m.activityId) ?? [];
+      list.push({ kind: m.kind, publicUrl: m.publicUrl ?? null });
+      mediaByActivity.set(m.activityId, list);
+    }
+
+    return {
+      activities: activities.map((a) => {
+        const list = mediaByActivity.get(a.id) ?? [];
+        const photos = list.filter((x) => x.kind === 'photo' && x.publicUrl).map((x) => x.publicUrl as string);
+        const hasGpx = list.some((x) => x.kind === 'gpx');
+        return {
+          ...a,
+          startedAt: a.startedAt.toISOString(),
+          createdAt: a.createdAt.toISOString(),
+          media: {
+            photoCount: photos.length,
+            coverPhotoUrl: photos[0] ?? null,
+            hasGpx,
+          },
+        };
+      }),
+    };
   }
 }

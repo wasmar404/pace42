@@ -100,12 +100,159 @@ export class ActivitiesController {
     return activity;
   }
 
+  @Get('mine')
+  @UseGuards(SupabaseAuthGuard)
+  async mine(
+    @CurrentUser() user: { userId: string },
+    @Query('q') q?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('minDistanceMeters') minDistanceMeters?: string,
+    @Query('maxDistanceMeters') maxDistanceMeters?: string,
+    @Query('minDurationSeconds') minDurationSeconds?: string,
+    @Query('maxDurationSeconds') maxDurationSeconds?: string,
+    @Query('source') source?: string,
+    @Query('take') take?: string,
+  ) {
+    const query = String(q || '').trim();
+    const src = String(source || 'any').trim().toLowerCase();
+    const allowedSource = new Set(['any', 'manual', 'gpx']);
+    if (!allowedSource.has(src)) throw new BadRequestException('Invalid source');
+
+    const limit = Math.max(1, Math.min(200, Number(take || 50) || 50));
+
+    const fromTs = from ? Date.parse(from) : NaN;
+    const toTs = to ? Date.parse(to) : NaN;
+    const fromDate = Number.isFinite(fromTs) ? new Date(fromTs) : null;
+    const toDate = Number.isFinite(toTs) ? new Date(toTs) : null;
+    if (from && !fromDate) throw new BadRequestException('Invalid from');
+    if (to && !toDate) throw new BadRequestException('Invalid to');
+
+    const minDist = minDistanceMeters ? Number(minDistanceMeters) : NaN;
+    const maxDist = maxDistanceMeters ? Number(maxDistanceMeters) : NaN;
+    const minDur = minDurationSeconds ? Number(minDurationSeconds) : NaN;
+    const maxDur = maxDurationSeconds ? Number(maxDurationSeconds) : NaN;
+
+    const where: any = {
+      userId: user.userId,
+      ...(src !== 'any' ? { source: src } : {}),
+      ...(query.length >= 2
+        ? {
+            OR: [
+              { title: { contains: query, mode: 'insensitive' } },
+              { description: { contains: query, mode: 'insensitive' } },
+              { sport: { contains: query, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    if (fromDate || toDate) {
+      where.startedAt = {
+        ...(fromDate ? { gte: fromDate } : {}),
+        ...(toDate ? { lte: toDate } : {}),
+      };
+    }
+
+    if (Number.isFinite(minDist) || Number.isFinite(maxDist)) {
+      where.distanceMeters = {
+        ...(Number.isFinite(minDist) ? { gte: Math.max(0, Math.floor(minDist)) } : {}),
+        ...(Number.isFinite(maxDist) ? { lte: Math.max(0, Math.floor(maxDist)) } : {}),
+      };
+    }
+
+    if (Number.isFinite(minDur) || Number.isFinite(maxDur)) {
+      where.durationSeconds = {
+        ...(Number.isFinite(minDur) ? { gte: Math.max(0, Math.floor(minDur)) } : {}),
+        ...(Number.isFinite(maxDur) ? { lte: Math.max(0, Math.floor(maxDur)) } : {}),
+      };
+    }
+
+    const [acts, agg] = await Promise.all([
+      this.prisma.activity.findMany({
+        where,
+        orderBy: { startedAt: 'desc' },
+        take: limit,
+        select: {
+          id: true,
+          sport: true,
+          title: true,
+          description: true,
+          startedAt: true,
+          durationSeconds: true,
+          distanceMeters: true,
+          visibility: true,
+          source: true,
+          mapImageUrl: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.activity.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { distanceMeters: true, durationSeconds: true },
+      }),
+    ]);
+
+    const ids = acts.map((a) => a.id);
+    const media = ids.length
+      ? await this.prisma.activityMedia.findMany({
+          where: { activityId: { in: ids }, userId: user.userId, kind: { in: ['photo', 'gpx'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { activityId: true, kind: true, publicUrl: true, storageBucket: true, storagePath: true, createdAt: true },
+        })
+      : [];
+
+    const mediaByActivity = new Map<string, Array<{ kind: string; publicUrl: string | null }>>();
+    for (const m of media) {
+      const list = mediaByActivity.get(m.activityId) ?? [];
+      list.push({ kind: m.kind, publicUrl: m.publicUrl ?? null });
+      mediaByActivity.set(m.activityId, list);
+    }
+
+    const items = acts.map((a) => {
+      const list = mediaByActivity.get(a.id) ?? [];
+      const photos = list.filter((x) => x.kind === 'photo' && x.publicUrl).map((x) => x.publicUrl as string);
+      const hasGpx = list.some((x) => x.kind === 'gpx');
+      return {
+        id: a.id,
+        sport: a.sport,
+        title: a.title ?? null,
+        description: a.description ?? null,
+        startedAt: a.startedAt.toISOString(),
+        durationSeconds: a.durationSeconds,
+        distanceMeters: a.distanceMeters,
+        visibility: a.visibility,
+        source: a.source,
+        mapImageUrl: a.mapImageUrl ?? null,
+        createdAt: a.createdAt.toISOString(),
+        media: {
+          photoCount: photos.length,
+          coverPhotoUrl: photos[0] ?? null,
+          hasGpx,
+        },
+      };
+    });
+
+    return {
+      items,
+      stats: {
+        total: Number(agg._count?._all ?? 0),
+        distanceMeters: Number(agg._sum?.distanceMeters ?? 0),
+        durationSeconds: Number(agg._sum?.durationSeconds ?? 0),
+      },
+    };
+  }
+
   @Post()
   @UseGuards(SupabaseAuthGuard)
   async createActivity(
     @CurrentUser() user: { userId: string },
     @Body() dto: CreateActivityDto,
   ) {
+    const title = String(dto.title || '').trim();
+    if (!title) throw new BadRequestException('Title is required');
+
     const reqStart = process.hrtime.bigint();
     const startedAt = new Date(dto.startedAt);
     if (Number.isNaN(startedAt.getTime())) throw new BadRequestException('Invalid startedAt');
@@ -122,7 +269,7 @@ export class ActivitiesController {
         data: {
           userId: user.userId,
           sport: dto.sport,
-          title: dto.title ?? null,
+          title,
           description: dto.description ?? null,
           startedAt,
           durationSeconds: dto.durationSeconds,
@@ -156,7 +303,7 @@ export class ActivitiesController {
     return { activity };
   }
 
-  @Post(':id/kudos')
+  @Post(':id([0-9a-fA-F-]{36})/kudos')
   @UseGuards(SupabaseAuthGuard)
   async giveKudos(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     const a = await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
@@ -181,7 +328,7 @@ export class ActivitiesController {
     return { kudosCount, commentCount, viewerHasKudo: true };
   }
 
-  @Get(':id/kudos')
+  @Get(':id([0-9a-fA-F-]{36})/kudos')
   @UseGuards(SupabaseAuthGuard)
   async listKudos(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
@@ -222,7 +369,7 @@ export class ActivitiesController {
     };
   }
 
-  @Delete(':id/kudos')
+  @Delete(':id([0-9a-fA-F-]{36})/kudos')
   @UseGuards(SupabaseAuthGuard)
   async removeKudos(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
@@ -246,7 +393,7 @@ export class ActivitiesController {
     return { kudosCount, commentCount, viewerHasKudo: false };
   }
 
-  @Get(':id/comments')
+  @Get(':id([0-9a-fA-F-]{36})/comments')
   @UseGuards(SupabaseAuthGuard)
   async listComments(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     await this.ensureCanViewActivity({ viewerId: user.userId, activityId: id });
@@ -291,7 +438,7 @@ export class ActivitiesController {
     };
   }
 
-  @Post(':id/comments')
+  @Post(':id([0-9a-fA-F-]{36})/comments')
   @UseGuards(SupabaseAuthGuard)
   async addComment(
     @CurrentUser() user: { userId: string },
@@ -334,7 +481,7 @@ export class ActivitiesController {
     };
   }
 
-  @Get(':id')
+  @Get(':id([0-9a-fA-F-]{36})')
   @UseGuards(OptionalSupabaseAuthGuard)
   async getActivity(@Param('id') id: string, @Req() req: Request, @Query('includeRoute') includeRoute?: string) {
     const reqStart = process.hrtime.bigint();
@@ -410,7 +557,7 @@ export class ActivitiesController {
     throw new NotFoundException('Activity not found');
   }
 
-  @Delete(':id')
+  @Delete(':id([0-9a-fA-F-]{36})')
   @UseGuards(SupabaseAuthGuard)
   async deleteActivity(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
     const activity = await this.prisma.activity.findUnique({ where: { id } });
@@ -421,7 +568,7 @@ export class ActivitiesController {
     return { message: 'Deleted' };
   }
 
-  @Post(':id/media')
+  @Post(':id([0-9a-fA-F-]{36})/media')
   @UseGuards(SupabaseAuthGuard)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25 * 1024 * 1024 } }))
   async uploadActivityPhoto(
@@ -523,7 +670,7 @@ export class ActivitiesController {
     if (!accessToken) throw new BadRequestException('Missing access token');
 
     const sport = typeof body?.sport === 'string' ? body.sport : undefined;
-    const title = typeof body?.title === 'string' ? body.title : undefined;
+    const title = typeof body?.title === 'string' ? String(body.title).trim() : '';
     const description = typeof body?.description === 'string' ? body.description : undefined;
     const visibility = typeof body?.visibility === 'string' ? body.visibility : undefined;
     const clubId = typeof body?.clubId === 'string' ? body.clubId : undefined;
@@ -532,6 +679,7 @@ export class ActivitiesController {
     const allowedSport = new Set(['run', 'walk', 'ride']);
     if (visibility && !allowedVisibility.has(visibility)) throw new BadRequestException('Invalid visibility');
     if (sport && !allowedSport.has(sport)) throw new BadRequestException('Invalid sport');
+    if (!title) throw new BadRequestException('Title is required');
 
     const { ms: invokeMs, result: invokeRes } = await time('functions.invoke(import-gpx)', () =>
       service.functions.invoke(functionName, {
@@ -570,7 +718,7 @@ export class ActivitiesController {
         data: {
           userId: user.userId,
           sport: sport ?? 'run',
-          title: title ?? null,
+          title,
           description: description ?? null,
           startedAt,
           durationSeconds: parsed.durationSeconds,

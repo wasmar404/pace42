@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MapPin, Plus, Search, Shuffle, Users, X } from 'lucide-react'
+import { MapPin, Plus, Search, Users, X } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import SegmentedControl from '../components/ui/SegmentedControl'
@@ -48,7 +48,6 @@ export default function Clubs() {
   const [busy,     setBusy]     = useState(false)
 
   const [q,    setQ]    = useState('')
-  const [seed, setSeed] = useState('')
   const discoverToken = useRef(0)
 
   const [showCreate, setShowCreate] = useState(false)
@@ -82,11 +81,11 @@ export default function Clubs() {
     setInvites(inv?.invites || [])
   }
 
-  const refreshDiscover = async (nextQ = trimmed, nextSeed = seed) => {
+  const refreshDiscover = async (nextQ = trimmed) => {
     const tok = Date.now()
     discoverToken.current = tok
     try {
-      const res = await discoverClubs({ take: 8, q: nextQ, seed: nextSeed })
+      const res = await discoverClubs({ take: 8, q: nextQ })
       if (discoverToken.current !== tok) return
       setDiscover(res?.clubs || [])
     } catch (e) {
@@ -102,7 +101,7 @@ export default function Clubs() {
       setLoading(true); setError('')
       try {
         await refreshStatic()
-        await refreshDiscover('', seed)
+        await refreshDiscover('')
         if (cancelled) return
       } catch (e) {
         if (!cancelled) setError(e?.message || 'Failed to load clubs')
@@ -118,11 +117,11 @@ export default function Clubs() {
   useEffect(() => {
     const query = trimmed
     const t = setTimeout(() => {
-      void refreshDiscover(query, seed)
+      void refreshDiscover(query)
     }, query.length >= 2 ? 250 : 0)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trimmed, seed])
+  }, [trimmed])
 
   useEffect(() => {
     let alive = true
@@ -181,7 +180,7 @@ export default function Clubs() {
       form.append('avatar', avatarFile); form.append('banner', bannerFile)
       await createClub(form)
       setShowCreate(false); resetForm()
-      await refreshStatic(); await refreshDiscover(trimmed, seed)
+      await refreshStatic(); await refreshDiscover(trimmed)
     } catch (e2) {
       setError(e2?.message || 'Failed to create club')
     } finally { setBusy(false) }
@@ -189,7 +188,7 @@ export default function Clubs() {
 
   const onJoin = async (id) => {
     setBusy(true); setError('')
-    try { await joinClub(id); await refreshStatic(); await refreshDiscover(trimmed, seed) }
+    try { await joinClub(id); await refreshStatic(); await refreshDiscover(trimmed) }
     catch (e) { setError(e?.message || 'Could not join') }
     finally { setBusy(false) }
   }
@@ -198,14 +197,14 @@ export default function Clubs() {
     setBusy(true); setError('')
     try {
       if (myRole === 'owner') throw new Error('Owner cannot leave the club')
-      await leaveClub(id); await refreshStatic(); await refreshDiscover(trimmed, seed)
+      await leaveClub(id); await refreshStatic(); await refreshDiscover(trimmed)
     } catch (e) { setError(e?.message || 'Could not leave') }
     finally { setBusy(false) }
   }
 
   const onAccept = async (inviteId) => {
     setBusy(true); setError('')
-    try { await acceptInvite(inviteId); await refreshStatic(); await refreshDiscover(trimmed, seed) }
+    try { await acceptInvite(inviteId); await refreshStatic(); await refreshDiscover(trimmed) }
     catch (e) { setError(e?.message || 'Could not accept invite') }
     finally { setBusy(false) }
   }
@@ -234,7 +233,6 @@ export default function Clubs() {
         <header className="clubs-head">
           <div className="clubs-head-left">
             <h1 className="clubs-title">Clubs</h1>
-            <p className="clubs-sub">Search by name, location, or description — sorted by size.</p>
           </div>
           <button className="clubs-primary" type="button" onClick={() => setShowCreate(true)}>
             <Plus size={14} /> Create club
@@ -251,9 +249,6 @@ export default function Clubs() {
               placeholder="Search by name, location, or description…"
             />
           </div>
-          <button className="clubs-tool" type="button" onClick={() => setSeed(String(Date.now()))} aria-label="Shuffle clubs">
-            <Shuffle size={16} />
-          </button>
         </div>
 
         {error  ? <div className="clubs-banner err">{error}</div>  : null}

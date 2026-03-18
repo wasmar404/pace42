@@ -51,10 +51,7 @@ function fmtInputNumber(n) {
 const SPORT_OPTIONS = [
   { value: 'run', label: 'Run', icon: '🏃', color: '#f97316' },
   { value: 'walk', label: 'Walk', icon: '🚶', color: '#22c55e' },
-  { value: 'cycle', label: 'Cycle', icon: '🚴', color: '#3b82f6' },
-  { value: 'swim', label: 'Swim', icon: '🏊', color: '#06b6d4' },
-  { value: 'hike', label: 'Hike', icon: '🥾', color: '#8b5cf6' },
-  { value: 'yoga', label: 'Yoga', icon: '🧘', color: '#ec4899' },
+  { value: 'ride', label: 'Cycle', icon: '🚴', color: '#3b82f6' },
 ]
 
 const VISIBILITY_OPTIONS = [
@@ -186,6 +183,7 @@ export default function AddActivity() {
   }
 
   const submitManual = async () => {
+    if (!String(title || '').trim()) throw new Error('Title is required')
     const dur = toSeconds(hours, minutes, seconds)
     if (!dur) throw new Error('Duration must be greater than 0')
     const meters = toMeters(distanceKm, units)
@@ -196,7 +194,7 @@ export default function AddActivity() {
 
     const payload = {
       sport,
-      title: title || undefined,
+      title: String(title || '').trim(),
       description: description || undefined,
       startedAt: new Date(startedAt).toISOString(),
       durationSeconds: dur,
@@ -218,10 +216,11 @@ export default function AddActivity() {
 
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
+    if (!String(title || '').trim()) throw new Error('Title is required')
     if (postToClub && !postClubId) throw new Error('Choose a club to post to')
     const res = await importGpx(gpxFile, {
       sport,
-      title,
+      title: String(title || '').trim(),
       description,
       visibility,
       clubId: postToClub ? postClubId : undefined,

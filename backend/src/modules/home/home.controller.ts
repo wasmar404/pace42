@@ -239,8 +239,16 @@ export class HomeController {
     if (!Number.isFinite(d) || d <= 0) throw new BadRequestException('Invalid days');
     const windowDays = clamp(Math.floor(d), 1, 31);
 
-    const goal = Number(goalKm ?? 30);
-    const goalDistanceMeters = Math.max(1000, Math.round((Number.isFinite(goal) ? goal : 30) * 1000));
+    const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { weeklyGoalDistanceMeters: true } });
+
+    let goalDistanceMeters: number | null = null;
+    if (typeof p?.weeklyGoalDistanceMeters === 'number' && p.weeklyGoalDistanceMeters > 0) {
+      goalDistanceMeters = Math.max(1000, Math.round(p.weeklyGoalDistanceMeters));
+    } else if (goalKm != null && String(goalKm).trim()) {
+      const goal = Number(goalKm);
+      if (!Number.isFinite(goal) || goal <= 0) throw new BadRequestException('Invalid goalKm');
+      goalDistanceMeters = Math.max(1000, Math.round(goal * 1000));
+    }
 
     const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
 

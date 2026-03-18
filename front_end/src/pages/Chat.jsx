@@ -19,6 +19,8 @@ export default function Chat() {
   const [mutuals, setMutuals] = useState([])
   const [mutualsLoading, setMutualsLoading] = useState(true)
   const [mutualsError, setMutualsError] = useState('')
+  const [presence, setPresence] = useState({})
+  const watchedRef = useRef([])
   const debounceRef = useRef(null)
 
   const itemsUniq = useMemo(() => {
@@ -145,12 +147,44 @@ export default function Chat() {
     void (async () => {
       try {
         s = await getChatSocket()
+        const emitWatch = () => {
+          const ids = watchedRef.current || []
+          if (ids.length) s.emit('presence:watch', { userIds: ids })
+        }
+        const onPresence = (p) => {
+          const id = p?.userId
+          if (!id) return
+          setPresence((prev) => ({
+            ...(prev || {}),
+            [id]: { online: p?.online === true, lastSeenAt: p?.lastSeenAt || null },
+          }))
+        }
+
+        const onPresenceState = (payload) => {
+          const items = payload?.items || []
+          if (!Array.isArray(items)) return
+          setPresence((prev) => {
+            const next = { ...(prev || {}) }
+            for (const it of items) {
+              if (!it?.userId) continue
+              next[it.userId] = { online: it?.online === true, lastSeenAt: it?.lastSeenAt || null }
+            }
+            return next
+          })
+        }
+
+        s.on('presence:update', onPresence)
+        s.on('presence:state', onPresenceState)
+        s.on('connect', emitWatch)
         s.on('message:new', () => {
           void refresh().catch(() => {})
         })
         s.on('conversation:read', () => {
           void refresh().catch(() => {})
         })
+
+        // Initial watch list (will be updated by effect below as data loads)
+        s.emit('presence:watch', { userIds: [] })
       } catch {
         // ignore
       }
@@ -161,6 +195,9 @@ export default function Chat() {
       try {
         s?.off('message:new')
         s?.off('conversation:read')
+        s?.off('presence:update')
+        s?.off('presence:state')
+        s?.off('connect')
       } catch {
         // ignore
       }
@@ -168,6 +205,36 @@ export default function Chat() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    let s
+    let cancelled = false
+    const ids = []
+    for (const c of itemsUniq) {
+      if (c?.otherUser?.id) ids.push(c.otherUser.id)
+    }
+    for (const u of mutualsToShow) {
+      if (u?.id) ids.push(u.id)
+    }
+    const uniq = Array.from(new Set(ids))
+    if (!uniq.length) return
+
+    watchedRef.current = uniq
+
+    void (async () => {
+      try {
+        s = await getChatSocket()
+        if (cancelled) return
+        s.emit('presence:watch', { userIds: uniq })
+      } catch {
+        // ignore
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [itemsUniq, mutualsToShow])
 
   return (
     <div className="chat-page">
@@ -209,21 +276,22 @@ export default function Chat() {
             <div className="chat-mutuals">
               {mutualsToShow.map((u) => {
                 const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || (u?.username ? `@${u.username}` : 'User')
+                const st = u?.id ? presence[u.id] : null
                 return (
                   <button key={u.id} type="button" className="chat-mutual" onClick={() => onPickMutual(u.id)}>
                     <div className="av">
                       <Avatar avatarUrl={u?.avatarUrl} seed={u?.username || u?.id || name} alt="" />
+                      {st ? <span className={st.online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" /> : null}
                     </div>
                     <div className="main">
                       <div className="name">{name}</div>
-                      {u?.username ? <div className="sub">@{u.username}</div> : <div className="sub">Mutual follower</div>}
+                      <div className="sub">
+                        {u?.username ? `@${u.username}` : ''}{u?.username ? ' · ' : ''}{st?.online ? 'Online' : 'Offline'}
+                      </div>
                     </div>
                   </button>
                 )
               })}
-              {!mutualsToShow.length ? (
-                <div className="chat-empty-muted">No mutual followers yet. Follow each other to unlock chat.</div>
-              ) : null}
             </div>
           ) : null}
         </section>
@@ -247,11 +315,17 @@ export default function Chat() {
             <Link to={`/chat/${c.id}`} className="chat-row" key={c.id}>
               <div className="av">
                 <Avatar avatarUrl={c?.otherUser?.avatarUrl} seed={c?.otherUser?.username || c?.otherUser?.id || c?.otherUser?.name} alt="" />
+                {c?.otherUser?.id && presence[c.otherUser.id] ? (
+                  <span className={presence[c.otherUser.id].online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" />
+                ) : null}
               </div>
               <div className="main">
                 <div className="top">
                   <div className="name">{c?.otherUser?.name || 'User'}</div>
-                  <div className="time">{c?.lastMessageAt ? <TimeText iso={c.lastMessageAt} variant="relative" /> : ''}</div>
+                  <div className="time">
+                    <span className="presence-text">{c?.otherUser?.id && presence[c.otherUser.id]?.online ? 'Online' : 'Offline'}</span>
+                    {c?.lastMessageAt ? <TimeText iso={c.lastMessageAt} variant="relative" /> : ''}
+                  </div>
                 </div>
                 <div className="sub">
                   <div className="msg">{c?.lastMessageText || 'Say hello'}</div>
