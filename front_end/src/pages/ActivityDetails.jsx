@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import NavBar from '../components/NavBar'
@@ -8,6 +8,8 @@ import { getActivity } from '../api/activities'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/ActivityDetails.css'
+
+const RouteMap = lazy(() => import('../components/RouteMap'))
 
 const CACHE_MAX_AGE_MS = 2 * 60 * 1000
 
@@ -23,9 +25,17 @@ function formatVisibility(v) {
   return v
 }
 
-// format helpers live in ../utils/format
-
-// time formatting lives in ../components/ui/TimeText
+// Sport emoji accent for the decorative background glyph
+function sportAccent(sport) {
+  if (!sport) return '◎'
+  const s = sport.toLowerCase()
+  if (s === 'run' || s === 'running') return 'RUN'
+  if (s === 'ride' || s === 'cycling' || s === 'bike') return 'RIDE'
+  if (s === 'swim' || s === 'swimming') return 'SWIM'
+  if (s === 'hike' || s === 'hiking') return 'HIKE'
+  if (s === 'walk' || s === 'walking') return 'WALK'
+  return formatSport(sport).toUpperCase().slice(0, 4)
+}
 
 export default function ActivityDetails() {
   const { id } = useParams()
@@ -35,7 +45,6 @@ export default function ActivityDetails() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Instant paint: show cached activity while we refresh.
     try {
       const raw = localStorage.getItem(`pace42.activity.${id}`)
       if (!raw) return
@@ -55,10 +64,9 @@ export default function ActivityDetails() {
       setLoading(true)
       setError('')
       try {
-        const res = await getActivity(id)
+        const res = await getActivity(id, { includeRoute: true })
         if (cancelled) return
         setActivity(res.activity)
-
         try {
           localStorage.setItem(`pace42.activity.${id}`, JSON.stringify({ cachedAt: Date.now(), data: res.activity }))
         } catch {
@@ -67,14 +75,8 @@ export default function ActivityDetails() {
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load activity')
-
-        // If the server says it's gone, don't keep showing stale cache.
         if ((e?.message || '').toLowerCase().includes('not found')) {
-          try {
-            localStorage.removeItem(`pace42.activity.${id}`)
-          } catch {
-            // ignore
-          }
+          try { localStorage.removeItem(`pace42.activity.${id}`) } catch { /* ignore */ }
           setActivity(null)
         }
       } finally {
@@ -82,9 +84,7 @@ export default function ActivityDetails() {
       }
     }
     void run()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [id])
 
   const title = useMemo(() => {
@@ -97,43 +97,91 @@ export default function ActivityDetails() {
       <NavBar />
 
       <div className="activity-wrap">
+
+        {/* ── top nav ── */}
         <div className="activity-top">
-          <Link className="activity-back" to="/activities/new">← New activity</Link>
+          <Link className="activity-back" to="/activities/new">
+            New activity
+          </Link>
         </div>
 
         {error ? <div className="activity-error">{error}</div> : null}
 
-        <div className="activity-card">
-          <div className="activity-card-head">
-            <h1 className="activity-title">{title}</h1>
-            <div className="activity-sub">
-              <Pill accent>{formatSport(activity?.sport)}</Pill>
-              <Pill><TimeText iso={activity?.startedAt} variant="datetime-long" /></Pill>
-              <Pill>{formatVisibility(activity?.visibility)}</Pill>
-              <Pill>{activity?.source || '-'}</Pill>
-            </div>
+        {/* ══ HERO HEADER ══ */}
+        <div className="activity-hero">
+          {/* big decorative sport word in the background */}
+          <div className="activity-hero-accent" aria-hidden="true">
+            {sportAccent(activity?.sport)}
           </div>
 
+          {/* sport tag */}
+          <div className="activity-sport-tag">
+            {formatSport(activity?.sport)}
+          </div>
+
+          {/* title */}
+          <h1 className="activity-title">{title}</h1>
+
+          {/* meta pills */}
+          <div className="activity-meta-row">
+            <Pill>
+              <TimeText iso={activity?.startedAt} variant="datetime-long" />
+            </Pill>
+            <Pill>{formatVisibility(activity?.visibility)}</Pill>
+            {activity?.source ? <Pill>{activity.source}</Pill> : null}
+          </div>
+        </div>
+
+        {/* thin ember divider */}
+        <div className="activity-divider" />
+
+        {/* ══ BODY CARD ══ */}
+        <div className="activity-card">
           <div className="activity-body">
-            {loading ? <div className="activity-empty">Loading...</div> : null}
+
+            {loading && !activity ? (
+              <div className="activity-empty">Loading…</div>
+            ) : null}
 
             {activity ? (
               <>
+                {/* ── stats ── */}
                 <div className="stat-grid">
-                    <div className="stat">
-                      <div className="stat-k">DISTANCE</div>
-                      <div className="stat-v">{formatDistance(activity.distanceMeters, units)}</div>
-                    </div>
-                    <div className="stat">
-                      <div className="stat-k">DURATION</div>
-                      <div className="stat-v">{formatDuration(activity.durationSeconds)}</div>
-                    </div>
-                    <div className="stat">
-                      <div className="stat-k">PACE/SPEED</div>
-                      <div className="stat-v">{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}</div>
+                  <div className="stat">
+                    <div className="stat-k">Distance</div>
+                    <div className="stat-v">{formatDistance(activity.distanceMeters, units)}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-k">Duration</div>
+                    <div className="stat-v">{formatDuration(activity.durationSeconds)}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-k">Pace / Speed</div>
+                    <div className="stat-v">
+                      {formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}
                     </div>
                   </div>
+                </div>
 
+                {/* ── map ── */}
+                {activity?.routePolyline ? (
+                  <div className="activity-map">
+                    <Suspense fallback={<div className="activity-empty">Loading map…</div>}>
+                      <RouteMap polyline={activity.routePolyline} height={280} variant="clean" />
+                    </Suspense>
+                  </div>
+                ) : activity?.mapImageUrl ? (
+                  <div className="activity-map">
+                    <img
+                      className="activity-map-img"
+                      src={activity.mapImageUrl}
+                      alt="Route map"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : null}
+
+                {/* ── description ── */}
                 {activity.description ? (
                   <div className="activity-desc">{activity.description}</div>
                 ) : (
@@ -141,8 +189,10 @@ export default function ActivityDetails() {
                 )}
               </>
             ) : null}
+
           </div>
         </div>
+
       </div>
     </div>
   )

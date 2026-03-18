@@ -164,10 +164,15 @@ export default function Home() {
                   No clubs yet. <Link to="/clubs" className="inline-link">Create one</Link>
                 </div>
               ) : (
-                <div className="clubs-mini">
+                  <div className="clubs-mini">
                   {myClubs.slice(0, 3).map((c) => (
                     <div key={c.id} className="club-mini">
-                      <div className="n">{c.name}</div>
+                      <div className="n">
+                        <span className="c-av">
+                          <Avatar avatarUrl={c.avatarUrl} seed={c.name || c.id} alt="" size={18} />
+                        </span>
+                        <span>{c.name}</span>
+                      </div>
                       <div className="s">{c.memberCount} members</div>
                     </div>
                   ))}

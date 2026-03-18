@@ -244,6 +244,15 @@ export class ActivitiesController {
     };
   }
 
+  private validateStartedAt(d: Date, errMsg: string) {
+    if (Number.isNaN(d.getTime())) throw new BadRequestException(errMsg);
+    const now = new Date();
+    const year = d.getUTCFullYear();
+    const cur = now.getUTCFullYear();
+    if (year < 1900 || year > cur) throw new BadRequestException(errMsg);
+    if (d.getTime() > now.getTime() + 60_000) throw new BadRequestException('startedAt cannot be in the future');
+  }
+
   @Post()
   @UseGuards(SupabaseAuthGuard)
   async createActivity(
@@ -255,7 +264,7 @@ export class ActivitiesController {
 
     const reqStart = process.hrtime.bigint();
     const startedAt = new Date(dto.startedAt);
-    if (Number.isNaN(startedAt.getTime())) throw new BadRequestException('Invalid startedAt');
+    this.validateStartedAt(startedAt, 'Invalid startedAt');
 
     let visibility = dto.visibility ?? 'public';
     if (!['public', 'followers', 'only_me'].includes(visibility)) visibility = 'public';
@@ -707,7 +716,7 @@ export class ActivitiesController {
     };
 
     const startedAt = new Date(parsed.startedAt);
-    if (Number.isNaN(startedAt.getTime())) throw new BadRequestException('Invalid startedAt from parser');
+    this.validateStartedAt(startedAt, 'Invalid startedAt from parser');
 
     let finalVisibility = visibility ?? 'public';
     const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });

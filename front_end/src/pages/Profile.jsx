@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { 
   MapPin, 
   Calendar, 
@@ -88,6 +88,7 @@ const SPORT_ICONS = {
 }
 
 export default function Profile() {
+  const navigate = useNavigate()
   const units = useUnitsValue()
   const [me, setMe] = useState(null)
   const [activities, setActivities] = useState([])
@@ -269,7 +270,7 @@ export default function Profile() {
                     )}
                     <span className="badge badge-public">
                       <Zap size={12} />
-                      Public
+                      {me?.profile?.isPrivate ? 'Private' : 'Public'}
                     </span>
                   </div>
                 </div>
@@ -356,11 +357,20 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="workouts-list">
-                    {recent.map((activity, index) => (
-                      <article 
-                        key={activity.id} 
+                      {recent.map((activity, index) => (
+                      <article
+                        key={activity.id}
                         className="workout-item"
                         style={{ animationDelay: `${index * 100}ms` }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/activities/${activity.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            navigate(`/activities/${activity.id}`)
+                          }
+                        }}
                       >
                         <div className="workout-main">
                           <div className="workout-sport">
@@ -372,9 +382,7 @@ export default function Profile() {
                           <div className="workout-details">
                             <div className="workout-header">
                               <h3>
-                                <Link to={`/activities/${activity.id}`}>
-                                  {activity.title || `${activity.sport} activity`}
-                                </Link>
+                                {activity.title || `${activity.sport} activity`}
                               </h3>
                               <span className="workout-date">
                                 {formatWhen(activity.startedAt)}
@@ -430,7 +438,7 @@ export default function Profile() {
                 )}
                 
                 {recent.length > 0 && (
-                  <Link to="/activities" className="view-all-link">
+                  <Link to="/training" className="view-all-link">
                     View all activities
                     <ChevronRight size={16} />
                   </Link>

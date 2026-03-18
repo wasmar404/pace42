@@ -4,8 +4,9 @@ export function createActivity(input) {
   return backendJson('POST', '/api/activities', input)
 }
 
-export function getActivity(id) {
-  return backendGet(`/api/activities/${id}`)
+export function getActivity(id, { includeRoute = false } = {}) {
+  const qs = includeRoute ? '?includeRoute=1' : ''
+  return backendGet(`/api/activities/${id}${qs}`)
 }
 
 export function listMyActivities(params = {}) {

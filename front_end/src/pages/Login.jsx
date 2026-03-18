@@ -22,6 +22,7 @@ export default function Login() {
             const map = {
                 intra_not_registered: 'No Intra account found. Use Intra signup first.',
                 email_used_by_other_method: 'This email is already used by another sign-in method.',
+                already_registered: 'Account already exists. Please log in instead of signing up again.',
                 intra_token_exchange_failed: 'Intra sign-in failed (token exchange).',
                 intra_profile_failed: 'Intra sign-in failed (profile).',
                 intra_magiclink_failed: 'Intra sign-in failed (session).',

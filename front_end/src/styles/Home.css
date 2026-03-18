@@ -1106,8 +1106,33 @@
 }
 
 .club-mini .n {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 950;
   color: rgba(11, 18, 32, 0.90);
+}
+
+.club-mini .c-av {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(11, 18, 32, 0.12);
+  background: rgba(11, 18, 32, 0.04);
+  display: inline-block;
+}
+
+.club-mini .c-av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+:root[data-theme="dark"] .club-mini .c-av {
+  border-color: rgba(255, 250, 242, 0.14);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .club-mini .s {

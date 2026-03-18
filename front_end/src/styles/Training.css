@@ -624,6 +624,12 @@
   background: rgba(255, 255, 255, 0.82);
   padding: 12px;
   animation: trainingRise 420ms ease both;
+  cursor: pointer;
+}
+
+.workout-item:focus-visible {
+  outline: 3px solid rgba(252, 76, 2, 0.28);
+  outline-offset: 3px;
 }
 
 :root[data-theme="dark"] .workout-item {

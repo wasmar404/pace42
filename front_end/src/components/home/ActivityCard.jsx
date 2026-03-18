@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, ChevronRight, Heart, MessageCircle, Mountain } from 'lucide-react'
+import { Calendar, ChevronRight, Heart, MessageCircle } from 'lucide-react'
 
 import Avatar from '../Avatar'
 import Pill from '../ui/Pill'
@@ -96,20 +96,17 @@ export default function ActivityCard({ item, meId, units, onOpenSocial, onSocial
           </div>
         </div>
 
-        <div className="media">
-          {a?.routePolyline ? (
-            <Suspense fallback={<div className="media-fallback">Loading map...</div>}>
-              <RouteMap polyline={a.routePolyline} height={210} variant="clean" />
-            </Suspense>
-          ) : a?.imageUrl ? (
-            <img className="media-img" src={a.imageUrl} alt="Activity" loading="lazy" />
-          ) : (
-            <div className="media-fallback">
-              <Mountain size={18} />
-              No map preview
-            </div>
-          )}
-        </div>
+        {a?.routePolyline || a?.imageUrl ? (
+          <div className="media">
+            {a?.routePolyline ? (
+              <Suspense fallback={<div className="media-fallback">Loading map...</div>}>
+                <RouteMap polyline={a.routePolyline} height={210} variant="clean" />
+              </Suspense>
+            ) : (
+              <img className="media-img" src={a.imageUrl} alt="Activity" loading="lazy" />
+            )}
+          </div>
+        ) : null}
       </div>
 
       <footer className="feed-foot">

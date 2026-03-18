@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Activity, CalendarDays, ChevronDown, ChevronRight, Clock, Filter, List, Route, Search, SlidersHorizontal, TrendingUp, X, Zap } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
@@ -78,6 +78,7 @@ function filterSublabel(key, units) {
 }
 
 export default function Training() {
+  const navigate = useNavigate()
   const units = useUnitsValue()
 
   const [me, setMe] = useState(null)
@@ -260,7 +261,6 @@ export default function Training() {
             <div className="k">Training</div>
             <h1>Your workouts</h1>
           </div>
-          {who ? <div className="training-who">Signed in as <span className="mono">{who}</span></div> : null}
           <Link className="training-new" to="/activities/new">Log activity</Link>
         </header>
 
@@ -412,6 +412,15 @@ export default function Training() {
                   key={activity.id}
                   className="workout-item"
                   style={{ animationDelay: `${index * 60}ms` }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/activities/${activity.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate(`/activities/${activity.id}`)
+                    }
+                  }}
                 >
                   <div className="workout-main">
                     <div className="workout-sport">
@@ -420,11 +429,7 @@ export default function Training() {
 
                     <div className="workout-details">
                       <div className="workout-header">
-                        <h3>
-                          <Link to={`/activities/${activity.id}`}>
-                            {activity.title || `${activity.sport} activity`}
-                          </Link>
-                        </h3>
+                        <h3>{activity.title || `${activity.sport} activity`}</h3>
                         <span className="workout-date">{formatWhen(activity.startedAt)}</span>
                       </div>
 

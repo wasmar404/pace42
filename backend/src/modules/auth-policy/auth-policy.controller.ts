@@ -118,6 +118,18 @@ export class AuthPolicyController {
 
     const meta = (user.user_metadata ?? {}) as any;
     const oauthSignedUp = meta.oauthSignedUp === true;
+    const oauthProvider = String(meta.oauthProvider ?? '').toLowerCase();
+
+    // Prevent users from using the signup flow again for an existing account.
+    // We can't stop Supabase from redirecting back, but we can block app access and
+    // force them to use the login flow.
+    if (mode === 'signup') {
+      const tooOldForSignup = ageMs > 60 * 60 * 1000; // 60 minutes
+      const alreadySignedUpWithThisMethod = oauthSignedUp && (!oauthProvider || oauthProvider === method);
+      if (alreadySignedUpWithThisMethod || tooOldForSignup) {
+        throw new ForbiddenException('Account already exists. Please log in instead of signing up again.');
+      }
+    }
 
     // Intra uses an admin-generated magic link, so it shows up as email provider.
     // We enforce it using user_metadata.signupMethod.

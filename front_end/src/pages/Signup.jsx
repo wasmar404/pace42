@@ -18,6 +18,9 @@ export default function Signup() {
         setError("");
         setLoading(true);
         try {
+            if (String(password || '').length < 8) {
+                throw new Error('Password must be at least 8 characters')
+            }
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -110,6 +113,7 @@ export default function Signup() {
                         className="pass-in"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        minLength={8}
                     />
                     {error ? <p className="terms dark-text">{error}</p> : null}
                     <button className="sign-button full" type="submit" disabled={loading}>

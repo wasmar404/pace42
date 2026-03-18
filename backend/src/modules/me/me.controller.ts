@@ -282,7 +282,7 @@ export class MeController {
   async exportData(@CurrentUser() user: { userId: string; email?: string }) {
     const userId = user.userId;
 
-    const [profile, activities, activityMedia, commentsGiven, commentsReceived, kudosGiven, kudosReceived, following, followers, clubMemberships, clubPosts] =
+    const [profile, activities, activityMedia, commentsGiven, commentsReceived, kudosGiven, kudosReceived, following, followers, clubMemberships, clubPosts, convoParts] =
       await Promise.all([
         this.prisma.profile.findUnique({ where: { userId } }),
         this.prisma.activity.findMany({
@@ -367,7 +367,73 @@ export class MeController {
             },
           },
         }),
+
+        this.prisma.conversationParticipant.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            conversationId: true,
+            unreadCount: true,
+            lastReadAt: true,
+            createdAt: true,
+            conversation: {
+              select: {
+                id: true,
+                createdAt: true,
+                updatedAt: true,
+                lastMessageAt: true,
+                lastMessageText: true,
+                lastSenderId: true,
+              },
+            },
+          },
+        }),
       ]);
+
+    const conversationIds = convoParts.map((p) => p.conversationId);
+
+    const [allParts, messages] = await Promise.all([
+      conversationIds.length
+        ? this.prisma.conversationParticipant.findMany({
+            where: { conversationId: { in: conversationIds } },
+            select: { conversationId: true, userId: true },
+          })
+        : Promise.resolve([]),
+      conversationIds.length
+        ? this.prisma.message.findMany({
+            where: { conversationId: { in: conversationIds } },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, conversationId: true, senderId: true, body: true, createdAt: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const participantIds = Array.from(new Set(allParts.map((p) => p.userId)));
+    const chatProfiles = participantIds.length
+      ? await this.prisma.profile.findMany({
+          where: { userId: { in: participantIds } },
+          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+        })
+      : [];
+
+    const participantsByConvo = new Map<string, string[]>();
+    for (const p of allParts) {
+      const list = participantsByConvo.get(p.conversationId) ?? [];
+      list.push(p.userId);
+      participantsByConvo.set(p.conversationId, list);
+    }
+
+    const messagesByConvo = new Map<string, any[]>();
+    for (const m of messages) {
+      const list = messagesByConvo.get(m.conversationId) ?? [];
+      list.push({
+        id: m.id,
+        senderId: m.senderId,
+        body: m.body,
+        createdAt: m.createdAt.toISOString(),
+      });
+      messagesByConvo.set(m.conversationId, list);
+    }
 
     const mediaByActivity = new Map<string, any[]>();
     for (const m of activityMedia) {
@@ -443,6 +509,29 @@ export class MeController {
             : null,
         })),
       },
+
+      chat: {
+        participants: chatProfiles.map((p) => ({
+          id: p.userId,
+          username: p.username ?? null,
+          firstName: p.firstName ?? null,
+          lastName: p.lastName ?? null,
+          avatarUrl: p.avatarUrl ?? null,
+        })),
+        conversations: convoParts.map((p) => ({
+          id: p.conversationId,
+          createdAt: p.conversation?.createdAt?.toISOString?.() ?? null,
+          updatedAt: p.conversation?.updatedAt?.toISOString?.() ?? null,
+          lastMessageAt: p.conversation?.lastMessageAt ? p.conversation.lastMessageAt.toISOString() : null,
+          lastMessageText: p.conversation?.lastMessageText ?? null,
+          lastSenderId: p.conversation?.lastSenderId ?? null,
+          unreadCount: p.unreadCount ?? 0,
+          lastReadAt: p.lastReadAt ? p.lastReadAt.toISOString() : null,
+          participantIds: participantsByConvo.get(p.conversationId) ?? [userId],
+          messageCount: (messagesByConvo.get(p.conversationId) ?? []).length,
+        })),
+        messagesByConversationId: Object.fromEntries(Array.from(messagesByConvo.entries())),
+      },
     };
   }
 
@@ -461,6 +550,14 @@ export class MeController {
       if (!ext) return '';
       if (ext.length > 12) return '';
       return ext;
+    };
+    const extFromUrl = (u: string) => {
+      try {
+        const url = new URL(u);
+        return extFromPath(url.pathname);
+      } catch {
+        return extFromPath(u);
+      }
     };
     const json = (obj: any) => JSON.stringify(obj, null, 2);
 
@@ -492,6 +589,21 @@ export class MeController {
     archive.append(json(exportObj?.comments ?? {}), { name: 'comments.json' });
     archive.append(json(exportObj?.likes ?? {}), { name: 'likes.json' });
     archive.append(json(exportObj?.clubs ?? {}), { name: 'clubs.json' });
+    archive.append(json(exportObj?.chat ?? {}), { name: 'chat/chat.json' });
+
+    // Profile media (download actual avatar image)
+    const avatarUrl = String(exportObj?.profile?.avatarUrl ?? '').trim();
+    if (avatarUrl) {
+      const ext = extFromUrl(avatarUrl) || '.jpg';
+      try {
+        const r = await fetch(avatarUrl);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        archive.append(buf, { name: `profile/avatar${ext}` });
+      } catch (e: any) {
+        errors.push({ kind: 'profile_avatar', id: userId, detail: String(e?.message || e) });
+      }
+    }
 
     // Workouts
     const workouts = Array.isArray(exportObj?.workouts) ? exportObj.workouts : [];
@@ -548,6 +660,21 @@ export class MeController {
           errors.push({ kind: 'club_post_media', id: postId, detail: String(e?.message || e) });
         }
       }
+    }
+
+    // Chat exports
+    const chat = exportObj?.chat || {};
+    const convos = Array.isArray(chat?.conversations) ? chat.conversations : [];
+    const parts = Array.isArray(chat?.participants) ? chat.participants : [];
+    const byConvo = chat?.messagesByConversationId && typeof chat.messagesByConversationId === 'object' ? chat.messagesByConversationId : {};
+
+    archive.append(json(convos), { name: 'chat/conversations.json' });
+    archive.append(json(parts), { name: 'chat/participants.json' });
+    for (const c of convos) {
+      const cid = String(c?.id || '');
+      if (!cid) continue;
+      const msgs = Array.isArray(byConvo?.[cid]) ? byConvo[cid] : [];
+      archive.append(json(msgs), { name: `chat/messages/${safeSeg(cid)}.json` });
     }
 
     archive.append(

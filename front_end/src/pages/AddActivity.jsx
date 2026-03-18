@@ -48,6 +48,22 @@ function fmtInputNumber(n) {
   return s.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')
 }
 
+function validateStartedAt(value) {
+  const raw = String(value || '').trim()
+  if (!raw) throw new Error('Choose a date/time')
+
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) throw new Error('Invalid date/time')
+
+  const year = d.getFullYear()
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  if (year < 1900 || year > currentYear) throw new Error('Invalid date/time')
+  if (d.getTime() > now.getTime() + 60_000) throw new Error('Date/time cannot be in the future')
+
+  return d
+}
+
 const SPORT_OPTIONS = [
   { value: 'run', label: 'Run', icon: '🏃', color: '#f97316' },
   { value: 'walk', label: 'Walk', icon: '🚶', color: '#22c55e' },
@@ -124,6 +140,17 @@ export default function AddActivity() {
   const [busy, setBusy] = useState(false)
   const [activeSection, setActiveSection] = useState('details')
 
+  const maxStartedAt = useMemo(() => {
+    const d = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    const mm = pad(d.getMonth() + 1)
+    const dd = pad(d.getDate())
+    const hh = pad(d.getHours())
+    const mi = pad(d.getMinutes())
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+  }, [])
+
   async function runWithConcurrency(items, limit, fn) {
     const results = []
     const queue = [...items]
@@ -188,7 +215,7 @@ export default function AddActivity() {
     if (!dur) throw new Error('Duration must be greater than 0')
     const meters = toMeters(distanceKm, units)
     if (!meters) throw new Error('Distance must be a number')
-    if (!startedAt) throw new Error('Choose a date/time')
+    const started = validateStartedAt(startedAt)
 
     if (postToClub && !postClubId) throw new Error('Choose a club to post to')
 
@@ -196,7 +223,7 @@ export default function AddActivity() {
       sport,
       title: String(title || '').trim(),
       description: description || undefined,
-      startedAt: new Date(startedAt).toISOString(),
+      startedAt: started.toISOString(),
       durationSeconds: dur,
       distanceMeters: meters,
       visibility,
@@ -365,6 +392,7 @@ export default function AddActivity() {
                         value={startedAt}
                         onChange={(e) => setStartedAt(e.target.value)}
                         className="text-input"
+                        max={maxStartedAt}
                       />
                     </div>
 
