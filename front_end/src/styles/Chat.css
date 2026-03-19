@@ -37,8 +37,9 @@
   gap: 8px;
   padding: 8px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(11, 18, 32, 0.12);
+  background: rgba(255, 255, 255, 0.747);
+  color: #fc4c02;
+  border: 1px solid #b0b3b9;
   font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
 }
 
@@ -71,7 +72,7 @@
 
 .chat-search-row input {
   border-radius: 16px;
-  border: 1px solid rgba(11, 18, 32, 0.14);
+  border: 1px solid #fc4c02;
   background: rgba(255, 255, 255, 0.92);
   padding: 12px 12px;
   outline: none;
@@ -88,8 +89,9 @@
   gap: 8px;
   border-radius: 999px;
   padding: 10px 12px;
-  border: 1px solid rgba(11, 18, 32, 0.16);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #fc4c02;
+  background: #fc4c02;
+  color: #fff;
   font-weight: 950;
   cursor: pointer;
 }
@@ -276,17 +278,21 @@
   padding: 14px;
   border-radius: 18px;
   border: 1px dashed rgba(11, 18, 32, 0.18);
-  background: rgba(255, 255, 255, 0.66);
+  background: rgba(255, 255, 255, 0.747);
 }
 
 .chat-empty .icon {
   width: 44px;
   height: 44px;
   border-radius: 16px;
-  background: rgba(252, 76, 2, 0.10);
-  border: 1px solid rgba(252, 76, 2, 0.20);
+  background: rgba(190, 174, 167, 0.1);
+  border: 1px solid #b0b3b9;
   display: grid;
   place-items: center;
+}
+
+.chat-empty .icon .lucide-message-circle {
+  color: #fc4c02;
 }
 
 .chat-empty .t {
@@ -304,8 +310,9 @@
   gap: 8px;
   border-radius: 999px;
   padding: 10px 12px;
-  border: 1px solid rgba(11, 18, 32, 0.16);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #fc4c02;
+  background: #fc4c02;
+  color: #fff;
   font-weight: 950;
   cursor: pointer;
 }

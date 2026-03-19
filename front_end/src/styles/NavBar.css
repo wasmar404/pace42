@@ -250,9 +250,9 @@ body {
 
 .nav-notif-x {
   appearance: none;
-  border: 1px solid rgba(11, 18, 32, 0.18);
-  background: rgba(255, 255, 255, 0.6);
-  color: rgba(11, 18, 32, 0.74);
+  border: 1px solid #fc4c02;
+  background: #fc4c02;
+  color: #fff;
   border-radius: 999px;
   padding: 6px 10px;
   font-family: var(--p42-mono);
@@ -377,6 +377,7 @@ body {
   display: block;
   padding: 10px 10px;
   border-radius: 12px;
+  border: 1px solid transparent;
   text-decoration: none;
   color: var(--p42-ink);
   font-family: var(--p42-font);
@@ -384,7 +385,8 @@ body {
 }
 
 .nav-plus-item:hover {
-  background: rgba(16, 185, 129, 0.10);
+  background: transparent;
+  border-color: #fc4c02;
   color: var(--p42-ink);
 }
 
@@ -446,14 +448,15 @@ body {
   font-family: var(--p42-font);
   font-weight: 900;
   background: transparent;
-  border: 0;
+  border: 1px solid transparent;
   width: 100%;
   text-align: left;
   cursor: pointer;
 }
 
 .nav-avatar-item:hover {
-  background: rgba(16, 185, 129, 0.10);
+  background: transparent;
+  border-color: #fc4c02;
   color: var(--p42-ink);
 }
 

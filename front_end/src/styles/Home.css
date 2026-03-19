@@ -878,16 +878,21 @@
   flex: 1;
   text-align: center;
   border-radius: 999px;
-  border: 1px solid rgba(11, 18, 32, 0.14);
-  background: rgba(255, 255, 255, 0.78);
-  color: rgba(11, 18, 32, 0.80);
+  border: 1px solid #fc4c02;
+  background: #fc4c02;
+  color: #fff;
   font-weight: 950;
   padding: 10px 12px;
   text-decoration: none;
+  box-shadow: 0 10px 24px rgba(252, 76, 2, 0.24);
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
 .ath-link:hover {
-  border-color: rgba(252, 76, 2, 0.22);
+  border-color: #fc4c02;
+  background: #e74600;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(252, 76, 2, 0.30);
 }
 
 .w-h {
@@ -912,8 +917,8 @@
   border-radius: 999px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(252, 76, 2, 0.10);
+  border: 1px solid #b0b3b9;
+  background: rgba(255, 255, 255, 0.747);
   color: rgba(252, 76, 2, 0.92);
 }
 
@@ -1171,8 +1176,8 @@
   border-radius: 16px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(252, 76, 2, 0.10);
+  border: 1px solid #b0b3b9;
+  background: rgba(255, 255, 255, 0.747);
   color: rgba(252, 76, 2, 0.92);
 }
 
@@ -1189,7 +1194,7 @@
 .cta {
   border-radius: 999px;
   border: 1px solid rgba(11, 18, 32, 0.16);
-  background: rgba(11, 18, 32, 0.92);
+  background: #fc4c02;
   color: rgba(255, 255, 255, 0.92);
   font-weight: 950;
   padding: 10px 12px;
