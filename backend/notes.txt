@@ -1,6 +1,0 @@
-npx prisma migrate dev --name init
-npx prisma migrate deploy
-npx prisma validate
-
-DATABASE_URL="postgresql://postgres.vxwmbmgxblusfrdmfcvd:Fsl4qwn3oWp5@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.vxwmbmgxblusfrdmfcvd:Fsl4qwn3oWp5@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
