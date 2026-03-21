@@ -2,10 +2,21 @@ npx prisma migrate dev --name init
 npx prisma migrate deploy
 npx prisma validate
 
+#APIs
 
 GET /api/health  →  returns { ok: true }  health.controller.ts
 
 
+#Custom decorators
+
+@CurrentUser() is a decorator that returns the currently logged-in user object.
+
+
+
+# Guards
+
+SupabaseAuthGuard : Reject if no/invalid token (if user not logged in)
+OptionalSupabaseAuthGuard:Always allow request( if loggend in or not)
 
 
 Filters run automatically when i throw an error or when NestJS throws one. The filter formats all errors in one consistent way.
@@ -19,3 +30,6 @@ The filter returns errors in this format:
 }
 
 Middleware runs in this order: incoming request → middleware → controller → response.
+
+
+

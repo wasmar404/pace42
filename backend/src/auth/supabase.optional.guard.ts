@@ -1,77 +1,28 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-
 import { verifySupabaseAccessToken } from './supabase.jwt';
 import type { SupabaseRequestAuth, SupabaseRequestUser } from './supabase.guard';
-
-function readBearerToken(ctx: ExecutionContext): string | null {
-  const req = ctx.switchToHttp().getRequest();
-  const header = (req.headers?.authorization ?? req.headers?.Authorization) as string | undefined;
-  if (!header) return null;
-  const [kind, token] = header.split(' ');
-  if (kind !== 'Bearer' || !token) return null;
-  return token;
-}
+import { readBearerToken } from './supabase.guard';
 
 @Injectable()
 export class OptionalSupabaseAuthGuard implements CanActivate {
-  private readonly tokenCache = new Map<string, { userId: string; email?: string; expiresAt: number }>();
-
   constructor(private readonly config: ConfigService) {}
-
-  private cacheGet(token: string) {
-    const v = this.tokenCache.get(token);
-    if (!v) return null;
-    if (Date.now() > v.expiresAt) {
-      this.tokenCache.delete(token);
-      return null;
-    }
-    return v;
-  }
-
-  private cacheSet(token: string, userId: string, email?: string) {
-    const TTL_MS = 60_000;
-    const MAX = 500;
-    this.tokenCache.set(token, { userId, email, expiresAt: Date.now() + TTL_MS });
-    if (this.tokenCache.size <= MAX) return;
-    const firstKey = this.tokenCache.keys().next().value as string | undefined;
-    if (firstKey) this.tokenCache.delete(firstKey);
-  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const token = readBearerToken(context);
     if (!token) return true;
 
-    const cached = this.cacheGet(token);
-    if (cached) {
-      const req = context.switchToHttp().getRequest();
-      req.user = { userId: cached.userId, email: cached.email } satisfies SupabaseRequestUser;
-      req.supabaseAuth = { accessToken: token } satisfies SupabaseRequestAuth;
-      return true;
-    }
-
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseJwtSecret = this.config.get<string>('SUPABASE_JWT_SECRET');
-
     try {
       const decoded = await verifySupabaseAccessToken({
         token,
-        supabaseUrl,
-        supabaseAnonKey,
-        supabaseJwtSecret,
+        supabaseUrl: this.config.getOrThrow<string>('SUPABASE_URL'),
+        supabaseAnonKey: this.config.getOrThrow<string>('SUPABASE_ANON_KEY'),
       });
-      this.cacheSet(token, decoded.userId, decoded.email);
 
       const req = context.switchToHttp().getRequest();
-      req.user = {
-        userId: decoded.userId,
-        email: decoded.email,
-      } satisfies SupabaseRequestUser;
-      req.supabaseAuth = {
-        accessToken: token,
-      } satisfies SupabaseRequestAuth;
+      req.user = { userId: decoded.userId, email: decoded.email } satisfies SupabaseRequestUser;
+      req.supabaseAuth = { accessToken: token } satisfies SupabaseRequestAuth;
     } catch {
       // optional guard: ignore invalid token
     }
