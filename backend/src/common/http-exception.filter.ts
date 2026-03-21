@@ -1,65 +1,32 @@
 import {
-  ArgumentsHost,//gives access to request/response objects
-  Catch,//decorator that tells NestJS this is an error catcher
+  ArgumentsHost,
+  Catch,
   ExceptionFilter,
-  HttpException,//base class for Nest HTTP errors (BadRequest, Unauthorized, etc.)
-  HttpStatus,//enum of status codes (400, 401, 500…)
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-@Catch() // Catch ALL errors
+
+@Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-
   catch(error: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Request>();
+    const response = ctx.getResponse<Response>();
 
-    const context = host.switchToHttp();
-    const request = context.getRequest<Request>();
-    const response = context.getResponse<Response>();
+    const statusCode =
+      error instanceof HttpException
+        ? error.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR; //check if the error is part of http exception, if not then return 500 internal server error
 
-    let statusCode: number;
-    let message: string;
-    let details: string | undefined;
+    const message =
+      error instanceof HttpException ? error.message : 'Internal server error'; //if the error is part of http exception then return the message, if not then return internal server error
 
-    if (error instanceof HttpException) {
-      statusCode = error.getStatus();
-
-      const errorResponse = error.getResponse();
-
-      // Extract message safely
-      if (typeof errorResponse === 'string') {
-        message = errorResponse;
-      } else {
-        message =
-          (errorResponse as any).message || 'Something went wrong';
-      }
-
-    } else {
-      // If it's an unexpected error
-      statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = 'Internal server error';
-
-      if (error instanceof Error) {
-        // Log server-side for debugging
-        // eslint-disable-next-line no-console
-        console.error(error);
-
-        // In development, return the actual error message to help debugging.
-        if ((process.env.NODE_ENV ?? 'development') !== 'production') {
-          details = error.message;
-        }
-      }
-    }
-
-    // Send clean, consistent response
     response.status(statusCode).json({
-      error: {
-        statusCode,
-        message,
-        ...(details ? { details } : {}),
-        path: request.url,
-        timestamp: new Date().toISOString(),
-      },
+      statusCode,
+      message,
+      path: request.url,
+      timestamp: new Date().toISOString(),
     });
   }
 }
-// This is a Global Exception Filter in NestJS.
-// Its job is to catch errors and return a clean, consistent JSON response instead of messy default errors.
