@@ -23,31 +23,60 @@ model Profile {
   onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   isPrivate             Boolean   @default(false) @map("is_private")
+  weeklyGoalDistanceMeters Int?   @map("weekly_goal_distance_meters")
 
   @@map("profiles")
 }
 
 model Activity {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String          @map("user_id") @db.Uuid
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
   sport           String
   title           String?
   description     String?
-  startedAt       DateTime        @map("started_at") @db.Timestamptz(6)
-  durationSeconds Int             @map("duration_seconds")
-  distanceMeters  Int             @map("distance_meters")
+  startedAt       DateTime          @map("started_at") @db.Timestamptz(6)
+  durationSeconds Int               @map("duration_seconds")
+  distanceMeters  Int               @map("distance_meters")
   visibility      String
   source          String
-  routePolyline   String?         @map("route_polyline")
-  mapImageUrl     String?         @map("map_image_url")
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  routePolyline   String?           @map("route_polyline")
+  mapImageUrl     String?           @map("map_image_url")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
   media           ActivityMedia[]
+  kudos           ActivityKudo[]
+  comments        ActivityComment[]
+  clubPosts       ClubPost[]
 
   @@index([userId])
   @@index([startedAt])
   @@index([visibility])
   @@map("activities")
+}
+
+model ActivityKudo {
+  activityId String   @map("activity_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, userId])
+  @@index([userId])
+  @@index([activityId])
+  @@map("activity_kudos")
+}
+
+model ActivityComment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId, createdAt])
+  @@index([userId])
+  @@map("activity_comments")
 }
 
 model ActivityMedia {
@@ -73,6 +102,85 @@ model Follow {
 
   @@id([followerId, followingId])
   @@map("follows")
+}
+
+model Club {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId      String       @map("owner_id") @db.Uuid
+  name         String       @db.VarChar(120)
+  location     String       @db.VarChar(160)
+  sport        String       @db.VarChar(20)
+  description  String       @db.VarChar(800)
+  avatarUrl    String?      @map("avatar_url")
+  bannerUrl    String?      @map("banner_url")
+  isInviteOnly Boolean      @default(false) @map("is_invite_only")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  members      ClubMember[]
+  posts        ClubPost[]
+  invites      ClubInvite[]
+
+  @@index([ownerId])
+  @@index([sport])
+  @@map("clubs")
+}
+
+model ClubMember {
+  clubId    String   @map("club_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@id([clubId, userId])
+  @@index([userId])
+  @@map("club_members")
+}
+
+model ClubInvite {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId      String    @map("club_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  invitedById String    @map("invited_by_id") @db.Uuid
+  status      String    @db.VarChar(20)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  respondedAt DateTime? @map("responded_at") @db.Timestamptz(6)
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([clubId, status, createdAt])
+  @@index([clubId, userId])
+  @@map("club_invites")
+}
+
+model ClubPost {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clubId     String          @map("club_id") @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  body       String?
+  activityId String?         @map("activity_id") @db.Uuid
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  club     Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  activity Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  media    ClubPostMedia[]
+
+  @@index([clubId, createdAt])
+  @@index([userId])
+  @@map("club_posts")
+}
+
+model ClubPostMedia {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  publicUrl String   @map("public_url")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post ClubPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@map("club_post_media")
 }
 
 model Conversation {

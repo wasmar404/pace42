@@ -63,9 +63,23 @@ export class AuthPolicyController {
     const createdAtMs = Date.parse(String(user.created_at ?? ''));
     const ageMs = Number.isFinite(createdAtMs) ? Date.now() - createdAtMs : Number.POSITIVE_INFINITY;
 
-    const providers: string[] =
-      Array.isArray(user.app_metadata?.providers) ? user.app_metadata.providers :
-        user.app_metadata?.provider ? [String(user.app_metadata.provider)] : [];
+    const identityProviders: string[] = Array.isArray(user.identities)
+      ? Array.from(
+          new Set(
+            (user.identities as any[])
+              .map((i) => String(i?.provider ?? '').toLowerCase())
+              .filter(Boolean),
+          ),
+        )
+      : [];
+
+    const providers: string[] = identityProviders.length
+      ? identityProviders
+      : Array.isArray(user.app_metadata?.providers)
+          ? (user.app_metadata.providers as any[]).map((p) => String(p ?? '').toLowerCase()).filter(Boolean)
+          : user.app_metadata?.provider
+              ? [String(user.app_metadata.provider).toLowerCase()]
+              : [];
 
     const email = String(user.email ?? '').trim().toLowerCase();
 
@@ -104,6 +118,18 @@ export class AuthPolicyController {
 
     const meta = (user.user_metadata ?? {}) as any;
     const oauthSignedUp = meta.oauthSignedUp === true;
+    const oauthProvider = String(meta.oauthProvider ?? '').toLowerCase();
+
+    // Prevent users from using the signup flow again for an existing account.
+    // We can't stop Supabase from redirecting back, but we can block app access and
+    // force them to use the login flow.
+    if (mode === 'signup') {
+      const tooOldForSignup = ageMs > 60 * 60 * 1000; // 60 minutes
+      const alreadySignedUpWithThisMethod = oauthSignedUp && (!oauthProvider || oauthProvider === method);
+      if (alreadySignedUpWithThisMethod || tooOldForSignup) {
+        throw new ForbiddenException('Account already exists. Please log in instead of signing up again.');
+      }
+    }
 
     // Intra uses an admin-generated magic link, so it shows up as email provider.
     // We enforce it using user_metadata.signupMethod.

@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Res, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import type { Response } from 'express';
+import archiver from 'archiver';
 
 import { PrismaService } from '../../prisma';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
@@ -134,8 +136,123 @@ export class MeController {
     return resp;
   }
 
+  @Get('performance')
+  async performance(@CurrentUser() user: { userId: string }) {
+    const now = new Date();
+    const since4w = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+
+    const year = now.getUTCFullYear();
+    const yearStart = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+    const yearEnd = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
+
+    const [last4, yr, all, runActs] = await Promise.all([
+      this.prisma.activity.aggregate({
+        where: { userId: user.userId, startedAt: { gte: since4w } },
+        _count: { _all: true },
+        _sum: { distanceMeters: true, durationSeconds: true },
+      }),
+      this.prisma.activity.aggregate({
+        where: { userId: user.userId, startedAt: { gte: yearStart, lt: yearEnd } },
+        _count: { _all: true },
+        _sum: { distanceMeters: true, durationSeconds: true },
+      }),
+      this.prisma.activity.aggregate({
+        where: { userId: user.userId },
+        _count: { _all: true },
+        _sum: { distanceMeters: true, durationSeconds: true },
+      }),
+      this.prisma.activity.findMany({
+        where: { userId: user.userId, sport: 'run', distanceMeters: { gte: 400 } },
+        select: { id: true, startedAt: true, distanceMeters: true, durationSeconds: true },
+        orderBy: { startedAt: 'desc' },
+        take: 5000,
+      }),
+    ]);
+
+    const total4 = Number(last4?._count?._all ?? 0);
+    const dist4 = Number(last4?._sum?.distanceMeters ?? 0);
+    const dur4 = Number(last4?._sum?.durationSeconds ?? 0);
+
+    const totalYr = Number(yr?._count?._all ?? 0);
+    const distYr = Number(yr?._sum?.distanceMeters ?? 0);
+    const durYr = Number(yr?._sum?.durationSeconds ?? 0);
+
+    const totalAll = Number(all?._count?._all ?? 0);
+    const distAll = Number(all?._sum?.distanceMeters ?? 0);
+    const durAll = Number(all?._sum?.durationSeconds ?? 0);
+
+    const targets: Array<{ key: string; label: string; meters: number }> = [
+      { key: '400m', label: '400m', meters: 400 },
+      { key: 'half_mile', label: '1/2 mile', meters: 804.672 },
+      { key: '1k', label: '1K', meters: 1000 },
+      { key: '1mile', label: '1 mile', meters: 1609.344 },
+      { key: '2mile', label: '2 mile', meters: 3218.688 },
+      { key: '5k', label: '5K', meters: 5000 },
+      { key: '10k', label: '10K', meters: 10000 },
+      { key: '15k', label: '15K', meters: 15000 },
+      { key: '10mile', label: '10 mile', meters: 16093.44 },
+      { key: '20k', label: '20K', meters: 20000 },
+      { key: 'half_marathon', label: 'Half-Marathon', meters: 21097.5 },
+    ];
+
+    const bestEfforts = targets
+      .map((t) => {
+        let bestSeconds: number | null = null;
+        let best: any = null;
+
+        for (const a of runActs || []) {
+          const dist = Number(a.distanceMeters || 0);
+          const dur = Number(a.durationSeconds || 0);
+          if (!dist || !dur) continue;
+          if (dist < t.meters) continue;
+          const est = (dur / dist) * t.meters;
+          if (!Number.isFinite(est) || est <= 0) continue;
+          if (bestSeconds == null || est < bestSeconds) {
+            bestSeconds = Math.round(est);
+            best = a;
+          }
+        }
+
+        return {
+          key: t.key,
+          label: t.label,
+          meters: t.meters,
+          bestSeconds,
+          activityId: best?.id ?? null,
+          startedAt: best?.startedAt ?? null,
+        };
+      })
+      .filter((x) => x.bestSeconds != null);
+
+    return {
+      last4Weeks: {
+        activitiesPerWeek: Math.round((total4 / 4) * 10) / 10,
+        avgDistancePerWeekMeters: Math.round(dist4 / 4),
+        avgTimePerWeekSeconds: Math.round(dur4 / 4),
+      },
+      year: {
+        year,
+        activities: totalYr,
+        distanceMeters: distYr,
+        timeSeconds: durYr,
+      },
+      allTime: {
+        activities: totalAll,
+        distanceMeters: distAll,
+        timeSeconds: durAll,
+      },
+      bestEfforts,
+    };
+  }
+
   @Put('personal')
   async updatePersonal(@CurrentUser() user: { userId: string }, @Body() dto: UpdatePersonalDto) {
+    const existing = await this.prisma.profile.findUnique({
+      where: { userId: user.userId },
+      select: { onboardingCompletedAt: true },
+    });
+    const completedAt = existing?.onboardingCompletedAt ?? new Date();
+
     const profile = await this.prisma.profile.upsert({
       where: { userId: user.userId },
       create: {
@@ -146,6 +263,7 @@ export class MeController {
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         bio: dto.bio,
+        onboardingCompletedAt: completedAt,
       },
       update: {
         firstName: dto.firstName,
@@ -153,15 +271,435 @@ export class MeController {
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         bio: dto.bio,
+        onboardingCompletedAt: completedAt,
       },
     });
 
     return { profile };
   }
 
+  @Get('export')
+  async exportData(@CurrentUser() user: { userId: string; email?: string }) {
+    const userId = user.userId;
+
+    const [profile, activities, activityMedia, commentsGiven, commentsReceived, kudosGiven, kudosReceived, following, followers, clubMemberships, clubPosts, convoParts] =
+      await Promise.all([
+        this.prisma.profile.findUnique({ where: { userId } }),
+        this.prisma.activity.findMany({
+          where: { userId },
+          orderBy: { startedAt: 'desc' },
+          select: {
+            id: true,
+            sport: true,
+            title: true,
+            description: true,
+            startedAt: true,
+            durationSeconds: true,
+            distanceMeters: true,
+            visibility: true,
+            source: true,
+            routePolyline: true,
+            mapImageUrl: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.activityMedia.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            activityId: true,
+            kind: true,
+            storageBucket: true,
+            storagePath: true,
+            publicUrl: true,
+            createdAt: true,
+          },
+        }),
+        this.prisma.activityComment.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, activityId: true, body: true, createdAt: true },
+        }),
+        this.prisma.activityComment.findMany({
+          where: { activity: { userId }, userId: { not: userId } },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, activityId: true, userId: true, body: true, createdAt: true },
+        }),
+        this.prisma.activityKudo.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: { activityId: true, createdAt: true },
+        }),
+        this.prisma.activityKudo.findMany({
+          where: { activity: { userId }, userId: { not: userId } },
+          orderBy: { createdAt: 'desc' },
+          select: { activityId: true, userId: true, createdAt: true },
+        }),
+        this.prisma.follow.findMany({
+          where: { followerId: userId },
+          orderBy: { createdAt: 'desc' },
+          select: { followingId: true, createdAt: true },
+        }),
+        this.prisma.follow.findMany({
+          where: { followingId: userId },
+          orderBy: { createdAt: 'desc' },
+          select: { followerId: true, createdAt: true },
+        }),
+        this.prisma.clubMember.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            role: true,
+            createdAt: true,
+            club: { select: { id: true, name: true, location: true, sport: true, description: true, avatarUrl: true, bannerUrl: true, isInviteOnly: true, createdAt: true } },
+          },
+        }),
+        this.prisma.clubPost.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            club: { select: { id: true, name: true } },
+            media: { orderBy: { createdAt: 'asc' }, select: { publicUrl: true, createdAt: true } },
+            activity: {
+              select: { id: true, sport: true, title: true, startedAt: true, durationSeconds: true, distanceMeters: true, visibility: true },
+            },
+          },
+        }),
+
+        this.prisma.conversationParticipant.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            conversationId: true,
+            unreadCount: true,
+            lastReadAt: true,
+            createdAt: true,
+            conversation: {
+              select: {
+                id: true,
+                createdAt: true,
+                updatedAt: true,
+                lastMessageAt: true,
+                lastMessageText: true,
+                lastSenderId: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+    const conversationIds = convoParts.map((p) => p.conversationId);
+
+    const [allParts, messages] = await Promise.all([
+      conversationIds.length
+        ? this.prisma.conversationParticipant.findMany({
+            where: { conversationId: { in: conversationIds } },
+            select: { conversationId: true, userId: true },
+          })
+        : Promise.resolve([]),
+      conversationIds.length
+        ? this.prisma.message.findMany({
+            where: { conversationId: { in: conversationIds } },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, conversationId: true, senderId: true, body: true, createdAt: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const participantIds = Array.from(new Set(allParts.map((p) => p.userId)));
+    const chatProfiles = participantIds.length
+      ? await this.prisma.profile.findMany({
+          where: { userId: { in: participantIds } },
+          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+        })
+      : [];
+
+    const participantsByConvo = new Map<string, string[]>();
+    for (const p of allParts) {
+      const list = participantsByConvo.get(p.conversationId) ?? [];
+      list.push(p.userId);
+      participantsByConvo.set(p.conversationId, list);
+    }
+
+    const messagesByConvo = new Map<string, any[]>();
+    for (const m of messages) {
+      const list = messagesByConvo.get(m.conversationId) ?? [];
+      list.push({
+        id: m.id,
+        senderId: m.senderId,
+        body: m.body,
+        createdAt: m.createdAt.toISOString(),
+      });
+      messagesByConvo.set(m.conversationId, list);
+    }
+
+    const mediaByActivity = new Map<string, any[]>();
+    for (const m of activityMedia) {
+      const list = mediaByActivity.get(m.activityId) ?? [];
+      list.push({
+        id: m.id,
+        kind: m.kind,
+        storageBucket: m.storageBucket,
+        storagePath: m.storagePath,
+        publicUrl: m.publicUrl ?? null,
+        createdAt: m.createdAt.toISOString(),
+      });
+      mediaByActivity.set(m.activityId, list);
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      user: { id: userId, email: user.email ?? null },
+      profile: profile ?? null,
+      accountSettings: {
+        isPrivate: Boolean(profile?.isPrivate ?? false),
+      },
+      workouts: activities.map((a) => ({
+        ...a,
+        startedAt: a.startedAt.toISOString(),
+        createdAt: a.createdAt.toISOString(),
+        updatedAt: a.updatedAt.toISOString(),
+        media: mediaByActivity.get(a.id) ?? [],
+      })),
+      uploadedImages: {
+        activityMedia: activityMedia
+          .filter((m) => m.kind === 'photo' && m.publicUrl)
+          .map((m) => ({
+            activityId: m.activityId,
+            publicUrl: m.publicUrl,
+            storageBucket: m.storageBucket,
+            storagePath: m.storagePath,
+            createdAt: m.createdAt.toISOString(),
+          })),
+        clubPostMedia: clubPosts
+          .flatMap((p) => (p.media || []).map((m) => ({ clubId: p.clubId, postId: p.id, publicUrl: m.publicUrl, createdAt: m.createdAt.toISOString() })))
+          .filter((m) => m.publicUrl),
+      },
+      comments: {
+        given: commentsGiven.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+        receivedOnMyWorkouts: commentsReceived.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+      },
+      likes: {
+        given: kudosGiven.map((k) => ({ ...k, createdAt: k.createdAt.toISOString() })),
+        receivedOnMyWorkouts: kudosReceived.map((k) => ({ ...k, createdAt: k.createdAt.toISOString() })),
+      },
+      followersFollowing: {
+        followers: followers.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() })),
+        following: following.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() })),
+      },
+      clubs: {
+        memberships: clubMemberships.map((m) => ({
+          role: m.role,
+          joinedAt: m.createdAt.toISOString(),
+          club: { ...m.club, createdAt: m.club.createdAt.toISOString() },
+        })),
+        posts: clubPosts.map((p) => ({
+          id: p.id,
+          club: p.club,
+          body: p.body ?? null,
+          createdAt: p.createdAt.toISOString(),
+          media: (p.media || []).map((m) => ({ publicUrl: m.publicUrl, createdAt: m.createdAt.toISOString() })),
+          activity: p.activity
+            ? {
+                ...p.activity,
+                startedAt: p.activity.startedAt.toISOString(),
+              }
+            : null,
+        })),
+      },
+
+      chat: {
+        participants: chatProfiles.map((p) => ({
+          id: p.userId,
+          username: p.username ?? null,
+          firstName: p.firstName ?? null,
+          lastName: p.lastName ?? null,
+          avatarUrl: p.avatarUrl ?? null,
+        })),
+        conversations: convoParts.map((p) => ({
+          id: p.conversationId,
+          createdAt: p.conversation?.createdAt?.toISOString?.() ?? null,
+          updatedAt: p.conversation?.updatedAt?.toISOString?.() ?? null,
+          lastMessageAt: p.conversation?.lastMessageAt ? p.conversation.lastMessageAt.toISOString() : null,
+          lastMessageText: p.conversation?.lastMessageText ?? null,
+          lastSenderId: p.conversation?.lastSenderId ?? null,
+          unreadCount: p.unreadCount ?? 0,
+          lastReadAt: p.lastReadAt ? p.lastReadAt.toISOString() : null,
+          participantIds: participantsByConvo.get(p.conversationId) ?? [userId],
+          messageCount: (messagesByConvo.get(p.conversationId) ?? []).length,
+        })),
+        messagesByConversationId: Object.fromEntries(Array.from(messagesByConvo.entries())),
+      },
+    };
+  }
+
+  @Get('export.zip')
+  async exportZip(@CurrentUser() user: { userId: string; email?: string }, @Res() res: Response) {
+    const userId = user.userId;
+
+    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
+    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
+    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
+
+    const safeSeg = (s: string) => String(s || '').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'x';
+    const extFromPath = (p: string) => {
+      const ext = path.extname(p || '').toLowerCase();
+      if (!ext) return '';
+      if (ext.length > 12) return '';
+      return ext;
+    };
+    const extFromUrl = (u: string) => {
+      try {
+        const url = new URL(u);
+        return extFromPath(url.pathname);
+      } catch {
+        return extFromPath(u);
+      }
+    };
+    const json = (obj: any) => JSON.stringify(obj, null, 2);
+
+    const exportObj = await this.exportData(user);
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('content-type', 'application/zip');
+    res.setHeader('content-disposition', `attachment; filename="pace42-export-${stamp}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', (err: any) => {
+      // eslint-disable-next-line no-console
+      console.error('[export.zip] archive error', err);
+      try {
+        res.status(500).end();
+      } catch {
+        // ignore
+      }
+    });
+    archive.pipe(res);
+
+    const errors: Array<{ kind: string; id?: string; detail: string }> = [];
+
+    // Core JSON files
+    archive.append(json(exportObj), { name: 'export.json' });
+    archive.append(json(exportObj?.profile ?? null), { name: 'profile.json' });
+    archive.append(json(exportObj?.accountSettings ?? {}), { name: 'account_settings.json' });
+    archive.append(json(exportObj?.followersFollowing ?? {}), { name: 'followers_following.json' });
+    archive.append(json(exportObj?.comments ?? {}), { name: 'comments.json' });
+    archive.append(json(exportObj?.likes ?? {}), { name: 'likes.json' });
+    archive.append(json(exportObj?.clubs ?? {}), { name: 'clubs.json' });
+    archive.append(json(exportObj?.chat ?? {}), { name: 'chat/chat.json' });
+
+    // Profile media (download actual avatar image)
+    const avatarUrl = String(exportObj?.profile?.avatarUrl ?? '').trim();
+    if (avatarUrl) {
+      const ext = extFromUrl(avatarUrl) || '.jpg';
+      try {
+        const r = await fetch(avatarUrl);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        archive.append(buf, { name: `profile/avatar${ext}` });
+      } catch (e: any) {
+        errors.push({ kind: 'profile_avatar', id: userId, detail: String(e?.message || e) });
+      }
+    }
+
+    // Workouts
+    const workouts = Array.isArray(exportObj?.workouts) ? exportObj.workouts : [];
+    archive.append(json(workouts.map((w: any) => ({ id: w?.id, sport: w?.sport, startedAt: w?.startedAt }))), {
+      name: 'workouts/index.json',
+    });
+
+    // Download activity media from Storage
+    for (const w of workouts) {
+      const wid = String(w?.id || '');
+      if (!wid) continue;
+      archive.append(json(w), { name: `workouts/${safeSeg(wid)}/workout.json` });
+
+      const media = Array.isArray(w?.media) ? w.media : [];
+      for (const m of media) {
+        const mid = String(m?.id || '');
+        const bucket = String(m?.storageBucket || '');
+        const storagePath = String(m?.storagePath || '');
+        if (!mid || !bucket || !storagePath) continue;
+
+        const ext = extFromPath(storagePath) || (m?.kind === 'gpx' ? '.gpx' : '');
+        const base = m?.kind === 'gpx' ? 'gpx' : 'media';
+        const name = `workouts/${safeSeg(wid)}/${base}/${safeSeg(mid)}${ext}`;
+
+        try {
+          const { data, error } = await service.storage.from(bucket).download(storagePath);
+          if (error) throw new Error(error.message);
+          const buf = Buffer.from(await (data as any).arrayBuffer());
+          archive.append(buf, { name });
+        } catch (e: any) {
+          errors.push({ kind: 'activity_media', id: mid, detail: String(e?.message || e) });
+        }
+      }
+    }
+
+    // Club post media (stored as publicUrl only)
+    const clubPosts = Array.isArray(exportObj?.clubs?.posts) ? exportObj.clubs.posts : [];
+    for (const p of clubPosts) {
+      const postId = String(p?.id || '');
+      if (!postId) continue;
+      archive.append(json(p), { name: `club_posts/${safeSeg(postId)}/post.json` });
+      const items = Array.isArray(p?.media) ? p.media : [];
+      for (let i = 0; i < items.length; i++) {
+        const url = String(items[i]?.publicUrl || '');
+        if (!url) continue;
+        const ext = extFromPath(url) || '.jpg';
+        const name = `club_posts/${safeSeg(postId)}/media/media-${String(i + 1).padStart(2, '0')}${ext}`;
+        try {
+          const r = await fetch(url);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const buf = Buffer.from(await r.arrayBuffer());
+          archive.append(buf, { name });
+        } catch (e: any) {
+          errors.push({ kind: 'club_post_media', id: postId, detail: String(e?.message || e) });
+        }
+      }
+    }
+
+    // Chat exports
+    const chat = exportObj?.chat || {};
+    const convos = Array.isArray(chat?.conversations) ? chat.conversations : [];
+    const parts = Array.isArray(chat?.participants) ? chat.participants : [];
+    const byConvo = chat?.messagesByConversationId && typeof chat.messagesByConversationId === 'object' ? chat.messagesByConversationId : {};
+
+    archive.append(json(convos), { name: 'chat/conversations.json' });
+    archive.append(json(parts), { name: 'chat/participants.json' });
+    for (const c of convos) {
+      const cid = String(c?.id || '');
+      if (!cid) continue;
+      const msgs = Array.isArray(byConvo?.[cid]) ? byConvo[cid] : [];
+      archive.append(json(msgs), { name: `chat/messages/${safeSeg(cid)}.json` });
+    }
+
+    archive.append(
+      json({
+        note: 'This export contains your Pace42 data at the time of export.',
+        exportedAt: exportObj?.exportedAt,
+      }),
+      { name: 'README.json' },
+    );
+
+    if (errors.length) archive.append(json(errors), { name: 'errors.json' });
+
+    await archive.finalize();
+  }
+
   // Convenience endpoint for the frontend: update any profile fields in one request.
   @Put()
   async updateMe(@CurrentUser() user: { userId: string }, @Body() dto: UpdateMeDto) {
+    const weeklyGoalDistanceMeters =
+      typeof dto.weeklyGoalDistanceMeters === 'number'
+        ? dto.weeklyGoalDistanceMeters > 0
+          ? Math.round(dto.weeklyGoalDistanceMeters)
+          : null
+        : undefined;
+
     const profile = await this.prisma.profile.upsert({
       where: { userId: user.userId },
       create: {
@@ -177,6 +715,7 @@ export class MeController {
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
+        weeklyGoalDistanceMeters: weeklyGoalDistanceMeters ?? undefined,
       },
       update: {
         firstName: dto.firstName,
@@ -189,6 +728,7 @@ export class MeController {
         weightKg: dto.weightKg,
         heightCm: dto.heightCm,
         onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
+        ...(weeklyGoalDistanceMeters !== undefined ? { weeklyGoalDistanceMeters } : {}),
       },
     });
 
@@ -273,12 +813,61 @@ export class MeController {
   }
 
   @Get('activities')
-  async myActivities(@CurrentUser() user: { userId: string }) {
+  async myActivities(@CurrentUser() user: { userId: string }, @Query('take') take?: string) {
+    const n = Number(take ?? 500);
+    const limit = Number.isFinite(n) ? Math.max(1, Math.min(2000, Math.floor(n))) : 500;
+
     const activities = await this.prisma.activity.findMany({
       where: { userId: user.userId },
-      orderBy: { startedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        sport: true,
+        title: true,
+        description: true,
+        startedAt: true,
+        durationSeconds: true,
+        distanceMeters: true,
+        visibility: true,
+        source: true,
+        mapImageUrl: true,
+        createdAt: true,
+      },
     });
 
-    return { activities };
+    const ids = activities.map((a) => a.id);
+    const media = ids.length
+      ? await this.prisma.activityMedia.findMany({
+          where: { activityId: { in: ids }, userId: user.userId, kind: { in: ['photo', 'gpx'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { activityId: true, kind: true, publicUrl: true },
+        })
+      : [];
+
+    const mediaByActivity = new Map<string, Array<{ kind: string; publicUrl: string | null }>>();
+    for (const m of media) {
+      const list = mediaByActivity.get(m.activityId) ?? [];
+      list.push({ kind: m.kind, publicUrl: m.publicUrl ?? null });
+      mediaByActivity.set(m.activityId, list);
+    }
+
+    return {
+      activities: activities.map((a) => {
+        const list = mediaByActivity.get(a.id) ?? [];
+        const photos = list.filter((x) => x.kind === 'photo' && x.publicUrl).map((x) => x.publicUrl as string);
+        const hasGpx = list.some((x) => x.kind === 'gpx');
+        return {
+          ...a,
+          startedAt: a.startedAt.toISOString(),
+          createdAt: a.createdAt.toISOString(),
+          media: {
+            photoCount: photos.length,
+            coverPhotoUrl: photos[0] ?? null,
+            hasGpx,
+          },
+        };
+      }),
+    };
   }
 }

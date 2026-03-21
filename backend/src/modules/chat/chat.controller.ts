@@ -9,6 +9,11 @@ import { ChatService } from './chat.service';
 export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
+  @Get('unread')
+  async unread(@CurrentUser() user: { userId: string }) {
+    return await this.chat.getUnreadSummary(user.userId);
+  }
+
   @Get('conversations')
   async list(@CurrentUser() user: { userId: string }) {
     return await this.chat.listConversations(user.userId);

@@ -195,7 +195,11 @@ export class IntraAuthController {
     }
 
     if (m === 'signup') {
-      if (existing && existingMethod !== 'intra') return fail('email_used_by_other_method');
+      if (existing) {
+        // Don't allow "sign up" twice.
+        if (existingMethod === 'intra') return fail('already_registered');
+        return fail('email_used_by_other_method');
+      }
       if (!existing) {
         await service.auth.admin
           .createUser({

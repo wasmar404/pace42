@@ -15,6 +15,11 @@ import { ChatService } from './chat.service';
 
 type AuthedSocket = Socket & { userId?: string };
 
+type Presence = {
+  online: boolean;
+  lastSeenAt: string | null;
+};
+
 @WebSocketGateway({
   namespace: '/chat',
   cors: {
@@ -30,6 +35,65 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly config: ConfigService,
     private readonly chat: ChatService,
   ) {}
+
+  // In-memory presence for a single backend instance.
+  private readonly onlineSocketsByUser = new Map<string, Set<string>>();
+  private readonly lastSeenByUser = new Map<string, string>();
+  private readonly watchedBySocket = new Map<string, Set<string>>();
+  private readonly watchersByUser = new Map<string, Set<string>>();
+
+  private getPresence(userId: string): Presence {
+    const sockets = this.onlineSocketsByUser.get(userId);
+    const online = Boolean(sockets && sockets.size > 0);
+    return {
+      online,
+      lastSeenAt: online ? null : this.lastSeenByUser.get(userId) ?? null,
+    };
+  }
+
+  private notifyPresence(userId: string) {
+    const watchers = this.watchersByUser.get(userId);
+    if (!watchers || watchers.size === 0) return;
+    const payload = { userId, ...this.getPresence(userId) };
+    for (const socketId of watchers) {
+      this.server.to(socketId).emit('presence:update', payload);
+    }
+  }
+
+  private setOnline(userId: string, socketId: string) {
+    const set = this.onlineSocketsByUser.get(userId) ?? new Set<string>();
+    const wasOnline = set.size > 0;
+    set.add(socketId);
+    this.onlineSocketsByUser.set(userId, set);
+    if (!wasOnline) this.notifyPresence(userId);
+  }
+
+  private setOffline(userId: string, socketId: string) {
+    const set = this.onlineSocketsByUser.get(userId);
+    if (!set) return;
+    const wasOnline = set.size > 0;
+    set.delete(socketId);
+    if (set.size === 0) {
+      this.onlineSocketsByUser.delete(userId);
+      this.lastSeenByUser.set(userId, new Date().toISOString());
+    } else {
+      this.onlineSocketsByUser.set(userId, set);
+    }
+    const nowOnline = Boolean(this.onlineSocketsByUser.get(userId)?.size);
+    if (wasOnline && !nowOnline) this.notifyPresence(userId);
+  }
+
+  private unwatchAll(socketId: string) {
+    const watched = this.watchedBySocket.get(socketId);
+    if (!watched) return;
+    for (const userId of watched) {
+      const watchers = this.watchersByUser.get(userId);
+      if (!watchers) continue;
+      watchers.delete(socketId);
+      if (watchers.size === 0) this.watchersByUser.delete(userId);
+    }
+    this.watchedBySocket.delete(socketId);
+  }
 
   private async authSocket(client: AuthedSocket): Promise<string> {
     const header = (client.handshake.headers?.authorization as string | undefined) ?? '';
@@ -56,12 +120,43 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.userId = userId;
       await client.join(`u:${userId}`);
       client.emit('ready', { userId });
+      this.setOnline(userId, client.id);
     } catch {
       client.disconnect(true);
     }
   }
 
-  handleDisconnect(_client: AuthedSocket) {}
+  handleDisconnect(client: AuthedSocket) {
+    const userId = client.userId;
+    if (userId) this.setOffline(userId, client.id);
+    this.unwatchAll(client.id);
+  }
+
+  @SubscribeMessage('presence:watch')
+  async watchPresence(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { userIds?: string[] },
+  ) {
+    const userId = client.userId;
+    if (!userId) return;
+
+    const ids = Array.isArray(body?.userIds) ? body.userIds.map((x) => String(x)).filter(Boolean) : [];
+    const uniq = Array.from(new Set(ids)).slice(0, 200);
+
+    // Replace watched list for this socket.
+    this.unwatchAll(client.id);
+    const watched = new Set<string>(uniq);
+    this.watchedBySocket.set(client.id, watched);
+    for (const id of watched) {
+      const watchers = this.watchersByUser.get(id) ?? new Set<string>();
+      watchers.add(client.id);
+      this.watchersByUser.set(id, watchers);
+    }
+
+    const items = uniq.map((id) => ({ userId: id, ...this.getPresence(id) }));
+    client.emit('presence:state', { items });
+    return { ok: true };
+  }
 
   @SubscribeMessage('conversation:join')
   async joinConversation(

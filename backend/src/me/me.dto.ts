@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -61,6 +62,13 @@ export class UpdateMeDto {
   @IsOptional()
   @IsBoolean()
   isPrivate?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100000000)
+  weeklyGoalDistanceMeters?: number;
 }
 
 export class UpdatePersonalDto {
