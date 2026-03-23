@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { CurrentUser } from '../../auth/supabase.user';
-import { createSupabaseClients } from '../../auth/supabase.auth';
+import {supabase } from '../../auth/supabase.auth';
 
 @Controller('auth')
 export class AuthPolicyController {
@@ -13,11 +13,7 @@ export class AuthPolicyController {
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
     const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({
-      supabaseUrl,
-      supabaseAnonKey,
-      supabaseServiceRoleKey,
-    });
+    const service  = supabase;
     return { service, supabaseServiceRoleKey };
   }
 

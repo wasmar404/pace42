@@ -6,7 +6,161 @@ npx prisma validate
 
 GET /api/health  →  returns { ok: true }  health.controller.ts
 
+------------------------------------------------------------------
+GET /me 
 
+  this endpoint returns the whole row form the table profile 
+{
+  "user": {
+    "id": "123",
+    "email": "test@mail.com"
+  },
+  "profile": {
+    "user_id": "123",
+    "username": "alex",
+    "avatar_url": "...",
+    "first_name": "...",
+    "last_name": "...",
+    "date_of_birth": "...",
+    "gender": "...",
+    "level": "...",
+    "weight_kg": 70,
+    "height_cm": 180,
+    "bio": "...",
+    "onboarding_completed_at": "...",
+    "updated_at": "...",
+    "is_private": false,
+    "weekly_goal_distance_meters": 5000
+  }
+}
+------------------------------------------------------------------
+
+------------------------------------------------------------------
+
+GET /me/summary
+ {
+  "user": {
+    "id": "7f3c...",
+    "email": "alex@mail.com"
+  },
+  "profile": {
+    "userId": "7f3c...",
+    "username": "alexrun",
+    "avatarUrl": "https://...",
+    "firstName": "Alex",
+    "lastName": "Doe",
+    "bio": "Runner",
+    "isPrivate": false,
+    "weeklyGoalDistanceMeters": 20000
+  },
+  "stats": {
+    "last4WeeksCount": 6,
+    "totalActivities": 19,
+    "followersCount": 42,
+    "followingCount": 18
+  },
+  "recentActivities": [
+    {
+      "id": "a1",
+      "sport": "running",
+      "title": "Evening Run",
+      "description": "Nice pace",
+      "startedAt": "2026-03-20T17:00:00.000Z",
+      "durationSeconds": 2400,
+      "distanceMeters": 5000,
+      "visibility": "public",
+      "source": "manual",
+      "routePolyline": "abc123"
+    },
+    {
+      "id": "a2",
+      "sport": "cycling",
+      "title": "Morning Ride",
+      "description": null,
+      "startedAt": "2026-03-18T07:00:00.000Z",
+      "durationSeconds": 3600,
+      "distanceMeters": 18000,
+      "visibility": "followers",
+      "source": "garmin",
+      "routePolyline": null
+    }
+  ],
+  "recentPhotos": [
+    "https://cdn/...1.jpg",
+    "https://cdn/...2.jpg"
+  ],
+  "settings": {
+    "isPrivate": false
+  }
+}
+------------------------------------------------------------------
+GET /me/performance
+{
+  "last4Weeks": {
+    "totalActivities": 12,
+    "totalDistanceMeters": 42000,
+    "totalDurationSeconds": 7200
+  },
+  "year": {
+    "totalActivities": 58,
+    "totalDistanceMeters": 210000,
+    "totalDurationSeconds": 36000
+  },
+  "allTime": {
+    "totalActivities": 134,
+    "totalDistanceMeters": 520000,
+    "totalDurationSeconds": 90000
+  },
+  "bestEfforts": [
+    {
+      "key": "400m",
+      "label": "400m",
+      "seconds": 80,
+      "activityId": "run_123",
+      "date": "2026-03-10T10:00:00.000Z"
+    },
+    {
+      "key": "1k",
+      "label": "1K",
+      "seconds": 210,
+      "activityId": "run_456",
+      "date": "2026-02-22T08:30:00.000Z"
+    },
+    {
+      "key": "5k",
+      "label": "5K",
+      "seconds": 1320,
+      "activityId": "run_789",
+      "date": "2026-01-15T07:00:00.000Z"
+    },
+    {
+      "key": "10k",
+      "label": "10K",
+      "seconds": 2700,
+      "activityId": "run_321",
+      "date": "2025-12-20T09:00:00.000Z"
+    },
+    {
+      "key": "half_marathon",
+      "label": "Half-Marathon",
+      "seconds": 6000,
+      "activityId": "run_654",
+      "date": "2025-11-01T06:00:00.000Z"
+    }
+  ]
+}
+------------------------------------------------------------------
+PUT /me/personal
+it fill the follwinf feild 
+and retunr the updated data 
+firstName: dto.firstName,
+        lastName: dto.lastName,
+        dateOfBirth: new Date(dto.dateOfBirth),
+        gender: dto.gender,
+        bio: dto.bio,
+        onboardingCompletedAt: existing.onboardingCompletedAt ?? new Date(),
+
+------------------------------------------------------------------
 #Custom decorators
 
 @CurrentUser() is a decorator that returns the currently logged-in user object.

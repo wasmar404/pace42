@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Res, Query } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, NotFoundException, Res, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -10,157 +10,143 @@ import { PrismaService } from '../../prisma';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { CurrentUser } from '../../auth/supabase.user';
 import { UpdateMeDto, UpdatePersonalDto } from '../../me/me.dto';
-import { createSupabaseClients } from '../../auth/supabase.auth';
+import { supabase } from '../../auth/supabase.auth';
 
-function fallbackUsername(userId: string): string {
-  return `user_${userId.replace(/-/g, '').slice(0, 10)}`;
-}
+
+const ACTIVITY_BASE_SELECT = {
+  id: true,
+  sport: true,
+  title: true,
+  description: true,
+  startedAt: true,
+  durationSeconds: true,
+  distanceMeters: true,
+  visibility: true,
+  source: true,
+  routePolyline: true,
+} as const;
+
+const ACTIVITY_FULL_SELECT = {
+  ...ACTIVITY_BASE_SELECT,
+  mapImageUrl: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 
 @Controller('me')
 @UseGuards(SupabaseAuthGuard)
+
 export class MeController {
-  private readonly summaryCache = new Map<string, { expiresAt: number; data: any }>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {}
 
+
+  private getProfile(userId: string) {
+    return this.prisma.profile.findUnique({ where: { userId } });
+  }
+
+  private async requireProfile(userId: string) {
+    const profile = await this.getProfile(userId);
+    if (!profile) throw new NotFoundException('Profile not found');
+    return profile;
+  }
+
+  private getActivities(userId: string, opts: { take?: number; select?: object } = {}) {
+    return this.prisma.activity.findMany({
+      where: { userId },
+      orderBy: { startedAt: 'desc' },
+      ...(opts.take ? { take: opts.take } : {}),
+      select: opts.select ?? ACTIVITY_BASE_SELECT, //if opts.select is provided, use it; otherwise, use ACTIVITY_BASE_SELECT
+    });
+  }
+
+  private countActivities(userId: string, since?: Date) {
+    return this.prisma.activity.count({
+      where: { userId, ...(since ? { startedAt: { gte: since } } : {}) },
+    });
+  }
+
+  private aggregateActivities(userId: string, dateFilter?: { gte?: Date; lt?: Date }) {
+    return this.prisma.activity.aggregate({
+      where: { userId, ...(dateFilter ? { startedAt: dateFilter } : {}) },
+      _count: { _all: true },
+      _sum: { distanceMeters: true, durationSeconds: true },
+    });
+  }
+
+  private getFollowerCount(userId: string) {
+    return this.prisma.follow.count({ where: { followingId: userId } });
+  }
+
+  private getFollowingCount(userId: string) {
+    return this.prisma.follow.count({ where: { followerId: userId } });
+  }
+
+  private getActivityMedia(userId: string, opts: { activityIds?: string[]; kinds?: string[] } = {}) {
+    return this.prisma.activityMedia.findMany({
+      where: {
+        userId,
+        ...(opts.activityIds ? { activityId: { in: opts.activityIds } } : {}),
+        ...(opts.kinds ? { kind: { in: opts.kinds } } : {}),
+      },      orderBy: { createdAt: 'asc' },
+      select: { activityId: true, kind: true, publicUrl: true },
+    });
+  }
+
+
   @Get()
   async getMe(@CurrentUser() user?: { userId: string; email?: string }) {
     if (!user) throw new BadRequestException('Missing user');
-
-    let profile = await this.prisma.profile.findUnique({ where: { userId: user.userId } });
-    if (!profile) {
-      profile = await this.prisma.profile.create({
-        data: {
-          userId: user.userId,
-          username: fallbackUsername(user.userId),
-        },
-      });
-    }
-
-    return {
-      user: {
-        id: user.userId,
-        email: user.email ?? null,
-      },
-      profile: profile ?? null,
-    };
+    const profile = await this.requireProfile(user.userId);
+    return { user: { id: user.userId, email: user.email ?? null }, profile };
   }
 
   @Get('summary')
   async getMySummary(@CurrentUser() user: { userId: string; email?: string }) {
-    const cached = this.summaryCache.get(user.userId);
-    if (cached && Date.now() < cached.expiresAt) return cached.data;
+    const profile = await this.requireProfile(user.userId);
+    const since4w = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
 
-    let profile = await this.prisma.profile.findUnique({ where: { userId: user.userId } });
-    if (!profile) {
-      profile = await this.prisma.profile.create({
-        data: {
-          userId: user.userId,
-          username: fallbackUsername(user.userId),
-        },
-      });
-    }
+    const [recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] =
+      await Promise.all([
+        this.getActivities(user.userId, { take: 2 }),
+        this.countActivities(user.userId, since4w),
+        this.countActivities(user.userId),
+        this.prisma.activityMedia.findMany({
+          where: { userId: user.userId, kind: 'photo', publicUrl: { not: null } },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+          select: { publicUrl: true },
+        }),
+        this.getFollowerCount(user.userId),
+        this.getFollowingCount(user.userId),
+      ]);
 
-    const [recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] = await Promise.all([
-      this.prisma.activity.findMany({
-        where: { userId: user.userId },
-        orderBy: { startedAt: 'desc' },
-        take: 2,
-        select: {
-          id: true,
-          sport: true,
-          title: true,
-          description: true,
-          startedAt: true,
-          durationSeconds: true,
-          distanceMeters: true,
-          visibility: true,
-          source: true,
-          routePolyline: true,
-        },
-      }),
-      this.prisma.activity.count({
-        where: {
-          userId: user.userId,
-          startedAt: {
-            gte: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
-          },
-        },
-      }),
-      this.prisma.activity.count({ where: { userId: user.userId } }),
-
-      this.prisma.activityMedia.findMany({
-        where: {
-          userId: user.userId,
-          kind: 'photo',
-          publicUrl: { not: null },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 24,
-        select: { publicUrl: true },
-      }),
-
-      this.prisma.follow.count({ where: { followingId: user.userId } }),
-      this.prisma.follow.count({ where: { followerId: user.userId } }),
-    ]);
-
-    const resp = {
-      user: {
-        id: user.userId,
-        email: user.email ?? null,
-      },
-      profile: profile ?? null,
-      stats: {
-        last4WeeksCount,
-        totalActivities,
-        followersCount,
-        followingCount,
-      },
+    return {
+      user: { id: user.userId, email: user.email ?? null },
+      profile,
+      stats: { last4WeeksCount, totalActivities, followersCount, followingCount },
       recentActivities,
       recentPhotos: recentPhotos.map((p) => p.publicUrl).filter(Boolean),
-      settings: {
-        isPrivate: Boolean(profile?.isPrivate ?? false),
-      },
+      settings: { isPrivate: Boolean(profile.isPrivate) },
     };
-
-    // Very short TTL to reduce repeated hits during page transitions.
-    this.summaryCache.set(user.userId, { expiresAt: Date.now() + 5000, data: resp });
-    if (this.summaryCache.size > 2000) {
-      const firstKey = this.summaryCache.keys().next().value as string | undefined;
-      if (typeof firstKey === 'string') this.summaryCache.delete(firstKey);
-    }
-
-    return resp;
   }
 
   @Get('performance')
   async performance(@CurrentUser() user: { userId: string }) {
     const now = new Date();
     const since4w = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
-
     const year = now.getUTCFullYear();
-    const yearStart = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
-    const yearEnd = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
+    const yearStart = new Date(Date.UTC(year, 0, 1));
+    const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
 
     const [last4, yr, all, runActs] = await Promise.all([
-      this.prisma.activity.aggregate({
-        where: { userId: user.userId, startedAt: { gte: since4w } },
-        _count: { _all: true },
-        _sum: { distanceMeters: true, durationSeconds: true },
-      }),
-      this.prisma.activity.aggregate({
-        where: { userId: user.userId, startedAt: { gte: yearStart, lt: yearEnd } },
-        _count: { _all: true },
-        _sum: { distanceMeters: true, durationSeconds: true },
-      }),
-      this.prisma.activity.aggregate({
-        where: { userId: user.userId },
-        _count: { _all: true },
-        _sum: { distanceMeters: true, durationSeconds: true },
-      }),
+      this.aggregateActivities(user.userId, { gte: since4w }),
+      this.aggregateActivities(user.userId, { gte: yearStart, lt: yearEnd }),
+      this.aggregateActivities(user.userId),
       this.prisma.activity.findMany({
         where: { userId: user.userId, sport: 'run', distanceMeters: { gte: 400 } },
         select: { id: true, startedAt: true, distanceMeters: true, durationSeconds: true },
@@ -169,29 +155,23 @@ export class MeController {
       }),
     ]);
 
-    const total4 = Number(last4?._count?._all ?? 0);
-    const dist4 = Number(last4?._sum?.distanceMeters ?? 0);
-    const dur4 = Number(last4?._sum?.durationSeconds ?? 0);
+    const toNum = (v: any) => Number(v ?? 0);
 
-    const totalYr = Number(yr?._count?._all ?? 0);
-    const distYr = Number(yr?._sum?.distanceMeters ?? 0);
-    const durYr = Number(yr?._sum?.durationSeconds ?? 0);
+    const dist4 = toNum(last4._sum?.distanceMeters);
+    const dur4  = toNum(last4._sum?.durationSeconds);
+    const total4 = toNum(last4._count?._all);
 
-    const totalAll = Number(all?._count?._all ?? 0);
-    const distAll = Number(all?._sum?.distanceMeters ?? 0);
-    const durAll = Number(all?._sum?.durationSeconds ?? 0);
-
-    const targets: Array<{ key: string; label: string; meters: number }> = [
-      { key: '400m', label: '400m', meters: 400 },
-      { key: 'half_mile', label: '1/2 mile', meters: 804.672 },
-      { key: '1k', label: '1K', meters: 1000 },
-      { key: '1mile', label: '1 mile', meters: 1609.344 },
-      { key: '2mile', label: '2 mile', meters: 3218.688 },
-      { key: '5k', label: '5K', meters: 5000 },
-      { key: '10k', label: '10K', meters: 10000 },
-      { key: '15k', label: '15K', meters: 15000 },
-      { key: '10mile', label: '10 mile', meters: 16093.44 },
-      { key: '20k', label: '20K', meters: 20000 },
+    const targets = [
+      { key: '400m',          label: '400m',          meters: 400 },
+      { key: 'half_mile',     label: '1/2 mile',      meters: 804.672 },
+      { key: '1k',            label: '1K',            meters: 1000 },
+      { key: '1mile',         label: '1 mile',        meters: 1609.344 },
+      { key: '2mile',         label: '2 mile',        meters: 3218.688 },
+      { key: '5k',            label: '5K',            meters: 5000 },
+      { key: '10k',           label: '10K',           meters: 10000 },
+      { key: '15k',           label: '15K',           meters: 15000 },
+      { key: '10mile',        label: '10 mile',       meters: 16093.44 },
+      { key: '20k',           label: '20K',           meters: 20000 },
       { key: 'half_marathon', label: 'Half-Marathon', meters: 21097.5 },
     ];
 
@@ -199,12 +179,10 @@ export class MeController {
       .map((t) => {
         let bestSeconds: number | null = null;
         let best: any = null;
-
-        for (const a of runActs || []) {
-          const dist = Number(a.distanceMeters || 0);
-          const dur = Number(a.durationSeconds || 0);
-          if (!dist || !dur) continue;
-          if (dist < t.meters) continue;
+        for (const a of runActs) {
+          const dist = toNum(a.distanceMeters);
+          const dur  = toNum(a.durationSeconds);
+          if (!dist || !dur || dist < t.meters) continue;
           const est = (dur / dist) * t.meters;
           if (!Number.isFinite(est) || est <= 0) continue;
           if (bestSeconds == null || est < bestSeconds) {
@@ -212,603 +190,52 @@ export class MeController {
             best = a;
           }
         }
-
-        return {
-          key: t.key,
-          label: t.label,
-          meters: t.meters,
-          bestSeconds,
-          activityId: best?.id ?? null,
-          startedAt: best?.startedAt ?? null,
-        };
+        return { key: t.key, label: t.label, meters: t.meters, bestSeconds, activityId: best?.id ?? null, startedAt: best?.startedAt ?? null };
       })
       .filter((x) => x.bestSeconds != null);
 
     return {
       last4Weeks: {
-        activitiesPerWeek: Math.round((total4 / 4) * 10) / 10,
+        activitiesPerWeek:       Math.round((total4 / 4) * 10) / 10,
         avgDistancePerWeekMeters: Math.round(dist4 / 4),
-        avgTimePerWeekSeconds: Math.round(dur4 / 4),
+        avgTimePerWeekSeconds:    Math.round(dur4 / 4),
       },
-      year: {
-        year,
-        activities: totalYr,
-        distanceMeters: distYr,
-        timeSeconds: durYr,
-      },
-      allTime: {
-        activities: totalAll,
-        distanceMeters: distAll,
-        timeSeconds: durAll,
-      },
+      year: { year, activities: toNum(yr._count?._all), distanceMeters: toNum(yr._sum?.distanceMeters), timeSeconds: toNum(yr._sum?.durationSeconds) },
+      allTime: { activities: toNum(all._count?._all), distanceMeters: toNum(all._sum?.distanceMeters), timeSeconds: toNum(all._sum?.durationSeconds) },
       bestEfforts,
     };
   }
 
-  @Put('personal')
-  async updatePersonal(@CurrentUser() user: { userId: string }, @Body() dto: UpdatePersonalDto) {
-    const existing = await this.prisma.profile.findUnique({
-      where: { userId: user.userId },
-      select: { onboardingCompletedAt: true },
-    });
-    const completedAt = existing?.onboardingCompletedAt ?? new Date();
 
-    const profile = await this.prisma.profile.upsert({
-      where: { userId: user.userId },
-      create: {
-        userId: user.userId,
-        username: fallbackUsername(user.userId),
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dateOfBirth: new Date(dto.dateOfBirth),
-        gender: dto.gender,
-        bio: dto.bio,
-        onboardingCompletedAt: completedAt,
-      },
-      update: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dateOfBirth: new Date(dto.dateOfBirth),
-        gender: dto.gender,
-        bio: dto.bio,
-        onboardingCompletedAt: completedAt,
-      },
-    });
-
-    return { profile };
-  }
-
-  @Get('export')
-  async exportData(@CurrentUser() user: { userId: string; email?: string }) {
-    const userId = user.userId;
-
-    const [profile, activities, activityMedia, commentsGiven, commentsReceived, kudosGiven, kudosReceived, following, followers, clubMemberships, clubPosts, convoParts] =
-      await Promise.all([
-        this.prisma.profile.findUnique({ where: { userId } }),
-        this.prisma.activity.findMany({
-          where: { userId },
-          orderBy: { startedAt: 'desc' },
-          select: {
-            id: true,
-            sport: true,
-            title: true,
-            description: true,
-            startedAt: true,
-            durationSeconds: true,
-            distanceMeters: true,
-            visibility: true,
-            source: true,
-            routePolyline: true,
-            mapImageUrl: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        }),
-        this.prisma.activityMedia.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            activityId: true,
-            kind: true,
-            storageBucket: true,
-            storagePath: true,
-            publicUrl: true,
-            createdAt: true,
-          },
-        }),
-        this.prisma.activityComment.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, activityId: true, body: true, createdAt: true },
-        }),
-        this.prisma.activityComment.findMany({
-          where: { activity: { userId }, userId: { not: userId } },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, activityId: true, userId: true, body: true, createdAt: true },
-        }),
-        this.prisma.activityKudo.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: { activityId: true, createdAt: true },
-        }),
-        this.prisma.activityKudo.findMany({
-          where: { activity: { userId }, userId: { not: userId } },
-          orderBy: { createdAt: 'desc' },
-          select: { activityId: true, userId: true, createdAt: true },
-        }),
-        this.prisma.follow.findMany({
-          where: { followerId: userId },
-          orderBy: { createdAt: 'desc' },
-          select: { followingId: true, createdAt: true },
-        }),
-        this.prisma.follow.findMany({
-          where: { followingId: userId },
-          orderBy: { createdAt: 'desc' },
-          select: { followerId: true, createdAt: true },
-        }),
-        this.prisma.clubMember.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            role: true,
-            createdAt: true,
-            club: { select: { id: true, name: true, location: true, sport: true, description: true, avatarUrl: true, bannerUrl: true, isInviteOnly: true, createdAt: true } },
-          },
-        }),
-        this.prisma.clubPost.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          include: {
-            club: { select: { id: true, name: true } },
-            media: { orderBy: { createdAt: 'asc' }, select: { publicUrl: true, createdAt: true } },
-            activity: {
-              select: { id: true, sport: true, title: true, startedAt: true, durationSeconds: true, distanceMeters: true, visibility: true },
-            },
-          },
-        }),
-
-        this.prisma.conversationParticipant.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            conversationId: true,
-            unreadCount: true,
-            lastReadAt: true,
-            createdAt: true,
-            conversation: {
-              select: {
-                id: true,
-                createdAt: true,
-                updatedAt: true,
-                lastMessageAt: true,
-                lastMessageText: true,
-                lastSenderId: true,
-              },
-            },
-          },
-        }),
-      ]);
-
-    const conversationIds = convoParts.map((p) => p.conversationId);
-
-    const [allParts, messages] = await Promise.all([
-      conversationIds.length
-        ? this.prisma.conversationParticipant.findMany({
-            where: { conversationId: { in: conversationIds } },
-            select: { conversationId: true, userId: true },
-          })
-        : Promise.resolve([]),
-      conversationIds.length
-        ? this.prisma.message.findMany({
-            where: { conversationId: { in: conversationIds } },
-            orderBy: { createdAt: 'asc' },
-            select: { id: true, conversationId: true, senderId: true, body: true, createdAt: true },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const participantIds = Array.from(new Set(allParts.map((p) => p.userId)));
-    const chatProfiles = participantIds.length
-      ? await this.prisma.profile.findMany({
-          where: { userId: { in: participantIds } },
-          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
-        })
-      : [];
-
-    const participantsByConvo = new Map<string, string[]>();
-    for (const p of allParts) {
-      const list = participantsByConvo.get(p.conversationId) ?? [];
-      list.push(p.userId);
-      participantsByConvo.set(p.conversationId, list);
-    }
-
-    const messagesByConvo = new Map<string, any[]>();
-    for (const m of messages) {
-      const list = messagesByConvo.get(m.conversationId) ?? [];
-      list.push({
-        id: m.id,
-        senderId: m.senderId,
-        body: m.body,
-        createdAt: m.createdAt.toISOString(),
-      });
-      messagesByConvo.set(m.conversationId, list);
-    }
-
-    const mediaByActivity = new Map<string, any[]>();
-    for (const m of activityMedia) {
-      const list = mediaByActivity.get(m.activityId) ?? [];
-      list.push({
-        id: m.id,
-        kind: m.kind,
-        storageBucket: m.storageBucket,
-        storagePath: m.storagePath,
-        publicUrl: m.publicUrl ?? null,
-        createdAt: m.createdAt.toISOString(),
-      });
-      mediaByActivity.set(m.activityId, list);
-    }
-
-    return {
-      exportedAt: new Date().toISOString(),
-      user: { id: userId, email: user.email ?? null },
-      profile: profile ?? null,
-      accountSettings: {
-        isPrivate: Boolean(profile?.isPrivate ?? false),
-      },
-      workouts: activities.map((a) => ({
-        ...a,
-        startedAt: a.startedAt.toISOString(),
-        createdAt: a.createdAt.toISOString(),
-        updatedAt: a.updatedAt.toISOString(),
-        media: mediaByActivity.get(a.id) ?? [],
-      })),
-      uploadedImages: {
-        activityMedia: activityMedia
-          .filter((m) => m.kind === 'photo' && m.publicUrl)
-          .map((m) => ({
-            activityId: m.activityId,
-            publicUrl: m.publicUrl,
-            storageBucket: m.storageBucket,
-            storagePath: m.storagePath,
-            createdAt: m.createdAt.toISOString(),
-          })),
-        clubPostMedia: clubPosts
-          .flatMap((p) => (p.media || []).map((m) => ({ clubId: p.clubId, postId: p.id, publicUrl: m.publicUrl, createdAt: m.createdAt.toISOString() })))
-          .filter((m) => m.publicUrl),
-      },
-      comments: {
-        given: commentsGiven.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
-        receivedOnMyWorkouts: commentsReceived.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
-      },
-      likes: {
-        given: kudosGiven.map((k) => ({ ...k, createdAt: k.createdAt.toISOString() })),
-        receivedOnMyWorkouts: kudosReceived.map((k) => ({ ...k, createdAt: k.createdAt.toISOString() })),
-      },
-      followersFollowing: {
-        followers: followers.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() })),
-        following: following.map((f) => ({ ...f, createdAt: f.createdAt.toISOString() })),
-      },
-      clubs: {
-        memberships: clubMemberships.map((m) => ({
-          role: m.role,
-          joinedAt: m.createdAt.toISOString(),
-          club: { ...m.club, createdAt: m.club.createdAt.toISOString() },
-        })),
-        posts: clubPosts.map((p) => ({
-          id: p.id,
-          club: p.club,
-          body: p.body ?? null,
-          createdAt: p.createdAt.toISOString(),
-          media: (p.media || []).map((m) => ({ publicUrl: m.publicUrl, createdAt: m.createdAt.toISOString() })),
-          activity: p.activity
-            ? {
-                ...p.activity,
-                startedAt: p.activity.startedAt.toISOString(),
-              }
-            : null,
-        })),
-      },
-
-      chat: {
-        participants: chatProfiles.map((p) => ({
-          id: p.userId,
-          username: p.username ?? null,
-          firstName: p.firstName ?? null,
-          lastName: p.lastName ?? null,
-          avatarUrl: p.avatarUrl ?? null,
-        })),
-        conversations: convoParts.map((p) => ({
-          id: p.conversationId,
-          createdAt: p.conversation?.createdAt?.toISOString?.() ?? null,
-          updatedAt: p.conversation?.updatedAt?.toISOString?.() ?? null,
-          lastMessageAt: p.conversation?.lastMessageAt ? p.conversation.lastMessageAt.toISOString() : null,
-          lastMessageText: p.conversation?.lastMessageText ?? null,
-          lastSenderId: p.conversation?.lastSenderId ?? null,
-          unreadCount: p.unreadCount ?? 0,
-          lastReadAt: p.lastReadAt ? p.lastReadAt.toISOString() : null,
-          participantIds: participantsByConvo.get(p.conversationId) ?? [userId],
-          messageCount: (messagesByConvo.get(p.conversationId) ?? []).length,
-        })),
-        messagesByConversationId: Object.fromEntries(Array.from(messagesByConvo.entries())),
-      },
-    };
-  }
-
-  @Get('export.zip')
-  async exportZip(@CurrentUser() user: { userId: string; email?: string }, @Res() res: Response) {
-    const userId = user.userId;
-
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
-
-    const safeSeg = (s: string) => String(s || '').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'x';
-    const extFromPath = (p: string) => {
-      const ext = path.extname(p || '').toLowerCase();
-      if (!ext) return '';
-      if (ext.length > 12) return '';
-      return ext;
-    };
-    const extFromUrl = (u: string) => {
-      try {
-        const url = new URL(u);
-        return extFromPath(url.pathname);
-      } catch {
-        return extFromPath(u);
-      }
-    };
-    const json = (obj: any) => JSON.stringify(obj, null, 2);
-
-    const exportObj = await this.exportData(user);
-
-    const stamp = new Date().toISOString().slice(0, 10);
-    res.setHeader('content-type', 'application/zip');
-    res.setHeader('content-disposition', `attachment; filename="pace42-export-${stamp}.zip"`);
-
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('error', (err: any) => {
-      // eslint-disable-next-line no-console
-      console.error('[export.zip] archive error', err);
-      try {
-        res.status(500).end();
-      } catch {
-        // ignore
-      }
-    });
-    archive.pipe(res);
-
-    const errors: Array<{ kind: string; id?: string; detail: string }> = [];
-
-    // Core JSON files
-    archive.append(json(exportObj), { name: 'export.json' });
-    archive.append(json(exportObj?.profile ?? null), { name: 'profile.json' });
-    archive.append(json(exportObj?.accountSettings ?? {}), { name: 'account_settings.json' });
-    archive.append(json(exportObj?.followersFollowing ?? {}), { name: 'followers_following.json' });
-    archive.append(json(exportObj?.comments ?? {}), { name: 'comments.json' });
-    archive.append(json(exportObj?.likes ?? {}), { name: 'likes.json' });
-    archive.append(json(exportObj?.clubs ?? {}), { name: 'clubs.json' });
-    archive.append(json(exportObj?.chat ?? {}), { name: 'chat/chat.json' });
-
-    // Profile media (download actual avatar image)
-    const avatarUrl = String(exportObj?.profile?.avatarUrl ?? '').trim();
-    if (avatarUrl) {
-      const ext = extFromUrl(avatarUrl) || '.jpg';
-      try {
-        const r = await fetch(avatarUrl);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const buf = Buffer.from(await r.arrayBuffer());
-        archive.append(buf, { name: `profile/avatar${ext}` });
-      } catch (e: any) {
-        errors.push({ kind: 'profile_avatar', id: userId, detail: String(e?.message || e) });
-      }
-    }
-
-    // Workouts
-    const workouts = Array.isArray(exportObj?.workouts) ? exportObj.workouts : [];
-    archive.append(json(workouts.map((w: any) => ({ id: w?.id, sport: w?.sport, startedAt: w?.startedAt }))), {
-      name: 'workouts/index.json',
-    });
-
-    // Download activity media from Storage
-    for (const w of workouts) {
-      const wid = String(w?.id || '');
-      if (!wid) continue;
-      archive.append(json(w), { name: `workouts/${safeSeg(wid)}/workout.json` });
-
-      const media = Array.isArray(w?.media) ? w.media : [];
-      for (const m of media) {
-        const mid = String(m?.id || '');
-        const bucket = String(m?.storageBucket || '');
-        const storagePath = String(m?.storagePath || '');
-        if (!mid || !bucket || !storagePath) continue;
-
-        const ext = extFromPath(storagePath) || (m?.kind === 'gpx' ? '.gpx' : '');
-        const base = m?.kind === 'gpx' ? 'gpx' : 'media';
-        const name = `workouts/${safeSeg(wid)}/${base}/${safeSeg(mid)}${ext}`;
-
-        try {
-          const { data, error } = await service.storage.from(bucket).download(storagePath);
-          if (error) throw new Error(error.message);
-          const buf = Buffer.from(await (data as any).arrayBuffer());
-          archive.append(buf, { name });
-        } catch (e: any) {
-          errors.push({ kind: 'activity_media', id: mid, detail: String(e?.message || e) });
-        }
-      }
-    }
-
-    // Club post media (stored as publicUrl only)
-    const clubPosts = Array.isArray(exportObj?.clubs?.posts) ? exportObj.clubs.posts : [];
-    for (const p of clubPosts) {
-      const postId = String(p?.id || '');
-      if (!postId) continue;
-      archive.append(json(p), { name: `club_posts/${safeSeg(postId)}/post.json` });
-      const items = Array.isArray(p?.media) ? p.media : [];
-      for (let i = 0; i < items.length; i++) {
-        const url = String(items[i]?.publicUrl || '');
-        if (!url) continue;
-        const ext = extFromPath(url) || '.jpg';
-        const name = `club_posts/${safeSeg(postId)}/media/media-${String(i + 1).padStart(2, '0')}${ext}`;
-        try {
-          const r = await fetch(url);
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const buf = Buffer.from(await r.arrayBuffer());
-          archive.append(buf, { name });
-        } catch (e: any) {
-          errors.push({ kind: 'club_post_media', id: postId, detail: String(e?.message || e) });
-        }
-      }
-    }
-
-    // Chat exports
-    const chat = exportObj?.chat || {};
-    const convos = Array.isArray(chat?.conversations) ? chat.conversations : [];
-    const parts = Array.isArray(chat?.participants) ? chat.participants : [];
-    const byConvo = chat?.messagesByConversationId && typeof chat.messagesByConversationId === 'object' ? chat.messagesByConversationId : {};
-
-    archive.append(json(convos), { name: 'chat/conversations.json' });
-    archive.append(json(parts), { name: 'chat/participants.json' });
-    for (const c of convos) {
-      const cid = String(c?.id || '');
-      if (!cid) continue;
-      const msgs = Array.isArray(byConvo?.[cid]) ? byConvo[cid] : [];
-      archive.append(json(msgs), { name: `chat/messages/${safeSeg(cid)}.json` });
-    }
-
-    archive.append(
-      json({
-        note: 'This export contains your Pace42 data at the time of export.',
-        exportedAt: exportObj?.exportedAt,
-      }),
-      { name: 'README.json' },
-    );
-
-    if (errors.length) archive.append(json(errors), { name: 'errors.json' });
-
-    await archive.finalize();
-  }
-
-  // Convenience endpoint for the frontend: update any profile fields in one request.
-  @Put()
-  async updateMe(@CurrentUser() user: { userId: string }, @Body() dto: UpdateMeDto) {
-    const weeklyGoalDistanceMeters =
-      typeof dto.weeklyGoalDistanceMeters === 'number'
-        ? dto.weeklyGoalDistanceMeters > 0
-          ? Math.round(dto.weeklyGoalDistanceMeters)
-          : null
-        : undefined;
-
-    const profile = await this.prisma.profile.upsert({
-      where: { userId: user.userId },
-      create: {
-        userId: user.userId,
-        username: fallbackUsername(user.userId),
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-        gender: dto.gender,
-        level: dto.level,
-        bio: dto.bio,
-        isPrivate: dto.isPrivate ?? false,
-        weightKg: dto.weightKg,
-        heightCm: dto.heightCm,
-        onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
-        weeklyGoalDistanceMeters: weeklyGoalDistanceMeters ?? undefined,
-      },
-      update: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-        gender: dto.gender,
-        level: dto.level,
-        bio: dto.bio,
-        ...(typeof dto.isPrivate === 'boolean' ? { isPrivate: dto.isPrivate } : {}),
-        weightKg: dto.weightKg,
-        heightCm: dto.heightCm,
-        onboardingCompletedAt: dto.onboardingCompletedAt ? new Date(dto.onboardingCompletedAt) : undefined,
-        ...(weeklyGoalDistanceMeters !== undefined ? { weeklyGoalDistanceMeters } : {}),
-      },
-    });
-
-    return { profile };
-  }
 
   @Post('avatar')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async uploadAvatar(@CurrentUser() user: { userId: string }, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('Missing file');
 
-    const allowed = new Set([
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/avif',
-      'image/gif',
-      'image/heic',
-      'image/heif',
-    ]);
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/heic', 'image/heif']);
     if (!allowed.has(file.mimetype)) throw new BadRequestException(`Unsupported image type: ${file.mimetype}`);
-
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseServiceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({
-      supabaseUrl,
-      supabaseAnonKey,
-      supabaseServiceRoleKey,
-    });
 
     const ext = path.extname(file.originalname || '').toLowerCase();
     const safeExt = ext && ext.length <= 10 ? ext : '';
     const objectPath = `${user.userId}/${randomUUID()}${safeExt}`;
 
     const bucket = this.config.get<string>('SUPABASE_AVATARS_BUCKET') ?? 'avatars';
-    const { error: uploadError } = await service.storage.from(bucket).upload(objectPath, file.buffer, {
-      contentType: file.mimetype,
-      upsert: true,
-    });
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(objectPath, file.buffer, { contentType: file.mimetype, upsert: true });
     if (uploadError) throw new BadRequestException(uploadError.message);
 
-    const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
-    const avatarUrl = publicData.publicUrl;
+    await this.requireProfile(user.userId);
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    await this.prisma.profile.update({ where: { userId: user.userId }, data: { avatarUrl: publicData.publicUrl } });
 
-    await this.prisma.profile.upsert({
-      where: { userId: user.userId },
-      create: {
-        userId: user.userId,
-        username: fallbackUsername(user.userId),
-        avatarUrl,
-      },
-      update: {
-        avatarUrl,
-      },
-    });
-
-    return { avatarUrl };
+    return { avatarUrl: publicData.publicUrl };
   }
 
   @Post('delete-account')
-  async deleteAccount(
-    @CurrentUser() user: { userId: string },
-    @Body() body: { confirm?: string },
-  ) {
-    const confirm = String(body?.confirm ?? '').trim().toUpperCase();
-    if (confirm !== 'DELETE') throw new BadRequestException('Type DELETE to confirm');
-
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
-
-    const { error } = await service.auth.admin.deleteUser(user.userId);
+  async deleteAccount(@CurrentUser() user: { userId: string }, @Body() body: { confirm?: string }) {
+    if (String(body?.confirm ?? '').trim().toUpperCase() !== 'DELETE') throw new BadRequestException('Type DELETE to confirm');
+    const { error } = await supabase.auth.admin.deleteUser(user.userId);
     if (error) throw new BadRequestException(error.message);
-
     return { ok: true };
   }
 
@@ -821,51 +248,26 @@ export class MeController {
       where: { userId: user.userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
-      select: {
-        id: true,
-        sport: true,
-        title: true,
-        description: true,
-        startedAt: true,
-        durationSeconds: true,
-        distanceMeters: true,
-        visibility: true,
-        source: true,
-        mapImageUrl: true,
-        createdAt: true,
-      },
+      select: { id: true, sport: true, title: true, description: true, startedAt: true, durationSeconds: true, distanceMeters: true, visibility: true, source: true, mapImageUrl: true, createdAt: true },
     });
 
     const ids = activities.map((a) => a.id);
-    const media = ids.length
-      ? await this.prisma.activityMedia.findMany({
-          where: { activityId: { in: ids }, userId: user.userId, kind: { in: ['photo', 'gpx'] } },
-          orderBy: { createdAt: 'asc' },
-          select: { activityId: true, kind: true, publicUrl: true },
-        })
-      : [];
+    const media = ids.length ? await this.getActivityMedia(user.userId, { activityIds: ids, kinds: ['photo', 'gpx'] }) : [];
 
     const mediaByActivity = new Map<string, Array<{ kind: string; publicUrl: string | null }>>();
     for (const m of media) {
-      const list = mediaByActivity.get(m.activityId) ?? [];
-      list.push({ kind: m.kind, publicUrl: m.publicUrl ?? null });
-      mediaByActivity.set(m.activityId, list);
+      (mediaByActivity.get(m.activityId) ?? mediaByActivity.set(m.activityId, []).get(m.activityId)!).push({ kind: m.kind, publicUrl: m.publicUrl ?? null });
     }
 
     return {
       activities: activities.map((a) => {
-        const list = mediaByActivity.get(a.id) ?? [];
+        const list   = mediaByActivity.get(a.id) ?? [];
         const photos = list.filter((x) => x.kind === 'photo' && x.publicUrl).map((x) => x.publicUrl as string);
-        const hasGpx = list.some((x) => x.kind === 'gpx');
         return {
           ...a,
           startedAt: a.startedAt.toISOString(),
           createdAt: a.createdAt.toISOString(),
-          media: {
-            photoCount: photos.length,
-            coverPhotoUrl: photos[0] ?? null,
-            hasGpx,
-          },
+          media: { photoCount: photos.length, coverPhotoUrl: photos[0] ?? null, hasGpx: list.some((x) => x.kind === 'gpx') },
         };
       }),
     };

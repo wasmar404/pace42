@@ -108,9 +108,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
     const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseJwtSecret = this.config.get<string>('SUPABASE_JWT_SECRET');
 
-    const decoded = await verifySupabaseAccessToken({ token, supabaseUrl, supabaseAnonKey, supabaseJwtSecret });
+    const decoded = await verifySupabaseAccessToken({ token, supabaseUrl, supabaseAnonKey });
     return decoded.userId;
   }
 

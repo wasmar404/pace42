@@ -84,7 +84,7 @@ export class UpdatePersonalDto {
   dateOfBirth!: string;
 
   @IsOptional()
-  @IsIn(['male', 'female', 'other', 'prefer_not_to_say'])
+  @IsIn(['male', 'female'])
   gender?: string;
 
   @IsOptional()

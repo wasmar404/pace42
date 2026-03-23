@@ -23,7 +23,7 @@ import { randomUUID } from 'node:crypto';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { OptionalSupabaseAuthGuard } from '../../auth/supabase.optional.guard';
 import { CurrentUser } from '../../auth/supabase.user';
-import { createSupabaseClients } from '../../auth/supabase.auth';
+import { supabase } from '../../auth/supabase.auth';
 import { CreateActivityDto } from './activities.dto';
 import { PrismaService } from '../../prisma';
 import { msSince, time } from '../../common/time';
@@ -612,11 +612,7 @@ export class ActivitiesController {
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
     const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({
-      supabaseUrl,
-      supabaseAnonKey,
-      supabaseServiceRoleKey,
-    });
+    const service = supabase;
 
     const bucket = this.config.get<string>('SUPABASE_ACTIVITY_MEDIA_BUCKET') ?? 'activity-media';
     const ext = path.extname(file.originalname || '').toLowerCase();
@@ -664,7 +660,7 @@ export class ActivitiesController {
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
     const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
+    const  service  = supabase;
 
     const gpxBucket = this.config.get<string>('SUPABASE_GPX_BUCKET') ?? 'gpx';
     const ext = path.extname(file.originalname || '').toLowerCase();
