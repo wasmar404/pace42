@@ -10,8 +10,6 @@ export class AuthPolicyController {
   constructor(private readonly config: ConfigService) {}
 
   private async adminClient() {
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
     const service  = supabase;
     return { service, supabaseServiceRoleKey };
@@ -127,23 +125,6 @@ export class AuthPolicyController {
       }
     }
 
-    // Intra uses an admin-generated magic link, so it shows up as email provider.
-    // We enforce it using user_metadata.signupMethod.
-    if (method === 'intra') {
-      const signupMethod = String(meta.signupMethod ?? '').toLowerCase();
-      if (signupMethod !== 'intra') {
-        if (ageMs < 15 * 60 * 1000) {
-          await service.auth.admin.deleteUser(reqUser.userId).catch(() => {});
-        }
-        throw new ForbiddenException('Intra login is only allowed for accounts that signed up with Intra.');
-      }
-      if (!oauthSignedUp) {
-        await service.auth.admin.updateUserById(reqUser.userId, {
-          user_metadata: { ...meta, oauthSignedUp: true, oauthProvider: 'intra' },
-        }).catch(() => {});
-      }
-      return { ok: true };
-    }
 
     if (hasGoogle) {
       if (mode === 'signup') {
