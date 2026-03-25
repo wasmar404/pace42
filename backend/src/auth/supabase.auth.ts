@@ -1,45 +1,21 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-function fetchWithTimeout(timeoutMs: number): typeof fetch {
-  return async (input: any, init?: any) => {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const merged = {
-        ...(init ?? {}),
-        signal: init?.signal ?? controller.signal,
-      };
-      return await fetch(input, merged);
-    } finally {
-      clearTimeout(t);
-    }
-  };
-}
+export const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!,
+);
 
-type SupabaseClients = {
-  anon: SupabaseClient;
-  service: SupabaseClient;
-};
+let _admin: SupabaseClient | null = null;
 
-export function createSupabaseClients(params: {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  supabaseServiceRoleKey?: string;
-}): SupabaseClients {
-  // Note: Storage uploads and Edge Function calls can legitimately take longer
-  // than a few seconds (especially on slow networks or larger files).
-  const timeoutMs = Number(process.env.SUPABASE_HTTP_TIMEOUT_MS ?? 60000);
+export function getSupabaseAdminClient(): SupabaseClient {
+  if (_admin) return _admin;
 
-  const anon = createClient(params.supabaseUrl, params.supabaseAnonKey, {
-    global: { fetch: fetchWithTimeout(timeoutMs) },
-  });
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
 
-  // Service role is optional; only needed for server-side privileged actions
-  // (e.g., uploading to Storage regardless of user policy).
-  const serviceKey = params.supabaseServiceRoleKey ?? params.supabaseAnonKey;
-  const service = createClient(params.supabaseUrl, serviceKey, {
-    global: { fetch: fetchWithTimeout(timeoutMs) },
-  });
-
-  return { anon, service };
+  _admin = createClient(url, key);
+  return _admin;
 }

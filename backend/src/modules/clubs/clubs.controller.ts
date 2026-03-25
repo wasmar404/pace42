@@ -20,7 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { CurrentUser } from '../../auth/supabase.user';
-import { createSupabaseClients } from '../../auth/supabase.auth';
+import { getSupabaseAdminClient } from '../../auth/supabase.auth';
 import { CreateClubDto, CreateClubPostDto, DeleteClubDto, InviteUserDto, SetMemberRoleDto, UpdateClubDto } from './clubs.dto';
 
 function clubNameOrThrow(name: string) {
@@ -47,10 +47,7 @@ export class ClubsController {
     if (!file) throw new BadRequestException('Missing file');
     if (!String(file.mimetype || '').startsWith('image/')) throw new BadRequestException('File must be an image');
 
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
+    const service = getSupabaseAdminClient();
 
     // Use an existing bucket by default to avoid local setup footguns.
     const bucket = this.config.get<string>('SUPABASE_CLUB_MEDIA_BUCKET') ?? (this.config.get<string>('SUPABASE_ACTIVITY_MEDIA_BUCKET') ?? 'activity-media');
@@ -77,10 +74,7 @@ export class ClubsController {
     if (!file) throw new BadRequestException('Missing file');
     if (!String(file.mimetype || '').startsWith('image/')) throw new BadRequestException('File must be an image');
 
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
-    const supabaseServiceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({ supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey });
+    const service = getSupabaseAdminClient();
 
     const bucket =
       this.config.get<string>('SUPABASE_CLUB_MEDIA_BUCKET') ??

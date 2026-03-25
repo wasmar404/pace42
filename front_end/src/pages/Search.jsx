@@ -173,7 +173,6 @@ export default function SearchPage() {
                         <div className="athlete-name">{displayName(u)}</div>
                         <div className="athlete-meta">
                           {u.username ? <span className="athlete-username">@{u.username}</span> : null}
-                          {u.level ? <span className="athlete-level">{u.level}</span> : null}
                         </div>
                       </div>
                     </Link>

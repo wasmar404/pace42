@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import jwksRsa from 'jwks-rsa';
 
-import { createSupabaseClients } from './supabase.auth';
+import { createClient } from '@supabase/supabase-js';
 
 type JwtPayload = {
   sub?: string;
@@ -86,7 +86,7 @@ export async function verifySupabaseAccessToken(params: {
   }
 
   // Compatibility path: last resort (slow). Still works even if token alg changes.
-  const { anon } = createSupabaseClients({ supabaseUrl, supabaseAnonKey });
+  const anon = createClient(supabaseUrl, supabaseAnonKey);
   const { data, error } = await anon.auth.getUser(token);
   if (error || !data.user) throw new Error('Invalid token');
   return { userId: data.user.id, email: data.user.email ?? undefined };

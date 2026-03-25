@@ -3,7 +3,6 @@ import {
   IsDateString,
   IsIn,
   IsInt,
-  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -33,27 +32,8 @@ export class UpdateMeDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(50)
-  level?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(500)
   bio?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(1)
-  @Max(500)
-  weightKg?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(1)
-  @Max(300)
-  heightCm?: number;
 
   @IsOptional()
   @IsDateString()
@@ -69,26 +49,4 @@ export class UpdateMeDto {
   @Min(0)
   @Max(100000000)
   weeklyGoalDistanceMeters?: number;
-}
-
-export class UpdatePersonalDto {
-  @IsString()
-  @MaxLength(100)
-  firstName!: string;
-
-  @IsString()
-  @MaxLength(100)
-  lastName!: string;
-
-  @IsDateString()
-  dateOfBirth!: string;
-
-  @IsOptional()
-  @IsIn(['male', 'female', 'other', 'prefer_not_to_say'])
-  gender?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  bio?: string;
 }

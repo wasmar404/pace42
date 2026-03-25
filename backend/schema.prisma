@@ -16,9 +16,6 @@ model Profile {
   lastName              String?   @map("last_name") @db.VarChar(100)
   dateOfBirth           DateTime? @map("date_of_birth") @db.Date
   gender                String?   @db.VarChar(20)
-  level                 String?   @db.VarChar(50)
-  weightKg              Decimal?  @map("weight_kg") @db.Decimal(5, 2)
-  heightCm              Decimal?  @map("height_cm") @db.Decimal(5, 2)
   bio                   String?
   onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)

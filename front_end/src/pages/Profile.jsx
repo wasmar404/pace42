@@ -1,10 +1,8 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { 
   MapPin, 
-  Calendar, 
-  Trophy, 
-  TrendingUp, 
+  TrendingUp,
   Activity, 
   Clock, 
   Route, 
@@ -19,7 +17,6 @@ import { backendGet } from '../backendApi'
 import Avatar from '../components/Avatar'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
-import { getMyPerformance } from '../api/me'
 
 import '../styles/Profile.css'
 import runners from '../assets/runners.jpg'
@@ -99,7 +96,6 @@ export default function Profile() {
   const [hero, setHero] = useState(DEFAULT_HERO)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [perf, setPerf] = useState(null)
 
   useEffect(() => {
     try {
@@ -131,10 +127,7 @@ export default function Profile() {
       setError('')
       setLoading(true)
       try {
-        const [res, perfRes] = await Promise.all([
-          backendGet('/api/me/summary'),
-          getMyPerformance(),
-        ])
+        const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setMe({ user: res?.user, profile: res?.profile })
         setActivities(res?.recentActivities || [])
@@ -146,8 +139,6 @@ export default function Profile() {
         const day = new Date().toISOString().slice(0, 10)
         const seed = `${res?.user?.id || ''}:${day}`
         setHero(pickHero(res?.recentPhotos, seed))
-
-        setPerf(perfRes || null)
 
         try {
           localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: res }))
@@ -166,26 +157,6 @@ export default function Profile() {
       cancelled = true
     }
   }, [])
-
-  const refreshPerformance = async () => {
-    try {
-      const perfRes = await getMyPerformance()
-      setPerf(perfRes || null)
-    } catch {
-      // ignore
-    }
-  }
-
-  const fmtEffort = (secs) => {
-    const s = Number(secs)
-    if (!Number.isFinite(s) || s <= 0) return '--'
-    if (s < 60) return `${Math.round(s)}s`
-    const h = Math.floor(s / 3600)
-    const m = Math.floor((s % 3600) / 60)
-    const r = Math.round(s % 60)
-    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
-    return `${m}:${String(r).padStart(2, '0')}`
-  }
 
 
   const displayName = useMemo(() => {
@@ -261,18 +232,12 @@ export default function Profile() {
                     <span className="profile-handle">@{me.profile.username}</span>
                   )}
                   
-                  <div className="profile-badges">
-                    {me?.profile?.level && (
-                      <span className="badge badge-level">
-                        <Trophy size={12} />
-                        Level {me.profile.level}
-                      </span>
-                    )}
-                    <span className="badge badge-public">
-                      <Zap size={12} />
-                      {me?.profile?.isPrivate ? 'Private' : 'Public'}
-                    </span>
-                  </div>
+                 <div className="profile-badges">
+                   <span className="badge badge-public">
+                     <Zap size={12} />
+                     {me?.profile?.isPrivate ? 'Private' : 'Public'}
+                   </span>
+                 </div>
                 </div>
               </div>
             </div>
@@ -449,91 +414,13 @@ export default function Profile() {
 
           {/* Right Sidebar */}
           <aside className="content-sidebar">
-            {/* Performance (stats.png-inspired) */}
-            <div className="sidebar-card pr-card">
-              <div className="pr-head">
-                <div className="pr-k">Last 4 Weeks</div>
-                <div className="pr-actions" />
-              </div>
-
-              <div className="pr-table">
-                <div className="pr-row">
-                  <div className="l">Activities / Week</div>
-                  <div className="r">{typeof perf?.last4Weeks?.activitiesPerWeek === 'number' ? perf.last4Weeks.activitiesPerWeek : '--'}</div>
-                </div>
-                <div className="pr-row">
-                  <div className="l">Avg Distance / Week</div>
-                  <div className="r">{formatDistance(perf?.last4Weeks?.avgDistancePerWeekMeters || 0, units)}</div>
-                </div>
-                <div className="pr-row">
-                  <div className="l">Avg Time / Week</div>
-                  <div className="r">{formatDuration(perf?.last4Weeks?.avgTimePerWeekSeconds || 0)}</div>
-                </div>
-              </div>
-
-              <div className="pr-sep" />
-
-              <div className="pr-subhead">
-                <div className="t">Best Efforts</div>
-                <div className="s">Run PRs (estimated from activities)</div>
-              </div>
-
-              <div className="pr-table efforts" role="list">
-                {(perf?.bestEfforts || []).length ? (
-                  perf.bestEfforts.map((e) => (
-                    <div key={e.key} className="pr-row" role="listitem">
-                      <div className="l">{e.label}</div>
-                      <div className="r best">
-                        {e.activityId ? <Link to={`/activities/${e.activityId}`}>{fmtEffort(e.bestSeconds)}</Link> : fmtEffort(e.bestSeconds)}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="pr-empty">Log a run to see PRs.</div>
-                )}
-              </div>
-
-              <div className="pr-sep" />
-
-              <div className="pr-subhead">
-                <div className="t">{perf?.year?.year || new Date().getFullYear()}</div>
-              </div>
-              <div className="pr-table">
-                <div className="pr-row">
-                  <div className="l">Activities</div>
-                  <div className="r">{perf?.year?.activities ?? 0}</div>
-                </div>
-                <div className="pr-row">
-                  <div className="l">Distance</div>
-                  <div className="r">{formatDistance(perf?.year?.distanceMeters || 0, units)}</div>
-                </div>
-                <div className="pr-row">
-                  <div className="l">Time</div>
-                  <div className="r">{formatDuration(perf?.year?.timeSeconds || 0)}</div>
-                </div>
-              </div>
-
-              <div className="pr-sep" />
-
-              <div className="pr-subhead">
-                <div className="t">All-Time</div>
-              </div>
-              <div className="pr-table">
-                <div className="pr-row">
-                  <div className="l">Activities</div>
-                  <div className="r">{perf?.allTime?.activities ?? 0}</div>
-                </div>
-                <div className="pr-row">
-                  <div className="l">Distance</div>
-                  <div className="r">{formatDistance(perf?.allTime?.distanceMeters || 0, units)}</div>
-                </div>
-                <div className="pr-row">
-                  <div className="l">Time</div>
-                  <div className="r">{formatDuration(perf?.allTime?.timeSeconds || 0)}</div>
-                </div>
+            <div className="sidebar-card">
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>Quick Links</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Link to="/settings" className="view-all-link">Account settings</Link>
+                <Link to="/training" className="view-all-link">View all activities</Link>
               </div>
             </div>
-
           </aside>
         </div>
       </main>

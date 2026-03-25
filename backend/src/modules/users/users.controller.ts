@@ -40,7 +40,6 @@ export class UsersController {
           firstName: true,
           lastName: true,
           avatarUrl: true,
-          level: true,
           bio: true,
           isPrivate: true,
           onboardingCompletedAt: true,
@@ -140,7 +139,6 @@ export class UsersController {
         firstName: profile.firstName,
         lastName: profile.lastName,
         avatarUrl: profile.avatarUrl,
-        level: profile.level,
         bio: profile.bio,
       },
       relationship: {
@@ -231,7 +229,6 @@ export class UsersController {
         firstName: true,
         lastName: true,
         avatarUrl: true,
-        level: true,
         bio: true,
         onboardingCompletedAt: true,
       },
@@ -249,7 +246,6 @@ export class UsersController {
         firstName: data.firstName,
         lastName: data.lastName,
         avatarUrl: data.avatarUrl,
-        level: data.level,
         bio: data.bio,
       },
     };

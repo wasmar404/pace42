@@ -4,7 +4,6 @@ import {
   ArrowLeft, 
   MapPin, 
   Calendar, 
-  Trophy, 
   TrendingUp, 
   Activity, 
   Clock, 
@@ -281,12 +280,6 @@ export default function UserProfile() {
             )}
             
             <div className="profile-badges">
-              {data?.profile?.level && (
-                <span className="badge badge-level">
-                  <Trophy size={12} />
-                  Level {data.profile.level}
-                </span>
-              )}
               {data?.relationship?.isFollowing ? (
                 <span className="badge badge-following">
                   <Zap size={12} />

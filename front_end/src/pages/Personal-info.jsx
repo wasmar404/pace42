@@ -44,7 +44,7 @@ export default function PersonalInfo() {
     setLoading(true);
 
     try {
-        await backendJson("PUT", "/api/me/personal", {
+        await backendJson("PUT", "/api/me", {
         firstName,
         lastName,
         dateOfBirth,

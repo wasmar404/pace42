@@ -3,22 +3,16 @@ import { ConfigService } from '@nestjs/config';
 
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { CurrentUser } from '../../auth/supabase.user';
-import { createSupabaseClients } from '../../auth/supabase.auth';
+import { getSupabaseAdminClient } from '../../auth/supabase.auth';
 
 @Controller('auth')
 export class AuthPolicyController {
   constructor(private readonly config: ConfigService) {}
 
   private async adminClient() {
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const { service } = createSupabaseClients({
-      supabaseUrl,
-      supabaseAnonKey,
-      supabaseServiceRoleKey,
-    });
-    return { service, supabaseServiceRoleKey };
+    if (!supabaseServiceRoleKey) return { service: null as any, supabaseServiceRoleKey };
+    return { service: getSupabaseAdminClient(), supabaseServiceRoleKey };
   }
 
   // Best-effort cleanup when OAuth signup is not allowed.
@@ -55,6 +49,8 @@ export class AuthPolicyController {
       // Without service role we can't enforce safely.
       return { ok: true };
     }
+
+    if (!service) return { ok: true };
 
     const { data, error } = await service.auth.admin.getUserById(reqUser.userId);
     if (error || !data?.user) throw new ForbiddenException('Auth policy check failed');

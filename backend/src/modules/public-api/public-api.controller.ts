@@ -77,7 +77,7 @@ export class PublicApiController {
       },
       take: limit,
       orderBy: { updatedAt: 'desc' },
-      select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true, level: true, isPrivate: true },
+      select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true, isPrivate: true },
     });
 
     return {
@@ -87,7 +87,6 @@ export class PublicApiController {
         firstName: u.firstName ?? null,
         lastName: u.lastName ?? null,
         avatarUrl: u.avatarUrl ?? null,
-        level: u.level ?? null,
         isPrivate: Boolean(u.isPrivate ?? false),
       })),
     };

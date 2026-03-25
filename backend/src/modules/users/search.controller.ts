@@ -32,7 +32,6 @@ export class SearchController {
         firstName: true,
         lastName: true,
         avatarUrl: true,
-        level: true,
       },
     });
 
@@ -56,7 +55,6 @@ export class SearchController {
         firstName: u.firstName,
         lastName: u.lastName,
         avatarUrl: u.avatarUrl,
-        level: u.level,
         isFollowing: viewerId ? followingSet.has(u.userId) : false,
       })),
     };

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { createHmac, randomBytes } from 'crypto';
 
-import { createSupabaseClients } from '../../auth/supabase.auth';
+import { getSupabaseAdminClient } from '../../auth/supabase.auth';
 
 function base64url(input: Buffer | string) {
   const b = Buffer.isBuffer(input) ? input : Buffer.from(input);
@@ -175,16 +175,9 @@ export class IntraAuthController {
     const intraId = me.json?.id != null ? String(me.json.id) : '';
     if (!me.ok || !email) return fail('intra_profile_failed');
 
-    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
-    const supabaseAnonKey = this.config.getOrThrow<string>('SUPABASE_ANON_KEY');
     const supabaseServiceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseServiceRoleKey) return fail('server_missing_service_role');
-
-    const { service } = createSupabaseClients({
-      supabaseUrl,
-      supabaseAnonKey,
-      supabaseServiceRoleKey,
-    });
+    const service = getSupabaseAdminClient();
 
     const existing = await findAuthUserByEmail(service, email);
     const existingMethod = String(existing?.user_metadata?.signupMethod ?? '').toLowerCase();
