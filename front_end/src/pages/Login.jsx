@@ -3,8 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
-
 export default function Login() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
@@ -20,12 +18,8 @@ export default function Login() {
             if (!err) return
 
             const map = {
-                intra_not_registered: 'No Intra account found. Use Intra signup first.',
                 email_used_by_other_method: 'This email is already used by another sign-in method.',
                 already_registered: 'Account already exists. Please log in instead of signing up again.',
-                intra_token_exchange_failed: 'Intra sign-in failed (token exchange).',
-                intra_profile_failed: 'Intra sign-in failed (profile).',
-                intra_magiclink_failed: 'Intra sign-in failed (session).',
             }
             setError(message || map[err] || err)
         } catch {
@@ -77,11 +71,6 @@ export default function Login() {
         if (data?.url) window.location.href = data.url
     }
 
-    const onIntra = () => {
-        setError(null)
-        window.location.href = `${BACKEND_URL}/api/auth/intra/start?mode=login&next=${encodeURIComponent('/home')}`
-    }
-
     return (
         <div className="login-page">
             <div className="bg-overlay">
@@ -100,10 +89,6 @@ export default function Login() {
                     <button className="social-btn google" type="button" onClick={onGoogle}>
                         <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
                         <span>Continue with Google</span>
-                    </button>
-                    <button className="social-btn google" type="button" onClick={onIntra}>
-                        <img className="icon icon-42" src="/auth/42.svg" alt="" aria-hidden="true" />
-                        <span>Continue with Intra</span>
                     </button>
                 </div>
 
