@@ -27,9 +27,6 @@ const RouteMap = lazy(() => import('../components/RouteMap'))
 
 const DEFAULT_HERO = [runners, cyclists, runners2]
 
-const PROFILE_CACHE_KEY = 'pace42.meSummary'
-const CACHE_MAX_AGE_MS = 2 * 60 * 1000
-
 function hash32(str) {
   let h = 2166136261
   for (let i = 0; i < str.length; i++) {
@@ -98,30 +95,6 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PROFILE_CACHE_KEY)
-      if (!raw) return
-      const cached = JSON.parse(raw)
-      const cachedAt = Number(cached?.cachedAt || 0)
-      if (!cachedAt || Date.now() - cachedAt > CACHE_MAX_AGE_MS) return
-
-      const data = cached?.data
-      setMe({ user: data?.user, profile: data?.profile })
-      setActivities(data?.recentActivities || [])
-      setLast4WeeksCount(Number(data?.stats?.last4WeeksCount || 0))
-      setTotalActivities(Number(data?.stats?.totalActivities || 0))
-      setFollowersCount(Number(data?.stats?.followersCount || 0))
-      setFollowingCount(Number(data?.stats?.followingCount || 0))
-
-      const day = new Date().toISOString().slice(0, 10)
-      const seed = `${data?.user?.id || ''}:${day}`
-      setHero(pickHero(data?.recentPhotos, seed))
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  useEffect(() => {
     let cancelled = false
     async function run() {
       setError('')
@@ -139,12 +112,6 @@ export default function Profile() {
         const day = new Date().toISOString().slice(0, 10)
         const seed = `${res?.user?.id || ''}:${day}`
         setHero(pickHero(res?.recentPhotos, seed))
-
-        try {
-          localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: res }))
-        } catch {
-          // ignore
-        }
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load profile')

@@ -8,9 +8,6 @@ import Avatar from './Avatar'
 import '../styles/NavBar.css'
 import logo from '../assets/logo-removebg-preview.png'
 
-const PROFILE_CACHE_KEY = 'pace42.meSummary'
-const CACHE_MAX_AGE_MS = 2 * 60 * 1000
-
 export default function NavBar() {
   const navigate = useNavigate()
 
@@ -36,33 +33,12 @@ export default function NavBar() {
   useEffect(() => {
     let cancelled = false
 
-    // Hydrate avatar immediately from cached profile.
-    try {
-      const raw = localStorage.getItem(PROFILE_CACHE_KEY)
-      if (raw) {
-        const cached = JSON.parse(raw)
-        const cachedAt = Number(cached?.cachedAt || 0)
-        if (cachedAt && Date.now() - cachedAt <= CACHE_MAX_AGE_MS) {
-          setAvatarUrl(cached?.data?.profile?.avatarUrl || '')
-          setAvatarSeed(cached?.data?.profile?.username || cached?.data?.user?.id || '')
-        }
-      }
-    } catch {
-      // ignore
-    }
-
     async function loadMe() {
       try {
         const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setAvatarUrl(res?.profile?.avatarUrl || '')
         setAvatarSeed(res?.profile?.username || res?.user?.id || '')
-
-        try {
-          localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: res }))
-        } catch {
-          // ignore
-        }
       } catch {
         // ignore (user might not be logged in yet)
       }

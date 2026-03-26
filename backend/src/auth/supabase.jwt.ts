@@ -15,9 +15,7 @@ function getJwksClient(supabaseUrl: string) {
 
   jwksClient = jwksRsa({
     jwksUri: new URL('/auth/v1/keys', supabaseUrl).toString(),
-    cache: true,
-    cacheMaxEntries: 5,
-    cacheMaxAge: 10 * 60 * 1000,
+    cache: false,
     rateLimit: true,
     jwksRequestsPerMinute: 30,
     timeout: 8000,

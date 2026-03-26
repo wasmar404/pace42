@@ -10,8 +10,6 @@ import { supabase } from '../supabaseClient'
 import { setUnits, useUnitsValue } from '../preferences'
 import '../styles/Settings.css'
 
-const PROFILE_CACHE_KEY = 'pace42.meSummary'
-
 function safeBool(v) {
   return v === true
 }
@@ -196,11 +194,6 @@ export default function Settings() {
       // Refresh cached profile summary (so NavBar updates instantly)
       const next = await backendGet('/api/me/summary')
       setMe(next)
-      try {
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: next }))
-      } catch {
-        // ignore
-      }
 
       setNotice('Profile picture updated.')
       return res
@@ -225,11 +218,6 @@ export default function Settings() {
         settings: { ...(me?.settings || {}), isPrivate: next },
       }
       setMe(merged)
-      try {
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: merged }))
-      } catch {
-        // ignore
-      }
       setNotice(next ? 'Account is now private.' : 'Account is now public.')
     } catch (e) {
       setIsPrivate(!next)

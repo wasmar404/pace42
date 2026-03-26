@@ -37,7 +37,6 @@ import '../styles/UserProfile.css'
 const RouteMap = lazy(() => import('../components/RouteMap'))
 
 const DEFAULT_HERO = [runners, cyclists, runners2]
-const CACHE_MAX_AGE_MS = 2 * 60 * 1000
 
 const SPORT_ICONS = {
   run: '🏃',
@@ -110,23 +109,6 @@ export default function UserProfile() {
   const [hero, setHero] = useState(DEFAULT_HERO)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`pace42.userSummary.${id}`)
-      if (!raw) return
-      const cached = JSON.parse(raw)
-      const cachedAt = Number(cached?.cachedAt || 0)
-      if (!cachedAt || Date.now() - cachedAt > CACHE_MAX_AGE_MS) return
-      const d = cached?.data
-      setData(d)
-
-      const day = new Date().toISOString().slice(0, 10)
-      setHero(pickHero(d?.recentPhotos, `${id}:${day}`))
-    } catch {
-      // ignore
-    }
-  }, [id])
-
-  useEffect(() => {
     let cancelled = false
     async function run() {
       setError('')
@@ -138,12 +120,6 @@ export default function UserProfile() {
 
         const day = new Date().toISOString().slice(0, 10)
         setHero(pickHero(res?.recentPhotos, `${id}:${day}`))
-
-        try {
-          localStorage.setItem(`pace42.userSummary.${id}`, JSON.stringify({ cachedAt: Date.now(), data: res }))
-        } catch {
-          // ignore
-        }
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load user')

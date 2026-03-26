@@ -11,8 +11,6 @@ import '../styles/ActivityDetails.css'
 
 const RouteMap = lazy(() => import('../components/RouteMap'))
 
-const CACHE_MAX_AGE_MS = 2 * 60 * 1000
-
 function formatSport(sport) {
   if (!sport) return 'Activity'
   return sport.charAt(0).toUpperCase() + sport.slice(1)
@@ -45,20 +43,6 @@ export default function ActivityDetails() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`pace42.activity.${id}`)
-      if (!raw) return
-      const cached = JSON.parse(raw)
-      const cachedAt = Number(cached?.cachedAt || 0)
-      const data = cached?.data
-      if (!cachedAt || Date.now() - cachedAt > CACHE_MAX_AGE_MS) return
-      if (data?.id === id) setActivity(data)
-    } catch {
-      // ignore
-    }
-  }, [id])
-
-  useEffect(() => {
     let cancelled = false
     async function run() {
       setLoading(true)
@@ -67,18 +51,10 @@ export default function ActivityDetails() {
         const res = await getActivity(id, { includeRoute: true })
         if (cancelled) return
         setActivity(res.activity)
-        try {
-          localStorage.setItem(`pace42.activity.${id}`, JSON.stringify({ cachedAt: Date.now(), data: res.activity }))
-        } catch {
-          // ignore
-        }
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load activity')
-        if ((e?.message || '').toLowerCase().includes('not found')) {
-          try { localStorage.removeItem(`pace42.activity.${id}`) } catch { /* ignore */ }
-          setActivity(null)
-        }
+        if ((e?.message || '').toLowerCase().includes('not found')) setActivity(null)
       } finally {
         if (!cancelled) setLoading(false)
       }
