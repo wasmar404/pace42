@@ -16,7 +16,7 @@ import { HealthController } from './health.controller';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: ['.env'],
     }),
 
     PrismaModule,
