@@ -5,8 +5,6 @@ import Signup from "./pages/Signup";
 import Verification from "./pages/Verification";
 import PersonalInfo from "./pages/Personal-info";
 import AuthCallback from "./pages/AuthCallback";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
 import Mfa from "./pages/Mfa";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Home from "./pages/Home";
@@ -39,8 +37,6 @@ function App() {
         <Route path="/verification" element={<Verification />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/mfa" element={<Mfa />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/activities/new"
           element={

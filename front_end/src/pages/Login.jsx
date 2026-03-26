@@ -118,9 +118,7 @@ export default function Login() {
                         {loading ? "Logging in..." : "Log In"}
                     </button>
                 </form>
-                <p className="signup-text">
-                    <Link to="/forgot-password">Forgot password?</Link>
-                </p>
+                
                 <p className="signup-text">
                    Don't have an account? <Link to="/signup">Sign up</Link>
                 </p>
