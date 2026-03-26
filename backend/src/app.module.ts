@@ -5,7 +5,6 @@ import { PrismaModule } from './prisma';
 import { MeModule } from './modules/me/me.module';
 import { UsersModule } from './modules/users/users.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { AuthPolicyModule } from './modules/auth-policy/auth-policy.module';
 import { HomeModule } from './modules/home/home.module';
@@ -23,7 +22,6 @@ import { HealthController } from './health.controller';
     MeModule,
     UsersModule,
     ActivitiesModule,
-    NotificationsModule,
     ChatModule,
     AuthPolicyModule,
     HomeModule,
