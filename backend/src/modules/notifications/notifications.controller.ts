@@ -19,7 +19,7 @@ export class NotificationsController {
 
     const sinceDate = new Date(sinceMs || 0);
 
-    const [followCount, unreadMessageConvos, kudoCount, commentCount, inviteCount] = await Promise.all([
+    const [followCount, unreadMessageConvos, kudoCount, commentCount] = await Promise.all([
       this.prisma.follow.count({
         where: {
           followingId: user.userId,
@@ -52,21 +52,14 @@ export class NotificationsController {
           activity: { userId: user.userId },
         },
       }),
-      this.prisma.clubInvite.count({
-        where: {
-          userId: user.userId,
-          status: 'pending',
-          createdAt: { gt: sinceDate },
-        },
-      }),
     ]);
 
-    return { unread: followCount + unreadMessageConvos + kudoCount + commentCount + inviteCount };
+    return { unread: followCount + unreadMessageConvos + kudoCount + commentCount };
   }
 
   @Get()
   async list(@CurrentUser() user: { userId: string }) {
-    const [follows, convoNotifs, kudos, comments, invites] = await Promise.all([
+    const [follows, convoNotifs, kudos, comments] = await Promise.all([
       this.prisma.follow.findMany({
       where: {
         followingId: user.userId,
@@ -135,18 +128,6 @@ export class NotificationsController {
           activity: { select: { title: true, sport: true } },
         },
       }),
-      this.prisma.clubInvite.findMany({
-        where: { userId: user.userId, status: 'pending' },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-        select: {
-          id: true,
-          clubId: true,
-          invitedById: true,
-          createdAt: true,
-          club: { select: { name: true } },
-        },
-      }),
     ]);
 
     const actorIds = Array.from(
@@ -155,7 +136,6 @@ export class NotificationsController {
         ...convoNotifs.map((c) => c.conversation.lastSenderId).filter(Boolean) as string[],
         ...kudos.map((k) => k.userId),
         ...comments.map((c) => c.userId),
-        ...invites.map((i) => i.invitedById),
       ]),
     );
     const actors = actorIds.length
@@ -247,23 +227,6 @@ export class NotificationsController {
           };
         }),
 
-      ...invites.map((inv) => {
-        const a = byId.get(inv.invitedById);
-        const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
-        const clubName = inv.club?.name || 'a club';
-        return {
-          type: 'club_invite',
-          createdAt: inv.createdAt.toISOString(),
-          clubId: inv.clubId,
-          actor: {
-            id: inv.invitedById,
-            username: a?.username ?? null,
-            name,
-            avatarUrl: a?.avatarUrl ?? null,
-          },
-          text: `${name} invited you to join ${clubName}`,
-        };
-      }),
     ];
 
     items.sort((a: any, b: any) => {

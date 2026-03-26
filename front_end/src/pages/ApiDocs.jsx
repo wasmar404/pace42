@@ -6,22 +6,9 @@ const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 export default function ApiDocs() {
   const authBlock = `x-api-key: <PUBLIC_API_KEY>\n# or\nauthorization: Bearer <PUBLIC_API_KEY>`
   const rateBlock = `X-RateLimit-Limit\nX-RateLimit-Remaining\nX-RateLimit-Reset`
-  const createClubBody = `{
-  "name": "Downtown Run Club",
-  "location": "Rabat, Morocco",
-  "sport": "run",
-  "description": "Weekly intervals + long run.",
-  "isInviteOnly": false,
-  "avatarUrl": null,
-  "bannerUrl": null
-}`
   const curlBlock = `export PACE42_API_KEY="..."
 
-curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/clubs?take=10&q=run"
-
-curl -H "x-api-key: $PACE42_API_KEY" -H "content-type: application/json" \
-  -X POST "${BASE}/api/public/clubs" \
-  -d '{"name":"Test Club","location":"Rabat","sport":"run","description":"demo"}'`
+curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/health"`
 
   return (
     <div className="api-docs-page">
@@ -69,27 +56,6 @@ curl -H "x-api-key: $PACE42_API_KEY" -H "content-type: application/json" \
           <div className="api-docs-endpoint">
             <div className="m"><span className="verb get">GET</span> <code>/api/public/activities?take=20&amp;since=2026-01-01T00:00:00Z</code></div>
             <div className="d">List public activities, newest first.</div>
-          </div>
-
-          <div className="api-docs-endpoint">
-            <div className="m"><span className="verb get">GET</span> <code>/api/public/clubs?q=run&amp;take=20</code></div>
-            <div className="d">List clubs (search by name/location/description).</div>
-          </div>
-
-          <div className="api-docs-endpoint">
-            <div className="m"><span className="verb post">POST</span> <code>/api/public/clubs</code></div>
-            <div className="d">Create a club (owner is an internal system user derived from the API key).</div>
-            <pre><code>{createClubBody}</code></pre>
-          </div>
-
-          <div className="api-docs-endpoint">
-            <div className="m"><span className="verb put">PUT</span> <code>/api/public/clubs/:id</code></div>
-            <div className="d">Update club fields (partial updates allowed).</div>
-          </div>
-
-          <div className="api-docs-endpoint">
-            <div className="m"><span className="verb del">DELETE</span> <code>/api/public/clubs/:id</code></div>
-            <div className="d">Delete a club.</div>
           </div>
         </section>
 

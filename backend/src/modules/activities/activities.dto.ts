@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateActivityDto {
@@ -36,7 +36,4 @@ export class CreateActivityDto {
   @IsIn(['public', 'followers', 'only_me'])
   visibility?: string;
 
-  @IsOptional()
-  @IsUUID()
-  clubId?: string;
 }

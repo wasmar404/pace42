@@ -134,18 +134,6 @@ export class HomeController {
 
     const items: any[] = [];
 
-    // Include a single announcement item sometimes so the feed supports multiple entry types.
-    if (!hasFollowing) {
-      items.push({
-        type: 'announcement',
-        id: 'a-welcome',
-        club: { name: 'Pace42 Club', icon: '🏁' },
-        title: 'Welcome to your feed',
-        body: 'Follow a few athletes to see their workouts here. Until then, we show public activities to explore.',
-        createdAt: new Date().toISOString(),
-      });
-    }
-
     for (const a of activities) {
       const p = actorById.get(a.userId);
       items.push({

@@ -45,22 +45,6 @@ export class ActivitiesController {
 
     if (activity.userId === viewerId) return activity;
 
-     // Allow access if this activity was shared into a club the viewer belongs to.
-     if (viewerId) {
-       const shared = await this.prisma.clubPost.findFirst({
-         where: {
-           activityId,
-           club: {
-             members: {
-               some: { userId: viewerId },
-             },
-           },
-         },
-         select: { id: true },
-       });
-       if (shared) return activity;
-     }
-
     if (activity.visibility === 'only_me') throw new NotFoundException('Activity not found');
 
     if (activity.visibility === 'followers') {
@@ -288,23 +272,6 @@ export class ActivitiesController {
         },
       }),
     );
-
-    if (dto.clubId) {
-      const member = await this.prisma.clubMember.findUnique({
-        where: { clubId_userId: { clubId: dto.clubId, userId: user.userId } },
-        select: { userId: true },
-      });
-      if (!member) throw new BadRequestException('You are not a member of that club');
-
-      await this.prisma.clubPost.create({
-        data: {
-          clubId: dto.clubId,
-          userId: user.userId,
-          activityId: activity.id,
-          body: null,
-        },
-      });
-    }
 
     // eslint-disable-next-line no-console
     console.log(`[activity.create] create=${createMs.toFixed(1)}ms total=${msSince(reqStart).toFixed(1)}ms`);
@@ -668,7 +635,6 @@ export class ActivitiesController {
     const title = typeof body?.title === 'string' ? String(body.title).trim() : '';
     const description = typeof body?.description === 'string' ? body.description : undefined;
     const visibility = typeof body?.visibility === 'string' ? body.visibility : undefined;
-    const clubId = typeof body?.clubId === 'string' ? body.clubId : undefined;
 
     const allowedVisibility = new Set(['public', 'followers', 'only_me']);
     const allowedSport = new Set(['run', 'walk', 'ride']);
@@ -724,23 +690,6 @@ export class ActivitiesController {
         },
       }),
     );
-
-    if (clubId) {
-      const member = await this.prisma.clubMember.findUnique({
-        where: { clubId_userId: { clubId, userId: user.userId } },
-        select: { userId: true },
-      });
-      if (!member) throw new BadRequestException('You are not a member of that club');
-
-      await this.prisma.clubPost.create({
-        data: {
-          clubId,
-          userId: user.userId,
-          activityId: activity.id,
-          body: null,
-        },
-      });
-    }
 
     const { ms: mediaMs } = await time('prisma.activityMedia.create(gpx)', () =>
       this.prisma.activityMedia.create({

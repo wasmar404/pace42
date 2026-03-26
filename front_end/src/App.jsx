@@ -18,8 +18,6 @@ import Search from "./pages/Search";
 import UserProfile from "./pages/UserProfile";
 import Chat from "./pages/Chat";
 import ChatThread from "./pages/ChatThread";
-import Clubs from "./pages/Clubs";
-import ClubDetails from "./pages/ClubDetails";
 import ApiDocs from "./pages/ApiDocs";
 import Training from "./pages/Training";
 
@@ -118,24 +116,6 @@ function App() {
           element={
             <ProtectedRoute>
               <ChatThread />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/clubs"
-          element={
-            <ProtectedRoute>
-              <Clubs />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/clubs/:id"
-          element={
-            <ProtectedRoute>
-              <ClubDetails />
             </ProtectedRoute>
           }
         />

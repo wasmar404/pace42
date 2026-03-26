@@ -258,7 +258,6 @@ export default function NavBar() {
 
         <nav className="nav-links" aria-label="Primary">
           <Link to="/training" className="nav-link">Training Logs</Link>
-          <Link to="/clubs" className="nav-link">Clubs</Link>
         </nav>
 
         <div className="nav-actions">
@@ -280,12 +279,10 @@ export default function NavBar() {
               {!notifLoading && !notifError ? (
                 <div className="nav-notif-list">
                    {notifItems.map((it, idx) => {
-                     const to = it?.type === 'message' && it?.conversationId
-                       ? `/chat/${it.conversationId}`
-                       : (it?.type === 'comment' || it?.type === 'kudo') && it?.activityId
-                         ? `/activities/${it.activityId}`
-                          : it?.type === 'club_invite'
-                            ? '/clubs'
+                      const to = it?.type === 'message' && it?.conversationId
+                        ? `/chat/${it.conversationId}`
+                        : (it?.type === 'comment' || it?.type === 'kudo') && it?.activityId
+                          ? `/activities/${it.activityId}`
                           : it?.actor?.id
                             ? `/users/${it.actor.id}`
                             : '/home'

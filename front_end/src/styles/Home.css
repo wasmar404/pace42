@@ -734,14 +734,6 @@
   box-shadow: 0 0 0 4px rgba(252, 76, 2, 0.14);
 }
 
-.ann-club {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 950;
-  color: rgba(11, 18, 32, 0.82);
-}
-
 .ann-title {
   margin: 10px 14px 0;
   font-family: "Fraunces", serif;
@@ -1105,58 +1097,8 @@
   text-decoration: underline;
 }
 
-.clubs-mini {
-  display: grid;
-  gap: 10px;
-}
-
-.club-mini .n {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 950;
-  color: rgba(11, 18, 32, 0.90);
-}
-
-.club-mini .c-av {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(11, 18, 32, 0.04);
-  display: inline-block;
-}
-
-.club-mini .c-av img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-:root[data-theme="dark"] .club-mini .c-av {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.club-mini .s {
-  margin-top: 4px;
-  font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
-  font-size: 12px;
-  color: rgba(11, 18, 32, 0.60);
-}
-
 :root[data-theme="dark"] .muted {
   color: rgba(255, 250, 242, 0.70);
-}
-
-:root[data-theme="dark"] .club-mini .n {
-  color: rgba(255, 250, 242, 0.92);
-}
-
-:root[data-theme="dark"] .club-mini .s {
-  color: rgba(255, 250, 242, 0.62);
 }
 
 .feed-empty {
