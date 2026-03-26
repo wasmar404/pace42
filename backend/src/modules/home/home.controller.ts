@@ -31,7 +31,7 @@ export class HomeController {
       where: { followerId: user.userId },
       select: { followingId: true },
     });
-    const followingIds = following.map((f) => f.followingId);
+    const followingIds = following.map((f: any) => f.followingId);
 
     const hasFollowing = followingIds.length > 0;
 
@@ -63,7 +63,7 @@ export class HomeController {
       },
     });
 
-    const seedActorIds = Array.from(new Set(seedActivities.map((a) => a.userId)));
+    const seedActorIds = Array.from(new Set(seedActivities.map((a: any) => a.userId)));
 
     const actors = seedActorIds.length
       ? await this.prisma.profile.findMany({
@@ -72,18 +72,18 @@ export class HomeController {
         })
       : [];
 
-    const actorById = new Map(actors.map((a) => [a.userId, a] as const));
+    const actorById = new Map<string, any>(actors.map((a: any) => [a.userId, a] as const));
 
     const activities = hasFollowing
       ? seedActivities.slice(0, limit)
       : seedActivities
-          .filter((a) => {
-            const p = actorById.get(a.userId);
+          .filter((a: any) => {
+            const p = actorById.get(a.userId) as any;
             return p ? !p.isPrivate : false;
           })
           .slice(0, limit);
 
-    const activityIds = activities.map((a) => a.id);
+    const activityIds = activities.map((a: any) => a.id);
 
     const [media, kudosCounts, commentCounts, myKudos] = await Promise.all([
       activityIds.length
@@ -185,7 +185,7 @@ export class HomeController {
       where: { followerId: user.userId },
       select: { followingId: true },
     });
-    const followingIds = new Set(following.map((f) => f.followingId));
+    const followingIds = new Set(following.map((f: any) => f.followingId));
 
     const profiles = await this.prisma.profile.findMany({
       where: {
@@ -247,7 +247,7 @@ export class HomeController {
       },
       select: { distanceMeters: true },
     });
-    const distanceMeters = rows.reduce((sum, r) => sum + (Number(r.distanceMeters) || 0), 0);
+    const distanceMeters = rows.reduce((sum: number, r: any) => sum + (Number(r.distanceMeters) || 0), 0);
 
     return {
       windowDays,

@@ -35,7 +35,7 @@ export class SearchController {
       },
     });
 
-    const ids = users.map((u) => u.userId);
+    const ids = users.map((u: any) => u.userId);
     let followingSet = new Set<string>();
     if (viewerId && ids.length) {
       const follows = await this.prisma.follow.findMany({
@@ -45,11 +45,11 @@ export class SearchController {
         },
         select: { followingId: true },
       });
-      followingSet = new Set(follows.map((f) => f.followingId));
+      followingSet = new Set(follows.map((f: any) => f.followingId));
     }
 
     return {
-      users: users.map((u) => ({
+      users: users.map((u: any) => ({
         id: u.userId,
         username: u.username,
         firstName: u.firstName,

@@ -56,7 +56,7 @@ export class ChatService {
       }
     }
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.prisma.$transaction(async (tx: any) => {
       const convo = await tx.conversation.create({ data: {} });
       await tx.conversationParticipant.createMany({
         data: [
@@ -74,7 +74,7 @@ export class ChatService {
       include: { conversation: true },
     });
 
-    const convoIds = mine.map((m) => m.conversationId);
+    const convoIds = mine.map((m: any) => m.conversationId);
     if (!convoIds.length) return { conversations: [] as any[] };
 
     const allParts = await this.prisma.conversationParticipant.findMany({
@@ -95,10 +95,10 @@ export class ChatService {
           select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
         })
       : [];
-    const profById = new Map(profiles.map((p) => [p.userId, p] as const));
+    const profById = new Map<string, any>(profiles.map((p: any) => [p.userId, p] as const));
 
     const convos = mine
-      .map((m) => {
+      .map((m: any) => {
         const c = m.conversation;
         const otherId = otherByConvo.get(m.conversationId) ?? null;
         const p = otherId ? profById.get(otherId) : null;
@@ -117,7 +117,7 @@ export class ChatService {
           },
         };
       })
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         const ta = a.lastMessageAt ? Date.parse(a.lastMessageAt) : 0;
         const tb = b.lastMessageAt ? Date.parse(b.lastMessageAt) : 0;
         return tb - ta;
@@ -135,7 +135,7 @@ export class ChatService {
       select: { followingId: true },
     });
 
-    const followingIds = following.map((f) => f.followingId);
+    const followingIds = following.map((f: any) => f.followingId);
     if (!followingIds.length) return { items: [] as any[] };
 
     const back = await this.prisma.follow.findMany({
@@ -146,7 +146,7 @@ export class ChatService {
       select: { followerId: true },
     });
 
-    const mutualIds = back.map((b) => b.followerId);
+    const mutualIds = back.map((b: any) => b.followerId);
     if (!mutualIds.length) return { items: [] as any[] };
 
     const where: any = { userId: { in: mutualIds } };
@@ -172,7 +172,7 @@ export class ChatService {
     });
 
     return {
-      items: profiles.map((p) => ({
+      items: profiles.map((p: any) => ({
         id: p.userId,
         username: p.username,
         firstName: p.firstName ?? null,
@@ -202,7 +202,7 @@ export class ChatService {
     });
 
     return {
-      messages: messages.map((m) => ({
+      messages: messages.map((m: any) => ({
         id: m.id,
         conversationId: m.conversationId,
         senderId: m.senderId,
@@ -221,16 +221,16 @@ export class ChatService {
       where: { conversationId },
       select: { userId: true },
     });
-    if (!parts.find((p) => p.userId === userId)) throw new NotFoundException('Conversation not found');
+    if (!parts.find((p: any) => p.userId === userId)) throw new NotFoundException('Conversation not found');
 
-    const other = parts.find((p) => p.userId !== userId);
+    const other = parts.find((p: any) => p.userId !== userId);
     if (!other) throw new BadRequestException('Invalid conversation');
 
     const mutual = await this.isMutualFollow(userId, other.userId);
     if (!mutual) throw new ForbiddenException('Mutual follow required');
 
     const now = new Date();
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx: any) => {
       const msg = await tx.message.create({
         data: {
           conversationId,

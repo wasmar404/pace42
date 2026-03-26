@@ -48,7 +48,7 @@ export class PublicApiController {
     });
 
     return {
-      users: users.map((u) => ({
+      users: users.map((u: any) => ({
         id: u.userId,
         username: u.username,
         firstName: u.firstName ?? null,
@@ -93,18 +93,18 @@ export class PublicApiController {
       },
     });
 
-    const ids = Array.from(new Set(acts.map((a) => a.userId)));
+    const ids = Array.from(new Set(acts.map((a: any) => a.userId)));
     const profiles = ids.length
       ? await this.prisma.profile.findMany({
           where: { userId: { in: ids } },
           select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
         })
       : [];
-    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+    const byId = new Map<string, any>(profiles.map((p: any) => [p.userId, p] as const));
 
     return {
-      activities: acts.map((a) => {
-        const p = byId.get(a.userId);
+      activities: acts.map((a: any) => {
+        const p = byId.get(a.userId) as any;
         return {
           id: a.id,
           sport: a.sport,

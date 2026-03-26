@@ -26,7 +26,6 @@ import { CurrentUser } from '../../auth/supabase.user';
 import { getSupabaseAdminClient } from '../../auth/supabase.auth';
 import { CreateActivityDto } from './activities.dto';
 import { PrismaService } from '../../prisma';
-import { msSince, time } from '../../common/time';
 
 @Controller('activities')
 export class ActivitiesController {
@@ -178,7 +177,7 @@ export class ActivitiesController {
       }),
     ]);
 
-    const ids = acts.map((a) => a.id);
+    const ids = acts.map((a: any) => a.id);
     const media = ids.length
       ? await this.prisma.activityMedia.findMany({
           where: { activityId: { in: ids }, userId: user.userId, kind: { in: ['photo', 'gpx'] } },
@@ -194,7 +193,7 @@ export class ActivitiesController {
       mediaByActivity.set(m.activityId, list);
     }
 
-    const items = acts.map((a) => {
+    const items = acts.map((a: any) => {
       const list = mediaByActivity.get(a.id) ?? [];
       const photos = list.filter((x) => x.kind === 'photo' && x.publicUrl).map((x) => x.publicUrl as string);
       const hasGpx = list.some((x) => x.kind === 'gpx');
@@ -246,7 +245,6 @@ export class ActivitiesController {
     const title = String(dto.title || '').trim();
     if (!title) throw new BadRequestException('Title is required');
 
-    const reqStart = process.hrtime.bigint();
     const startedAt = new Date(dto.startedAt);
     this.validateStartedAt(startedAt, 'Invalid startedAt');
 
@@ -257,24 +255,19 @@ export class ActivitiesController {
     const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });
     if (p?.isPrivate && visibility === 'public') visibility = 'followers';
 
-    const { ms: createMs, result: activity } = await time('prisma.activity.create(manual)', () =>
-      this.prisma.activity.create({
-        data: {
-          userId: user.userId,
-          sport: dto.sport,
-          title,
-          description: dto.description ?? null,
-          startedAt,
-          durationSeconds: dto.durationSeconds,
-          distanceMeters: dto.distanceMeters,
-          visibility,
-          source: 'manual',
-        },
-      }),
-    );
-
-    // eslint-disable-next-line no-console
-    console.log(`[activity.create] create=${createMs.toFixed(1)}ms total=${msSince(reqStart).toFixed(1)}ms`);
+    const activity = await this.prisma.activity.create({
+      data: {
+        userId: user.userId,
+        sport: dto.sport,
+        title,
+        description: dto.description ?? null,
+        startedAt,
+        durationSeconds: dto.durationSeconds,
+        distanceMeters: dto.distanceMeters,
+        visibility,
+        source: 'manual',
+      },
+    });
 
     return { activity };
   }
@@ -319,18 +312,18 @@ export class ActivitiesController {
       },
     });
 
-    const userIds = Array.from(new Set(kudos.map((k) => k.userId)));
+    const userIds = Array.from(new Set(kudos.map((k: any) => k.userId)));
     const profiles = userIds.length
       ? await this.prisma.profile.findMany({
           where: { userId: { in: userIds } },
           select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
         })
       : [];
-    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+    const byId = new Map<string, any>(profiles.map((p: any) => [p.userId, p] as const));
 
     return {
-      items: kudos.map((k) => {
-        const p = byId.get(k.userId);
+      items: kudos.map((k: any) => {
+        const p = byId.get(k.userId) as any;
         const name = `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || (p?.username ? `@${p.username}` : 'Athlete');
         return {
           createdAt: k.createdAt.toISOString(),
@@ -386,18 +379,18 @@ export class ActivitiesController {
       },
     });
 
-    const userIds = Array.from(new Set(comments.map((c) => c.userId)));
+    const userIds = Array.from(new Set(comments.map((c: any) => c.userId)));
     const profiles = userIds.length
       ? await this.prisma.profile.findMany({
           where: { userId: { in: userIds } },
           select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
         })
       : [];
-    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+    const byId = new Map<string, any>(profiles.map((p: any) => [p.userId, p] as const));
 
     return {
-      items: comments.map((c) => {
-        const p = byId.get(c.userId);
+      items: comments.map((c: any) => {
+        const p = byId.get(c.userId) as any;
         const name = `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || (p?.username ? `@${p.username}` : 'Athlete');
         return {
           id: c.id,
@@ -460,15 +453,13 @@ export class ActivitiesController {
   @Get(':id([0-9a-fA-F-]{36})')
   @UseGuards(OptionalSupabaseAuthGuard)
   async getActivity(@Param('id') id: string, @Req() req: Request, @Query('includeRoute') includeRoute?: string) {
-    const reqStart = process.hrtime.bigint();
     const wantRoute = includeRoute === '1' || includeRoute === 'true';
 
-    const { ms: findMs, result: activity } = await time('prisma.activity.findUnique', () =>
-      this.prisma.activity.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          userId: true,
+    const activity = await this.prisma.activity.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
         sport: true,
         title: true,
         description: true,
@@ -480,11 +471,10 @@ export class ActivitiesController {
         createdAt: true,
         updatedAt: true,
         // Potentially large fields.
-          routePolyline: wantRoute,
-          mapImageUrl: wantRoute,
-        },
-      }),
-    );
+        routePolyline: wantRoute,
+        mapImageUrl: wantRoute,
+      },
+    });
     if (!activity) throw new NotFoundException('Activity not found');
 
     if (activity.visibility === 'public') {
@@ -507,8 +497,6 @@ export class ActivitiesController {
         }
       }
 
-      // eslint-disable-next-line no-console
-      console.log(`[activity.get] find=${findMs.toFixed(1)}ms total=${msSince(reqStart).toFixed(1)}ms route=${wantRoute ? '1' : '0'}`);
       return { activity };
     }
 
@@ -604,7 +592,6 @@ export class ActivitiesController {
     @Body() body?: Record<string, any>,
     @Req() req?: Request,
   ) {
-    const reqStart = process.hrtime.bigint();
     if (!file) throw new BadRequestException('Missing file');
     if (!file.originalname.toLowerCase().endsWith('.gpx') && file.mimetype !== 'application/gpx+xml' && file.mimetype !== 'application/xml' && file.mimetype !== 'text/xml') {
       throw new BadRequestException('File must be .gpx');
@@ -617,12 +604,10 @@ export class ActivitiesController {
     const safeExt = ext && ext.length <= 10 ? ext : '.gpx';
     const gpxPath = `${user.userId}/${randomUUID()}${safeExt}`;
 
-    const { ms: uploadMs, result: uploadRes } = await time('storage.upload(gpx)', () =>
-      service.storage.from(gpxBucket).upload(gpxPath, file.buffer, {
-        contentType: file.mimetype || 'application/gpx+xml',
-        upsert: false,
-      }),
-    );
+    const uploadRes = await service.storage.from(gpxBucket).upload(gpxPath, file.buffer, {
+      contentType: file.mimetype || 'application/gpx+xml',
+      upsert: false,
+    });
     const { error: uploadError } = uploadRes;
     if (uploadError) throw new BadRequestException(uploadError.message);
 
@@ -642,20 +627,18 @@ export class ActivitiesController {
     if (sport && !allowedSport.has(sport)) throw new BadRequestException('Invalid sport');
     if (!title) throw new BadRequestException('Title is required');
 
-    const { ms: invokeMs, result: invokeRes } = await time('functions.invoke(import-gpx)', () =>
-      service.functions.invoke(functionName, {
-        body: {
-          gpxBucket,
-          gpxPath,
-          sport,
-          title,
-          description,
-          visibility,
-          // Pass user JWT in the body because custom headers may be dropped.
-          userJwt: accessToken,
-        },
-      }),
-    );
+    const invokeRes = await service.functions.invoke(functionName, {
+      body: {
+        gpxBucket,
+        gpxPath,
+        sport,
+        title,
+        description,
+        visibility,
+        // Pass user JWT in the body because custom headers may be dropped.
+        userJwt: accessToken,
+      },
+    });
     const { data, error } = invokeRes;
 
     if (error) throw new BadRequestException(error.message);
@@ -674,39 +657,32 @@ export class ActivitiesController {
     const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });
     if (p?.isPrivate && finalVisibility === 'public') finalVisibility = 'followers';
 
-    const { ms: createMs, result: activity } = await time('prisma.activity.create(gpx)', () =>
-      this.prisma.activity.create({
-        data: {
-          userId: user.userId,
-          sport: sport ?? 'run',
-          title,
-          description: description ?? null,
-          startedAt,
-          durationSeconds: parsed.durationSeconds,
-          distanceMeters: parsed.distanceMeters,
-          visibility: finalVisibility,
-          source: 'gpx',
-          routePolyline: parsed.polyline ?? null,
-        },
-      }),
-    );
+    const activity = await this.prisma.activity.create({
+      data: {
+        userId: user.userId,
+        sport: sport ?? 'run',
+        title,
+        description: description ?? null,
+        startedAt,
+        durationSeconds: parsed.durationSeconds,
+        distanceMeters: parsed.distanceMeters,
+        visibility: finalVisibility,
+        source: 'gpx',
+        routePolyline: parsed.polyline ?? null,
+      },
+    });
 
-    const { ms: mediaMs } = await time('prisma.activityMedia.create(gpx)', () =>
-      this.prisma.activityMedia.create({
-        data: {
-          activityId: activity.id,
-          userId: user.userId,
-          kind: 'gpx',
-          storageBucket: gpxBucket,
-          storagePath: gpxPath,
-        },
-      }),
-    );
+    await this.prisma.activityMedia.create({
+      data: {
+        activityId: activity.id,
+        userId: user.userId,
+        kind: 'gpx',
+        storageBucket: gpxBucket,
+        storagePath: gpxPath,
+      },
+    });
 
-    // eslint-disable-next-line no-console
-    console.log(
-      `[gpx] size=${file.size}B upload=${uploadMs.toFixed(1)}ms invoke=${invokeMs.toFixed(1)}ms create=${createMs.toFixed(1)}ms media=${mediaMs.toFixed(1)}ms total=${msSince(reqStart).toFixed(1)}ms polylineLen=${(parsed.polyline || '').length}`,
-    );
+    // No timing logs.
 
     return { activity };
   }

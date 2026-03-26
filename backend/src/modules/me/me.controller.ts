@@ -129,7 +129,7 @@ export class MeController {
         followingCount,
       },
       recentActivities,
-      recentPhotos: recentPhotos.map((p) => p.publicUrl).filter(Boolean),
+      recentPhotos: recentPhotos.map((p: any) => p.publicUrl).filter(Boolean),
       settings: {
         isPrivate: Boolean(profile?.isPrivate ?? false),
       },
@@ -249,7 +249,7 @@ export class MeController {
       select: ACTIVITY_LIST_SELECT,
     });
 
-    const ids = activities.map((a) => a.id);
+    const ids = activities.map((a: any) => a.id);
     const media = ids.length
       ? await this.prisma.activityMedia.findMany({
           where: { activityId: { in: ids }, userId: user.userId, kind: { in: ['photo', 'gpx'] } },
@@ -266,7 +266,7 @@ export class MeController {
     }
 
     return {
-      activities: activities.map((a) => {
+      activities: activities.map((a: any) => {
         const list = mediaByActivity.get(a.id) ?? [];
         const photos = list.filter((x) => x.kind === 'photo' && x.publicUrl).map((x) => x.publicUrl as string);
         const hasGpx = list.some((x) => x.kind === 'gpx');

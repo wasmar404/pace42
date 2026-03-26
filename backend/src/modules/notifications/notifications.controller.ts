@@ -132,10 +132,10 @@ export class NotificationsController {
 
     const actorIds = Array.from(
       new Set([
-        ...follows.map((f) => f.followerId),
-        ...convoNotifs.map((c) => c.conversation.lastSenderId).filter(Boolean) as string[],
-        ...kudos.map((k) => k.userId),
-        ...comments.map((c) => c.userId),
+        ...follows.map((f: any) => f.followerId),
+        ...convoNotifs.map((c: any) => c.conversation.lastSenderId).filter(Boolean) as string[],
+        ...kudos.map((k: any) => k.userId),
+        ...comments.map((c: any) => c.userId),
       ]),
     );
     const actors = actorIds.length
@@ -151,11 +151,11 @@ export class NotificationsController {
         })
       : [];
 
-    const byId = new Map(actors.map((a) => [a.userId, a] as const));
+    const byId = new Map<string, any>(actors.map((a: any) => [a.userId, a] as const));
 
     const items = [
-      ...follows.map((f) => {
-        const a = byId.get(f.followerId);
+      ...follows.map((f: any) => {
+        const a = byId.get(f.followerId) as any;
         const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
         return {
           type: 'follow',
@@ -169,8 +169,8 @@ export class NotificationsController {
           text: `${name} started following you`,
         };
       }),
-      ...kudos.map((k) => {
-        const a = byId.get(k.userId);
+      ...kudos.map((k: any) => {
+        const a = byId.get(k.userId) as any;
         const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
         const title = k.activity?.title || `${String(k.activity?.sport || 'activity')}`;
         return {
@@ -186,8 +186,8 @@ export class NotificationsController {
           text: `${name} gave you kudos on ${title}`,
         };
       }),
-      ...comments.map((c) => {
-        const a = byId.get(c.userId);
+      ...comments.map((c: any) => {
+        const a = byId.get(c.userId) as any;
         const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
         const title = c.activity?.title || `${String(c.activity?.sport || 'activity')}`;
         const preview = String(c.body ?? '').trim();
@@ -206,10 +206,10 @@ export class NotificationsController {
         };
       }),
       ...convoNotifs
-        .filter((c) => c.conversation.lastMessageAt && c.conversation.lastSenderId)
-        .map((c) => {
+        .filter((c: any) => c.conversation.lastMessageAt && c.conversation.lastSenderId)
+        .map((c: any) => {
           const senderId = c.conversation.lastSenderId as string;
-          const a = byId.get(senderId);
+          const a = byId.get(senderId) as any;
           const name = `${a?.firstName ?? ''} ${a?.lastName ?? ''}`.trim() || (a?.username ? `@${a.username}` : 'Someone');
           const preview = String(c.conversation.lastMessageText ?? '').trim();
           const clip = preview.length > 90 ? `${preview.slice(0, 90)}…` : preview;
