@@ -1,4 +1,4 @@
-import { backendGet, backendJson, backendUpload } from '../backendApi'
+import { backendGet, backendJson, backendUploadWithProgress } from '../backendApi'
 
 export function createActivity(input) {
   return backendJson('POST', '/api/activities', input)
@@ -23,11 +23,11 @@ export function deleteActivity(id) {
   return backendJson('DELETE', `/api/activities/${id}`, {})
 }
 
-export function uploadActivityPhoto(activityId, file) {
-  return backendUpload(`/api/activities/${activityId}/media`, file)
+export function uploadActivityPhoto(activityId, file, opts = {}) {
+  return backendUploadWithProgress(`/api/activities/${activityId}/media`, file, opts)
 }
 
-export function importGpx(file, meta = {}) {
+export function importGpx(file, meta = {}, opts = {}) {
   const form = new FormData()
   form.append('file', file)
   if (meta?.title) form.append('title', meta.title)
@@ -35,7 +35,7 @@ export function importGpx(file, meta = {}) {
   if (meta?.visibility) form.append('visibility', meta.visibility)
   if (meta?.sport) form.append('sport', meta.sport)
 
-  return backendUpload('/api/activities/import/gpx', form)
+  return backendUploadWithProgress('/api/activities/import/gpx', form, opts)
 }
 
 export function giveKudos(activityId) {

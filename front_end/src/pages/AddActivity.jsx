@@ -112,6 +112,7 @@ export default function AddActivity() {
 
   const [gpxFile, setGpxFile] = useState(null)
   const [photos, setPhotos] = useState([])
+  const [uploadNote, setUploadNote] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const photoInputRef = useRef(null)
   const gpxInputRef = useRef(null)
@@ -163,7 +164,13 @@ export default function AddActivity() {
   const onPickPhotos = (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    setPhotos((prev) => [...prev, ...files].slice(0, 8))
+
+    const filtered = files.filter((f) => ['image/jpeg', 'image/png', 'image/webp'].includes(f.type) && f.size <= 25 * 1024 * 1024)
+    if (filtered.length !== files.length) {
+      setError('Some files were skipped (only JPG/PNG/WEBP up to 25MB).')
+    }
+
+    setPhotos((prev) => [...prev, ...filtered].slice(0, 8))
     e.target.value = ''
   }
 
@@ -212,7 +219,18 @@ export default function AddActivity() {
     if (!activityId) throw new Error('Activity created but missing id')
 
     if (photos.length) {
-      await runWithConcurrency(photos, 3, (file) => uploadActivityPhoto(activityId, file))
+      let done = 0
+      setUploadNote(`Uploading photos 0/${photos.length}`)
+      await runWithConcurrency(photos, 1, async (file) => {
+        await uploadActivityPhoto(activityId, file, {
+          onProgress: (p) => {
+            setUploadNote(`Uploading photos ${done}/${photos.length} (${Math.round(p * 100)}%)`)
+          },
+        })
+        done += 1
+        setUploadNote(`Uploading photos ${done}/${photos.length}`)
+      })
+      setUploadNote('')
     }
 
     navigate(`/activities/${activityId}`)
@@ -220,19 +238,35 @@ export default function AddActivity() {
 
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
+    if (gpxFile.size > 20 * 1024 * 1024) throw new Error('GPX must be <= 20MB')
     if (!String(title || '').trim()) throw new Error('Title is required')
+    setUploadNote('Uploading GPX 0%')
     const res = await importGpx(gpxFile, {
       sport,
       title: String(title || '').trim(),
       description,
       visibility,
+    }, {
+      onProgress: (p) => setUploadNote(`Uploading GPX ${Math.round(p * 100)}%`),
     })
+    setUploadNote('')
 
     const activityId = res?.activity?.id
     if (!activityId) throw new Error('Import succeeded but missing activity id')
 
     if (photos.length) {
-      await runWithConcurrency(photos, 3, (file) => uploadActivityPhoto(activityId, file))
+      let done = 0
+      setUploadNote(`Uploading photos 0/${photos.length}`)
+      await runWithConcurrency(photos, 1, async (file) => {
+        await uploadActivityPhoto(activityId, file, {
+          onProgress: (p) => {
+            setUploadNote(`Uploading photos ${done}/${photos.length} (${Math.round(p * 100)}%)`)
+          },
+        })
+        done += 1
+        setUploadNote(`Uploading photos ${done}/${photos.length}`)
+      })
+      setUploadNote('')
     }
 
     navigate(`/activities/${activityId}`)
@@ -603,6 +637,13 @@ export default function AddActivity() {
               <span>{error}</span>
             </div>
           )}
+
+          {busy && uploadNote ? (
+            <div className="form-error" style={{ borderColor: 'rgba(16,185,129,0.45)', background: 'rgba(16,185,129,0.08)' }}>
+              <div className="error-icon">↑</div>
+              <span>{uploadNote}</span>
+            </div>
+          ) : null}
 
           {/* Footer Actions */}
           <div className="form-footer">

@@ -5,7 +5,7 @@ import { AlertTriangle, KeyRound, Lock, Mail, Shield, SlidersHorizontal, Upload,
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
 import SegmentedControl from '../components/ui/SegmentedControl'
-import { backendGet, backendJson, backendUpload } from '../backendApi'
+import { backendGet, backendJson, backendUploadWithProgress } from '../backendApi'
 import { supabase } from '../supabaseClient'
 import { setUnits, useUnitsValue } from '../preferences'
 import '../styles/Settings.css'
@@ -31,6 +31,7 @@ export default function Settings() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
 
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -185,11 +186,23 @@ export default function Settings() {
   const onUploadAvatar = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Avatar must be JPG, PNG, or WEBP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Avatar must be <= 5MB.')
+      return
+    }
     setNotice('')
     setError('')
     setBusy(true)
+    setUploadPct(0)
     try {
-      const res = await backendUpload('/api/me/avatar', file)
+      const res = await backendUploadWithProgress('/api/me/avatar', file, {
+        onProgress: (p) => setUploadPct(Math.round(p * 100)),
+      })
 
       // Refresh cached profile summary (so NavBar updates instantly)
       const next = await backendGet('/api/me/summary')
@@ -201,6 +214,7 @@ export default function Settings() {
       setError(e2?.message || 'Upload failed')
     } finally {
       setBusy(false)
+      setUploadPct(0)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -397,6 +411,9 @@ export default function Settings() {
                   <input ref={fileRef} type="file" accept="image/*" onChange={onUploadAvatar} style={{ display: 'none' }} />
                 </div>
               </div>
+              {busy && uploadPct > 0 ? (
+                <div className="settings-row-help">Uploading: {uploadPct}%</div>
+              ) : null}
             </section>
 
             <section className="settings-card" id="privacy" style={{ '--i': 1 }}>

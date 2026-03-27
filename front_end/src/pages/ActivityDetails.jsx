@@ -5,6 +5,7 @@ import NavBar from '../components/NavBar'
 import Pill from '../components/ui/Pill'
 import TimeText from '../components/ui/TimeText'
 import { getActivity } from '../api/activities'
+import { deleteActivity } from '../api/activities'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/ActivityDetails.css'
@@ -41,6 +42,7 @@ export default function ActivityDetails() {
   const [activity, setActivity] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -79,6 +81,30 @@ export default function ActivityDetails() {
           <Link className="activity-back" to="/activities/new">
             New activity
           </Link>
+
+          <button
+            type="button"
+            className="activity-back"
+            style={{ marginLeft: 'auto', borderColor: 'rgba(180,20,20,0.25)', color: 'rgba(180,20,20,0.95)' }}
+            disabled={deleting}
+            onClick={async () => {
+              if (!activity?.id) return
+              const ok = window.confirm('Delete this activity? This will also remove uploaded files.')
+              if (!ok) return
+              setDeleting(true)
+              setError('')
+              try {
+                await deleteActivity(activity.id)
+                window.location.href = '/training'
+              } catch (e) {
+                setError(e?.message || 'Failed to delete activity')
+              } finally {
+                setDeleting(false)
+              }
+            }}
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
         </div>
 
         {error ? <div className="activity-error">{error}</div> : null}

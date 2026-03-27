@@ -528,8 +528,63 @@ export class ActivitiesController {
     if (!activity) throw new NotFoundException('Activity not found');
     if (activity.userId !== user.userId) throw new ForbiddenException('Not allowed');
 
+    const media = await this.prisma.activityMedia.findMany({
+      where: { activityId: id, userId: user.userId },
+      select: { storageBucket: true, storagePath: true },
+    });
+
+    // Best-effort delete from Supabase Storage.
+    try {
+      const service = getSupabaseAdminClient();
+      const byBucket = new Map<string, string[]>();
+      for (const m of media) {
+        const b = String((m as any).storageBucket || '').trim();
+        const p = String((m as any).storagePath || '').trim();
+        if (!b || !p) continue;
+        const list = byBucket.get(b) ?? [];
+        list.push(p);
+        byBucket.set(b, list);
+      }
+
+      for (const [bucket, paths] of byBucket.entries()) {
+        // eslint-disable-next-line no-await-in-loop
+        await service.storage.from(bucket).remove(paths).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+
     await this.prisma.activity.delete({ where: { id } });
-    return { message: 'Deleted' };
+    return { ok: true };
+  }
+
+  @Delete(':id([0-9a-fA-F-]{36})/media/:mediaId([0-9a-fA-F-]{36})')
+  @UseGuards(SupabaseAuthGuard)
+  async deleteActivityMedia(
+    @Param('id') activityId: string,
+    @Param('mediaId') mediaId: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    const activity = await this.prisma.activity.findUnique({ where: { id: activityId }, select: { id: true, userId: true } });
+    if (!activity) throw new NotFoundException('Activity not found');
+    if (activity.userId !== user.userId) throw new ForbiddenException('Not allowed');
+
+    const media = await this.prisma.activityMedia.findUnique({
+      where: { id: mediaId },
+      select: { id: true, activityId: true, userId: true, storageBucket: true, storagePath: true },
+    });
+    if (!media || media.activityId !== activityId || media.userId !== user.userId) throw new NotFoundException('Media not found');
+
+    // Best-effort delete storage object first.
+    try {
+      const service = getSupabaseAdminClient();
+      await service.storage.from(media.storageBucket).remove([media.storagePath]).catch(() => {});
+    } catch {
+      // ignore
+    }
+
+    await this.prisma.activityMedia.delete({ where: { id: mediaId } });
+    return { ok: true };
   }
 
   @Post(':id([0-9a-fA-F-]{36})/media')

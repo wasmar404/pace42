@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { backendJson, backendUpload } from "../backendApi";
+import { backendJson, backendUploadWithProgress } from "../backendApi";
 import "../styles/Personal-info.css";
 
 export default function PersonalInfo() {
@@ -17,6 +17,7 @@ export default function PersonalInfo() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
+    const [uploadPct, setUploadPct] = useState(0);
 
 
     const handleSubmit = async (e) => {
@@ -65,16 +66,29 @@ export default function PersonalInfo() {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        setError('Avatar must be JPG, PNG, or WEBP');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        setError('Avatar must be <= 5MB');
+        return;
+    }
+
     setProfileImage(URL.createObjectURL(file));
     setAvatarUploading(true);
+    setUploadPct(0);
 
     try {
-        await backendUpload("/api/me/avatar", file);
+        await backendUploadWithProgress("/api/me/avatar", file, {
+            onProgress: (p) => setUploadPct(Math.round(p * 100)),
+        });
     } catch {
         setError("Upload failed");
     }
 
     setAvatarUploading(false);
+    setUploadPct(0);
     };
 
 
@@ -135,8 +149,10 @@ export default function PersonalInfo() {
                     </div>
                     <p className="avatar-label">
                         <strong>Upload Photo</strong>{" "}
-
                     </p>
+                    {avatarUploading && uploadPct > 0 ? (
+                        <p className="avatar-label">Uploading: {uploadPct}%</p>
+                    ) : null}
                     <input
                         type="file"
                         accept="image/*"
