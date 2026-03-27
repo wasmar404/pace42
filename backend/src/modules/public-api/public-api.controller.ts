@@ -1,9 +1,11 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
- 
+import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+
+import { ConfigService } from '@nestjs/config';
 
 import { PrismaService } from '../../prisma';
 import { PublicApiGuard } from './public-api.guard';
-import { PublicActivitiesDto, PublicListDto } from './public-api.dto';
+import { PublicActivitiesDto, PublicCreateActivityDto, PublicDeleteDto, PublicListDto, PublicUpdateActivityDto } from './public-api.dto';
 
 function trimOrThrow(name: string, value: unknown, max: number) {
   const s = String(value ?? '').trim();
@@ -17,9 +19,47 @@ function trimOrThrow(name: string, value: unknown, max: number) {
 export class PublicApiController {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
-  // Note: Clubs endpoints were removed; keep Public API scoped to health/users/activities.
+
+  private systemOwnerId(): string {
+    const apiKey = (this.config.get<string>('PUBLIC_API_KEY') || '').trim();
+    if (!apiKey) throw new BadRequestException('Public API is disabled');
+
+    const hex = createHash('sha256').update(`pace42-public-api-owner:${apiKey}`).digest('hex').slice(0, 32);
+    const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20)}`;
+    return uuid;
+  }
+
+  private async ensureSystemOwnerProfile(userId: string) {
+    const suffix = userId.replace(/-/g, '').slice(0, 8);
+    const username = `pace42_api_${suffix}`;
+    await this.prisma.profile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        username,
+        firstName: 'Pace42',
+        lastName: 'API',
+        onboardingCompletedAt: new Date(),
+        isPrivate: true,
+      },
+      update: {
+        username,
+        firstName: 'Pace42',
+        lastName: 'API',
+        onboardingCompletedAt: new Date(),
+        isPrivate: true,
+      },
+    });
+  }
+
+  private parseDateOrThrow(name: string, value: string) {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) throw new BadRequestException(`Invalid ${name}`);
+    return d;
+  }
 
   @Get('health')
   async health() {
@@ -127,5 +167,111 @@ export class PublicApiController {
     };
   }
 
-  // (clubs endpoints removed)
+  @Post('activities')
+  async createActivity(@Body() dto: PublicCreateActivityDto) {
+    const ownerId = this.systemOwnerId();
+    await this.ensureSystemOwnerProfile(ownerId);
+
+    const startedAt = this.parseDateOrThrow('startedAt', dto.startedAt);
+    const visibility = dto.visibility ?? 'public';
+
+    const activity = await this.prisma.activity.create({
+      data: {
+        userId: ownerId,
+        sport: dto.sport,
+        title: dto.title ? trimOrThrow('title', dto.title, 120) : null,
+        description: dto.description ? trimOrThrow('description', dto.description, 2000) : null,
+        startedAt,
+        durationSeconds: dto.durationSeconds,
+        distanceMeters: dto.distanceMeters,
+        visibility,
+        source: 'public_api',
+        routePolyline: null,
+        mapImageUrl: null,
+      },
+      select: {
+        id: true,
+        sport: true,
+        title: true,
+        description: true,
+        startedAt: true,
+        durationSeconds: true,
+        distanceMeters: true,
+        visibility: true,
+        source: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      activity: {
+        ...activity,
+        startedAt: activity.startedAt.toISOString(),
+        createdAt: activity.createdAt.toISOString(),
+        updatedAt: activity.updatedAt.toISOString(),
+      },
+    };
+  }
+
+  @Put('activities/:id')
+  async updateActivity(@Param('id') id: string, @Body() dto: PublicUpdateActivityDto) {
+    const ownerId = this.systemOwnerId();
+    await this.ensureSystemOwnerProfile(ownerId);
+
+    const existing = await this.prisma.activity.findUnique({ where: { id }, select: { id: true, userId: true } });
+    if (!existing || existing.userId !== ownerId) throw new NotFoundException('Activity not found');
+
+    const data: any = {};
+    if (typeof dto.sport === 'string') data.sport = dto.sport;
+    if (dto.title !== undefined) data.title = dto.title ? trimOrThrow('title', dto.title, 120) : null;
+    if (dto.description !== undefined) data.description = dto.description ? trimOrThrow('description', dto.description, 2000) : null;
+    if (typeof dto.startedAt === 'string') data.startedAt = this.parseDateOrThrow('startedAt', dto.startedAt);
+    if (typeof dto.durationSeconds === 'number') data.durationSeconds = dto.durationSeconds;
+    if (typeof dto.distanceMeters === 'number') data.distanceMeters = dto.distanceMeters;
+    if (typeof dto.visibility === 'string') data.visibility = dto.visibility;
+
+    const activity = await this.prisma.activity.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        sport: true,
+        title: true,
+        description: true,
+        startedAt: true,
+        durationSeconds: true,
+        distanceMeters: true,
+        visibility: true,
+        source: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      activity: {
+        ...activity,
+        startedAt: activity.startedAt.toISOString(),
+        createdAt: activity.createdAt.toISOString(),
+        updatedAt: activity.updatedAt.toISOString(),
+      },
+    };
+  }
+
+  @Delete('activities/:id')
+  async deleteActivity(@Param('id') id: string, @Body() dto: PublicDeleteDto) {
+    if (String(dto?.confirm ?? '').trim().toUpperCase() !== 'DELETE') {
+      throw new BadRequestException('Type DELETE to confirm');
+    }
+
+    const ownerId = this.systemOwnerId();
+
+    const existing = await this.prisma.activity.findUnique({ where: { id }, select: { id: true, userId: true } });
+    if (!existing || existing.userId !== ownerId) throw new NotFoundException('Activity not found');
+
+    await this.prisma.activity.delete({ where: { id } });
+    return { ok: true };
+  }
+
 }

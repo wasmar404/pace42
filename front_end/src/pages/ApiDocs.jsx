@@ -6,9 +6,50 @@ const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 export default function ApiDocs() {
   const authBlock = `x-api-key: <PUBLIC_API_KEY>\n# or\nauthorization: Bearer <PUBLIC_API_KEY>`
   const rateBlock = `X-RateLimit-Limit\nX-RateLimit-Remaining\nX-RateLimit-Reset`
+  const createActivityBody = `{
+  "sport": "run",
+  "title": "Intervals",
+  "description": "8x400m",
+  "startedAt": "2026-03-26T10:00:00.000Z",
+  "durationSeconds": 1800,
+  "distanceMeters": 5000,
+  "visibility": "public"
+}`
+
+  const updateActivityBody = `{
+  "title": "Intervals (updated)",
+  "visibility": "followers"
+}`
+
+  const deleteBody = `{
+  "confirm": "DELETE"
+}`
+
   const curlBlock = `export PACE42_API_KEY="..."
 
-curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/health"`
+# Health
+curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/health"
+
+# Search users
+curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/users?q=jo&take=20"
+
+# List public activities
+curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/activities?take=20&since=2026-01-01T00:00:00Z"
+
+# Create an activity (created under the API system user)
+curl -H "x-api-key: $PACE42_API_KEY" -H "content-type: application/json" \
+  -X POST "${BASE}/api/public/activities" \
+  -d '${createActivityBody.replace(/\n/g, '')}'
+
+# Update an activity
+curl -H "x-api-key: $PACE42_API_KEY" -H "content-type: application/json" \
+  -X PUT "${BASE}/api/public/activities/<activity_id>" \
+  -d '${updateActivityBody.replace(/\n/g, '')}'
+
+# Delete an activity
+curl -H "x-api-key: $PACE42_API_KEY" -H "content-type: application/json" \
+  -X DELETE "${BASE}/api/public/activities/<activity_id>" \
+  -d '${deleteBody.replace(/\n/g, '')}'`
 
   return (
     <div className="api-docs-page">
@@ -56,6 +97,24 @@ curl -H "x-api-key: $PACE42_API_KEY" "${BASE}/api/public/health"`
           <div className="api-docs-endpoint">
             <div className="m"><span className="verb get">GET</span> <code>/api/public/activities?take=20&amp;since=2026-01-01T00:00:00Z</code></div>
             <div className="d">List public activities, newest first.</div>
+          </div>
+
+          <div className="api-docs-endpoint">
+            <div className="m"><span className="verb post">POST</span> <code>/api/public/activities</code></div>
+            <div className="d">Create an activity (stored under an internal “API system user”).</div>
+            <pre><code>{createActivityBody}</code></pre>
+          </div>
+
+          <div className="api-docs-endpoint">
+            <div className="m"><span className="verb put">PUT</span> <code>/api/public/activities/:id</code></div>
+            <div className="d">Update an existing activity (only activities created by this API key are editable).</div>
+            <pre><code>{updateActivityBody}</code></pre>
+          </div>
+
+          <div className="api-docs-endpoint">
+            <div className="m"><span className="verb del">DELETE</span> <code>/api/public/activities/:id</code></div>
+            <div className="d">Delete an activity (requires confirm body).</div>
+            <pre><code>{deleteBody}</code></pre>
           </div>
         </section>
 
