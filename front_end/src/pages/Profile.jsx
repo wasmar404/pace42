@@ -1,10 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { 
   MapPin, 
-  Calendar, 
-  Trophy, 
-  TrendingUp, 
+  TrendingUp,
   Activity, 
   Clock, 
   Route, 
@@ -12,13 +10,14 @@ import {
   User,
   Plus,
   ChevronRight,
-  Flag,
-  Target
 } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import { backendGet } from '../backendApi'
 import Avatar from '../components/Avatar'
+import FollowModal from '../components/profile/FollowModal'
+import { useUnitsValue } from '../preferences'
+import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
 import '../styles/Profile.css'
 import runners from '../assets/runners.jpg'
@@ -28,9 +27,6 @@ import runners2 from '../assets/runners.jpg'
 const RouteMap = lazy(() => import('../components/RouteMap'))
 
 const DEFAULT_HERO = [runners, cyclists, runners2]
-
-const PROFILE_CACHE_KEY = 'pace42.meSummary'
-const CACHE_MAX_AGE_MS = 2 * 60 * 1000
 
 function hash32(str) {
   let h = 2166136261
@@ -64,24 +60,6 @@ function pickHero(photos, seedStr) {
   return picked
 }
 
-function formatDistance(meters) {
-  const n = Number(meters)
-  if (!Number.isFinite(n)) return '-'
-  const km = n / 1000
-  return `${km.toFixed(km < 10 ? 2 : 1)}`
-}
-
-function formatDuration(seconds) {
-  const n = Number(seconds)
-  if (!Number.isFinite(n)) return '-'
-  const s = Math.max(0, Math.round(n))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${r}s`
-  return `${r}s`
-}
 
 function formatWhen(iso) {
   try {
@@ -93,15 +71,7 @@ function formatWhen(iso) {
   }
 }
 
-function pacePerKm(distanceMeters, durationSeconds) {
-  const dist = Number(distanceMeters)
-  const dur = Number(durationSeconds)
-  if (!Number.isFinite(dist) || !Number.isFinite(dur) || dist <= 0) return '-'
-  const secPerKm = dur / (dist / 1000)
-  const m = Math.floor(secPerKm / 60)
-  const s = Math.round(secPerKm % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+// format helpers live in ../utils/format
 
 const SPORT_ICONS = {
   run: '🏃',
@@ -113,6 +83,8 @@ const SPORT_ICONS = {
 }
 
 export default function Profile() {
+  const navigate = useNavigate()
+  const units = useUnitsValue()
   const [me, setMe] = useState(null)
   const [activities, setActivities] = useState([])
   const [last4WeeksCount, setLast4WeeksCount] = useState(0)
@@ -123,29 +95,8 @@ export default function Profile() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PROFILE_CACHE_KEY)
-      if (!raw) return
-      const cached = JSON.parse(raw)
-      const cachedAt = Number(cached?.cachedAt || 0)
-      if (!cachedAt || Date.now() - cachedAt > CACHE_MAX_AGE_MS) return
-
-      const data = cached?.data
-      setMe({ user: data?.user, profile: data?.profile })
-      setActivities(data?.recentActivities || [])
-      setLast4WeeksCount(Number(data?.stats?.last4WeeksCount || 0))
-      setTotalActivities(Number(data?.stats?.totalActivities || 0))
-      setFollowersCount(Number(data?.stats?.followersCount || 0))
-      setFollowingCount(Number(data?.stats?.followingCount || 0))
-
-      const day = new Date().toISOString().slice(0, 10)
-      const seed = `${data?.user?.id || ''}:${day}`
-      setHero(pickHero(data?.recentPhotos, seed))
-    } catch {
-      // ignore
-    }
-  }, [])
+  const [followOpen, setFollowOpen] = useState(false)
+  const [followTab, setFollowTab] = useState('followers')
 
   useEffect(() => {
     let cancelled = false
@@ -165,12 +116,6 @@ export default function Profile() {
         const day = new Date().toISOString().slice(0, 10)
         const seed = `${res?.user?.id || ''}:${day}`
         setHero(pickHero(res?.recentPhotos, seed))
-
-        try {
-          localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: res }))
-        } catch {
-          // ignore
-        }
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load profile')
@@ -184,6 +129,7 @@ export default function Profile() {
     }
   }, [])
 
+
   const displayName = useMemo(() => {
     const p = me?.profile
     const first = p?.firstName || ''
@@ -193,6 +139,16 @@ export default function Profile() {
   }, [me])
 
   const recent = activities.slice(0, 3)
+
+  const followUser = useMemo(() => {
+    if (!me?.user?.id) return null
+    return {
+      id: me.user.id,
+      username: me?.user?.username,
+      name: displayName,
+      avatarUrl: me?.profile?.avatarUrl,
+    }
+  }, [me, displayName])
 
   const stats = useMemo(() => {
     const totalDistance = activities.reduce((sum, a) => sum + (Number(a.distanceMeters) || 0), 0)
@@ -257,18 +213,12 @@ export default function Profile() {
                     <span className="profile-handle">@{me.profile.username}</span>
                   )}
                   
-                  <div className="profile-badges">
-                    {me?.profile?.level && (
-                      <span className="badge badge-level">
-                        <Trophy size={12} />
-                        Level {me.profile.level}
-                      </span>
-                    )}
-                    <span className="badge badge-public">
-                      <Zap size={12} />
-                      Public
-                    </span>
-                  </div>
+                 <div className="profile-badges">
+                   <span className="badge badge-public">
+                     <Zap size={12} />
+                     {me?.profile?.isPrivate ? 'Private' : 'Public'}
+                   </span>
+                 </div>
                 </div>
               </div>
             </div>
@@ -284,16 +234,50 @@ export default function Profile() {
                   <span className="stat-value">{totalActivities}</span>
                   <span className="stat-label">Total</span>
                 </div>
-                <div className="stat-box">
+                <div
+                  className="stat-box clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (!followUser?.id) return
+                    setFollowTab('followers')
+                    setFollowOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (!followUser?.id) return
+                      setFollowTab('followers')
+                      setFollowOpen(true)
+                    }
+                  }}
+                >
                   <span className="stat-value">{followersCount}</span>
                   <span className="stat-label">Followers</span>
                 </div>
-                <div className="stat-box">
+                <div
+                  className="stat-box clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (!followUser?.id) return
+                    setFollowTab('following')
+                    setFollowOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (!followUser?.id) return
+                      setFollowTab('following')
+                      setFollowOpen(true)
+                    }
+                  }}
+                >
                   <span className="stat-value">{followingCount}</span>
                   <span className="stat-label">Following</span>
                 </div>
                 <div className="stat-box highlight">
-                  <span className="stat-value">{formatDistance(stats.totalDistance)}</span>
+                  <span className="stat-value">{formatDistance(stats.totalDistance, units)}</span>
                   <span className="stat-label">Km Total</span>
                 </div>
               </div>
@@ -353,11 +337,20 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="workouts-list">
-                    {recent.map((activity, index) => (
-                      <article 
-                        key={activity.id} 
+                      {recent.map((activity, index) => (
+                      <article
+                        key={activity.id}
                         className="workout-item"
                         style={{ animationDelay: `${index * 100}ms` }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/activities/${activity.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            navigate(`/activities/${activity.id}`)
+                          }
+                        }}
                       >
                         <div className="workout-main">
                           <div className="workout-sport">
@@ -369,9 +362,7 @@ export default function Profile() {
                           <div className="workout-details">
                             <div className="workout-header">
                               <h3>
-                                <Link to={`/activities/${activity.id}`}>
-                                  {activity.title || `${activity.sport} activity`}
-                                </Link>
+                                {activity.title || `${activity.sport} activity`}
                               </h3>
                               <span className="workout-date">
                                 {formatWhen(activity.startedAt)}
@@ -381,15 +372,15 @@ export default function Profile() {
                             <div className="workout-metrics">
                               <div className="metric">
                                 <Route size={14} />
-                                <span>{formatDistance(activity.distanceMeters)} km</span>
+                                  <span>{formatDistance(activity.distanceMeters, units)}</span>
                               </div>
                               <div className="metric">
                                 <Clock size={14} />
-                                <span>{formatDuration(activity.durationSeconds)}</span>
+                                  <span>{formatDuration(activity.durationSeconds)}</span>
                               </div>
                               <div className="metric">
                                 <TrendingUp size={14} />
-                                <span>{pacePerKm(activity.distanceMeters, activity.durationSeconds)} /km</span>
+                                  <span>{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}</span>
                               </div>
                             </div>
                           </div>
@@ -427,7 +418,7 @@ export default function Profile() {
                 )}
                 
                 {recent.length > 0 && (
-                  <Link to="/activities" className="view-all-link">
+                  <Link to="/training" className="view-all-link">
                     View all activities
                     <ChevronRight size={16} />
                   </Link>
@@ -438,69 +429,25 @@ export default function Profile() {
 
           {/* Right Sidebar */}
           <aside className="content-sidebar">
-            {/* Weekly Goal Card */}
-            <div className="sidebar-card goal-card">
-              <div className="goal-header">
-                <Target size={20} />
-                <h3>Weekly Goal</h3>
-              </div>
-              <div className="goal-progress">
-                <div className="progress-ring">
-                  <svg viewBox="0 0 36 36">
-                    <path
-                      className="progress-bg"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className="progress-fill"
-                      strokeDasharray={`${Math.min((last4WeeksCount / 4) * 100, 100)}, 100`}
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  <div className="progress-text">
-                    <span className="progress-value">{last4WeeksCount}</span>
-                    <span className="progress-label">activities</span>
-                  </div>
-                </div>
-                <p className="goal-subtitle">Keep it up! You're doing great.</p>
-              </div>
-            </div>
-
-            {/* Monthly Stats */}
-            <div className="sidebar-card mini-stats">
-              <h3>This Month</h3>
-              <div className="mini-stat-list">
-                <div className="mini-stat">
-                  <div className="mini-stat-icon">
-                    <Route size={16} />
-                  </div>
-                  <div className="mini-stat-info">
-                    <span className="mini-value">{formatDistance(stats.totalDistance)} km</span>
-                    <span className="mini-label">Distance</span>
-                  </div>
-                </div>
-                <div className="mini-stat">
-                  <div className="mini-stat-icon">
-                    <Clock size={16} />
-                  </div>
-                  <div className="mini-stat-info">
-                    <span className="mini-value">{formatDuration(stats.totalDuration)}</span>
-                    <span className="mini-label">Duration</span>
-                  </div>
-                </div>
-                <div className="mini-stat">
-                  <div className="mini-stat-icon">
-                    <Flag size={16} />
-                  </div>
-                  <div className="mini-stat-info">
-                    <span className="mini-value">{activities.length > 0 ? formatDistance(stats.avgDistance) : '0'} km</span>
-                    <span className="mini-label">Avg Distance</span>
-                  </div>
-                </div>
+            <div className="sidebar-card">
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>Quick Links</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Link to="/settings" className="view-all-link">Account settings</Link>
+                <Link to="/training" className="view-all-link">View all activities</Link>
               </div>
             </div>
           </aside>
         </div>
+
+        <FollowModal
+          open={followOpen}
+          user={followUser}
+          followersCount={followersCount}
+          followingCount={followingCount}
+          tab={followTab}
+          onTab={setFollowTab}
+          onClose={() => setFollowOpen(false)}
+        />
       </main>
     </div>
   )

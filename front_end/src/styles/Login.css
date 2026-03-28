@@ -157,10 +157,6 @@
     display: inline-block;
 }
 
-.social-btn .icon-42 {
-    filter: brightness(0) invert(1);
-}
-
 .social-btn:hover {
     background: rgba(255, 255, 255, 0.10);
 }

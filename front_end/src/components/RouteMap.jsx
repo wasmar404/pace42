@@ -87,7 +87,20 @@ export default function RouteMap({ polyline, height = 220, variant = 'clean' }) 
   const tile = TILESETS[variant] || TILESETS.clean
 
   return (
-    <div style={{ height, borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(11, 18, 32, 0.14)', background: 'rgba(255,255,255,0.55)' }}>
+    <div
+      style={{
+        height,
+        borderRadius: 18,
+        overflow: 'hidden',
+        border: '1px solid rgba(11, 18, 32, 0.14)',
+        background: 'rgba(255,255,255,0.55)',
+        // Leaflet panes use z-index up to ~1000. If the map isn't in its own
+        // stacking context, it can bleed above overlays/modals.
+        position: 'relative',
+        zIndex: 0,
+        isolation: 'isolate',
+      }}
+    >
       <MapContainer
         center={center}
         zoom={13}
@@ -97,7 +110,7 @@ export default function RouteMap({ polyline, height = 220, variant = 'clean' }) 
         touchZoom={false}
         zoomControl={false}
         keyboard={false}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0 }}
         attributionControl={false}
       >
         <TileLayer url={tile.url} subdomains={tile.subdomains} />

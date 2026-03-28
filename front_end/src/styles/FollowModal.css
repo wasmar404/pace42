@@ -1,0 +1,218 @@
+/* Follow list modal (based on SocialModal styles) */
+
+.social-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(11, 18, 32, 0.48);
+  backdrop-filter: blur(10px);
+}
+
+.social-modal {
+  width: min(920px, calc(100vw - 24px));
+  max-height: min(760px, calc(100vh - 28px));
+  border-radius: 16px;
+  border: 1px solid rgba(11, 18, 32, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 46px 130px rgba(11, 18, 32, 0.35);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+.sm-head {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(11, 18, 32, 0.10);
+}
+
+.sm-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sm-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(11, 18, 32, 0.12);
+  background: rgba(11, 18, 32, 0.04);
+}
+
+.sm-av img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.sm-title {
+  min-width: 0;
+}
+
+.sm-title .t1 {
+  font-weight: 950;
+  color: rgba(11, 18, 32, 0.90);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sm-title .t2 {
+  margin-top: 2px;
+  font-family: "Fraunces", serif;
+  letter-spacing: -0.02em;
+  color: rgba(11, 18, 32, 0.86);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sm-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 18, 32, 0.14);
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: rgba(11, 18, 32, 0.78);
+}
+
+.sm-close:hover {
+  border-color: rgba(11, 18, 32, 0.22);
+}
+
+.sm-tabs {
+  display: flex;
+  gap: 0;
+  background: rgba(11, 18, 32, 0.04);
+  border-bottom: 1px solid rgba(11, 18, 32, 0.10);
+}
+
+.sm-tab {
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 800;
+  color: rgba(11, 18, 32, 0.72);
+}
+
+.sm-tab.on {
+  color: rgba(11, 18, 32, 0.92);
+  background: rgba(255, 255, 255, 0.70);
+}
+
+.sm-body {
+  overflow: auto;
+}
+
+.sm-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sm-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(11, 18, 32, 0.08);
+}
+
+.sm-row.clickable {
+  cursor: pointer;
+}
+
+.sm-row:hover {
+  background: rgba(11, 18, 32, 0.03);
+}
+
+.sm-row .av {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(11, 18, 32, 0.12);
+  background: rgba(11, 18, 32, 0.04);
+}
+
+.sm-row .av img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.sm-row .main {
+  min-width: 0;
+}
+
+.sm-row .who {
+  font-weight: 900;
+  color: rgba(11, 18, 32, 0.88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sm-row .sub {
+  margin-top: 1px;
+  font-size: 12px;
+  color: rgba(11, 18, 32, 0.60);
+}
+
+.sm-row .time {
+  font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
+  font-size: 12px;
+  color: rgba(11, 18, 32, 0.62);
+}
+
+.sm-hint {
+  padding: 14px;
+  color: rgba(11, 18, 32, 0.60);
+}
+
+.sm-err {
+  padding: 10px 14px;
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.08);
+  border-bottom: 1px solid rgba(185, 28, 28, 0.16);
+}
+
+.sm-footer {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid rgba(11, 18, 32, 0.10);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.sm-more {
+  border: 1px solid rgba(11, 18, 32, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(11, 18, 32, 0.82);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sm-more:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

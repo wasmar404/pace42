@@ -1,170 +1,320 @@
+/* ── ActivityDetails.css ─────────────────────────────────────────── */
+
 .activity-page {
   min-height: 100vh;
   font-family: var(--p42-font);
   color: var(--p42-ink);
   background:
-    radial-gradient(780px 420px at 14% 12%, rgba(16, 185, 129, 0.12), transparent 58%),
-    radial-gradient(860px 520px at 86% 26%, rgba(252, 76, 2, 0.16), transparent 60%),
+    radial-gradient(780px 420px at 14% 12%, rgba(16, 185, 129, 0.10), transparent 58%),
+    radial-gradient(860px 520px at 86% 26%, rgba(252, 76, 2, 0.18), transparent 60%),
     linear-gradient(180deg, #fffaf2 0%, #f7f2e9 55%, #fffaf2 100%);
 }
 
+/* ── wrap ── */
 .activity-wrap {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 18px 16px 60px;
+  padding: 20px 20px 80px;
 }
 
+/* ── top bar ── */
 .activity-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 4px 16px;
+  padding: 10px 2px 22px;
 }
 
 .activity-back {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-decoration: none;
-  color: rgba(11, 18, 32, 0.75);
+  color: rgba(11, 18, 32, 0.55);
   font-family: var(--p42-mono);
+  font-size: 0.78rem;
   font-weight: 760;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  transition: color 180ms ease;
 }
-
+.activity-back::before {
+  content: '←';
+  font-size: 1rem;
+  transition: transform 180ms ease;
+}
 .activity-back:hover {
   color: var(--p42-ink);
 }
-
-.activity-card {
-  border-radius: 24px;
-  border: 1px solid rgba(11, 18, 32, 0.14);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--p42-shadow);
-  overflow: hidden;
-  animation: actLift 520ms cubic-bezier(.2,.9,.2,1) both;
+.activity-back:hover::before {
+  transform: translateX(-3px);
 }
 
-.activity-card-head {
-  padding: 18px;
-  border-bottom: 1px solid rgba(11, 18, 32, 0.10);
+/* ── error ── */
+.activity-error {
+  margin-bottom: 16px;
+  padding: 13px 16px;
+  border-radius: 16px;
+  background: rgba(239, 68, 68, 0.09);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #991b1b;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+/* ══════════════════════════════════════════
+   HERO HEADER — full-bleed, editorial feel
+══════════════════════════════════════════ */
+.activity-hero {
+  position: relative;
+  border-radius: 28px 28px 0 0;
+  overflow: hidden;
+  padding: 44px 40px 36px;
   background:
-    radial-gradient(700px 280px at 8% 0%, rgba(252, 76, 2, 0.14), transparent 55%),
-    radial-gradient(520px 240px at 95% 20%, rgba(16, 185, 129, 0.10), transparent 60%);
+    radial-gradient(900px 340px at 0% 0%,   rgba(252, 76, 2, 0.20), transparent 55%),
+    radial-gradient(600px 300px at 100% 100%, rgba(16, 185, 129, 0.13), transparent 55%),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(11, 18, 32, 0.13);
+  border-bottom: none;
+  backdrop-filter: blur(2px);
+  animation: heroRise 560ms cubic-bezier(.18,.9,.22,1) both;
+}
+
+/* large decorative number / sport glyph */
+.activity-hero-accent {
+  position: absolute;
+  top: -10px;
+  right: 32px;
+  font-family: var(--p42-serif);
+  font-size: 9rem;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  color: rgba(252, 76, 2, 0.07);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+}
+
+.activity-sport-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--p42-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(252, 76, 2, 0.9);
+  background: rgba(252, 76, 2, 0.10);
+  border: 1px solid rgba(252, 76, 2, 0.22);
+  border-radius: 999px;
+  padding: 5px 12px;
+  margin-bottom: 14px;
 }
 
 .activity-title {
-  margin: 0;
+  margin: 0 0 16px;
   font-family: var(--p42-serif);
-  letter-spacing: -0.03em;
-  font-size: 2.0rem;
+  font-size: clamp(1.85rem, 4vw, 2.8rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  max-width: 700px;
 }
 
-.activity-sub {
-  margin-top: 8px;
+.activity-meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  color: rgba(11, 18, 32, 0.72);
-  font-weight: 750;
+  align-items: center;
+  gap: 8px;
 }
 
+/* ── pill ── */
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(11, 18, 32, 0.14);
-  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(11, 18, 32, 0.13);
+  background: rgba(255, 255, 255, 0.70);
   font-family: var(--p42-mono);
   font-weight: 760;
-  letter-spacing: 0.35px;
-  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+  font-size: 0.78rem;
+  color: rgba(11, 18, 32, 0.72);
+  white-space: nowrap;
+}
+.pill.accent {
+  border-color: rgba(252, 76, 2, 0.28);
+  background: rgba(252, 76, 2, 0.09);
+  color: rgba(180, 50, 0, 0.95);
 }
 
-.pill.accent {
-  border-color: rgba(252, 76, 2, 0.30);
-  background: rgba(252, 76, 2, 0.10);
+/* ══════════════════════════════════════════
+   BODY CARD
+══════════════════════════════════════════ */
+.activity-card {
+  border-radius: 0 0 28px 28px;
+  border: 1px solid rgba(11, 18, 32, 0.13);
+  border-top: none;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 4px 6px -1px rgba(11, 18, 32, 0.04),
+    0 20px 60px -10px rgba(11, 18, 32, 0.10);
+  overflow: hidden;
+  animation: bodyRise 560ms 80ms cubic-bezier(.18,.9,.22,1) both;
+}
+
+/* divider line between hero and body */
+.activity-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(252,76,2,0.18) 0%, rgba(11,18,32,0.08) 40%, transparent 100%);
+  margin: 0;
 }
 
 .activity-body {
-  padding: 18px;
+  padding: 32px 40px 40px;
 }
 
+/* ── loading ── */
+.activity-empty {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(11, 18, 32, 0.20);
+  color: rgba(11, 18, 32, 0.55);
+  background: rgba(255, 255, 255, 0.50);
+  font-family: var(--p42-mono);
+  font-size: 0.83rem;
+}
+
+/* ══════════════════════════════════════════
+   STAT GRID — large editorial numbers
+══════════════════════════════════════════ */
 .stat-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(11, 18, 32, 0.10);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 28px;
 }
 
 .stat {
-  border-radius: 18px;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(255, 255, 255, 0.86);
-  padding: 14px;
+  background: rgba(255, 255, 255, 0.90);
+  padding: 24px 22px 20px;
+  position: relative;
+  transition: background 200ms ease;
+}
+.stat:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+/* accent left bar on first stat */
+.stat:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, rgba(252,76,2,0.7), rgba(252,76,2,0.3));
 }
 
 .stat-k {
   font-family: var(--p42-mono);
-  font-weight: 760;
-  letter-spacing: 0.55px;
-  color: rgba(11, 18, 32, 0.70);
-  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  color: rgba(11, 18, 32, 0.45);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  margin-bottom: 8px;
 }
 
 .stat-v {
-  margin-top: 6px;
   font-family: var(--p42-serif);
-  font-weight: 760;
-  letter-spacing: -0.02em;
-  font-size: 1.65rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  line-height: 1;
+  color: var(--p42-ink);
 }
 
-.activity-desc {
-  margin-top: 14px;
-  padding: 14px;
-  border-radius: 18px;
+/* ══════════════════════════════════════════
+   MAP
+══════════════════════════════════════════ */
+.activity-map {
+  margin-bottom: 24px;
+  border-radius: 20px;
+  overflow: hidden;
   border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(255, 255, 255, 0.78);
-  line-height: 1.6;
-  font-weight: 680;
-  color: rgba(11, 18, 32, 0.82);
+  box-shadow: 0 8px 30px -6px rgba(11, 18, 32, 0.12);
 }
 
-.activity-empty {
-  margin-top: 14px;
-  padding: 14px;
+.activity-map-img {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── description ── */
+.activity-desc {
+  padding: 20px 22px;
   border-radius: 18px;
-  border: 1px dashed rgba(11, 18, 32, 0.22);
-  color: rgba(11, 18, 32, 0.70);
-  background: rgba(255, 255, 255, 0.55);
-  font-family: var(--p42-mono);
+  border: 1px solid rgba(11, 18, 32, 0.11);
+  background: rgba(255, 255, 255, 0.65);
+  line-height: 1.7;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: rgba(11, 18, 32, 0.80);
 }
 
-.activity-error {
-  margin-top: 14px;
-  padding: 12px 12px;
-  border-radius: 18px;
-  background: rgba(239, 68, 68, 0.10);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #991b1b;
-  font-weight: 800;
-}
-
-@media (min-width: 860px) {
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media (max-width: 700px) {
+  .activity-hero {
+    padding: 28px 22px 24px;
+    border-radius: 20px 20px 0 0;
+  }
+  .activity-hero-accent {
+    font-size: 6rem;
+    right: 16px;
+  }
+  .activity-body {
+    padding: 22px 18px 32px;
+  }
   .stat-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
+    border-radius: 16px;
+  }
+  .stat:first-child::before { display: none; }
+  .activity-card {
+    border-radius: 0 0 20px 20px;
   }
 }
 
-@keyframes actLift {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ══════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════ */
+@keyframes heroRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes bodyRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stat {
+  animation: statIn 400ms both;
+}
+.stat:nth-child(1) { animation-delay: 120ms; }
+.stat:nth-child(2) { animation-delay: 190ms; }
+.stat:nth-child(3) { animation-delay: 260ms; }
+
+@keyframes statIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

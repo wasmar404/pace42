@@ -3,8 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
-
 export default function Login() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
@@ -16,16 +14,14 @@ export default function Login() {
         try {
             const params = new URLSearchParams(window.location.search)
             const err = params.get('error')
+            const message = params.get('message')
             if (!err) return
 
             const map = {
-                intra_not_registered: 'No Intra account found. Use Intra signup first.',
                 email_used_by_other_method: 'This email is already used by another sign-in method.',
-                intra_token_exchange_failed: 'Intra sign-in failed (token exchange).',
-                intra_profile_failed: 'Intra sign-in failed (profile).',
-                intra_magiclink_failed: 'Intra sign-in failed (session).',
+                already_registered: 'Account already exists. Please log in instead of signing up again.',
             }
-            setError(map[err] || err)
+            setError(message || map[err] || err)
         } catch {
             // ignore
         }
@@ -75,11 +71,6 @@ export default function Login() {
         if (data?.url) window.location.href = data.url
     }
 
-    const onIntra = () => {
-        setError(null)
-        window.location.href = `${BACKEND_URL}/api/auth/intra/start?mode=login&next=${encodeURIComponent('/home')}`
-    }
-
     return (
         <div className="login-page">
             <div className="bg-overlay">
@@ -98,10 +89,6 @@ export default function Login() {
                     <button className="social-btn google" type="button" onClick={onGoogle}>
                         <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
                         <span>Continue with Google</span>
-                    </button>
-                    <button className="social-btn google" type="button" onClick={onIntra}>
-                        <img className="icon icon-42" src="/auth/42.svg" alt="" aria-hidden="true" />
-                        <span>Continue with Intra</span>
                     </button>
                 </div>
 
@@ -131,9 +118,7 @@ export default function Login() {
                         {loading ? "Logging in..." : "Log In"}
                     </button>
                 </form>
-                <p className="signup-text">
-                    <Link to="/forgot-password">Forgot password?</Link>
-                </p>
+                
                 <p className="signup-text">
                    Don't have an account? <Link to="/signup">Sign up</Link>
                 </p>

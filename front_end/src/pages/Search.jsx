@@ -96,7 +96,6 @@ export default function SearchPage() {
 
       <main className="search-container">
         <header className="search-header">
-          <div className="search-kicker">Scout Board</div>
           <h1 className="search-title">Find Athletes</h1>
           <p className="search-subtitle">Search by name or handle. Follow to unlock followers-only activities and mutual chat.</p>
         </header>
@@ -174,7 +173,6 @@ export default function SearchPage() {
                         <div className="athlete-name">{displayName(u)}</div>
                         <div className="athlete-meta">
                           {u.username ? <span className="athlete-username">@{u.username}</span> : null}
-                          {u.level ? <span className="athlete-level">{u.level}</span> : null}
                         </div>
                       </div>
                     </Link>

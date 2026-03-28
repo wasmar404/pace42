@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
+import { AlertTriangle, KeyRound, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
-import { backendGet, backendJson, backendUpload } from '../backendApi'
+import SegmentedControl from '../components/ui/SegmentedControl'
+import { backendGet, backendJson, backendUploadWithProgress } from '../backendApi'
 import { supabase } from '../supabaseClient'
+import { setUnits, useUnitsValue } from '../preferences'
 import '../styles/Settings.css'
-
-const PROFILE_CACHE_KEY = 'pace42.meSummary'
 
 function safeBool(v) {
   return v === true
+}
+
+function normalizeQrValue(v) {
+  let s = String(v || '').trim()
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1).trim()
+  }
+  return s
 }
 
 export default function Settings() {
@@ -23,15 +31,24 @@ export default function Settings() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
 
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
 
-  const [units, setUnits] = useState(() => localStorage.getItem('pace42.units') || 'km')
+  const unitsPref = useUnitsValue()
+  const [units, setUnitsState] = useState(unitsPref)
+  const [weeklyGoal, setWeeklyGoal] = useState('')
 
   const [deleteConfirm, setDeleteConfirm] = useState('')
+
+  const [mfaEnabled, setMfaEnabled] = useState(false)
+  const [mfaEnroll, setMfaEnroll] = useState(null)
+  const [mfaChallengeId, setMfaChallengeId] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaBusy, setMfaBusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -45,6 +62,26 @@ export default function Settings() {
         setMe(res)
         setIsPrivate(safeBool(res?.settings?.isPrivate))
         setNewEmail(res?.user?.email || '')
+
+        const goalMeters = Number(res?.profile?.weeklyGoalDistanceMeters || 0)
+        if (goalMeters > 0) {
+          const v = unitsPref === 'mi' ? goalMeters / 1609.344 : goalMeters / 1000
+          setWeeklyGoal(String(Math.round(v * 10) / 10))
+        } else {
+          setWeeklyGoal('')
+        }
+
+        // MFA state
+        try {
+          const { data, error: mfaErr } = await supabase.auth.mfa.listFactors()
+          if (!mfaErr) {
+            const totp = data?.totp || []
+            const enabled = totp.some((f) => f.status === 'verified')
+            setMfaEnabled(enabled)
+          }
+        } catch {
+          // ignore
+        }
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load settings')
@@ -58,6 +95,88 @@ export default function Settings() {
     }
   }, [])
 
+  const refreshMfa = async () => {
+    const { data, error: mfaErr } = await supabase.auth.mfa.listFactors()
+    if (mfaErr) throw mfaErr
+    const totp = data?.totp || []
+    setMfaEnabled(totp.some((f) => f.status === 'verified'))
+    return totp
+  }
+
+  const onEnable2fa = async () => {
+    setNotice('')
+    setError('')
+    setMfaEnroll(null)
+    setMfaChallengeId('')
+    setMfaCode('')
+    setMfaBusy(true)
+    try {
+      const { data: enroll, error: enErr } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Pace42',
+      })
+      if (enErr) throw enErr
+      if (!enroll?.id) throw new Error('Failed to enroll')
+      setMfaEnroll(enroll)
+
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: enroll.id })
+      if (chErr) throw chErr
+      if (!ch?.id) throw new Error('Failed to start challenge')
+      setMfaChallengeId(String(ch.id))
+      // Instruction text is shown inline in the 2FA panel.
+    } catch (e) {
+      setError(e?.message || 'Failed to enable 2FA')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  const onVerify2fa = async () => {
+    const c = mfaCode.replace(/\s+/g, '')
+    if (!mfaEnroll?.id || !mfaChallengeId || c.length < 6) return
+    setNotice('')
+    setError('')
+    setMfaBusy(true)
+    try {
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: mfaEnroll.id,
+        challengeId: mfaChallengeId,
+        code: c,
+      })
+      if (vErr) throw vErr
+      await refreshMfa()
+      setMfaEnroll(null)
+      setMfaChallengeId('')
+      setMfaCode('')
+      setNotice('Two-factor authentication enabled.')
+    } catch (e) {
+      setError(e?.message || 'Invalid code')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  const onDisable2fa = async () => {
+    setNotice('')
+    setError('')
+    setMfaBusy(true)
+    try {
+      const totp = await refreshMfa()
+      const verified = totp.filter((f) => f.status === 'verified')
+      for (const f of verified) {
+        // eslint-disable-next-line no-await-in-loop
+        const { error: uErr } = await supabase.auth.mfa.unenroll({ factorId: f.id })
+        if (uErr) throw uErr
+      }
+      await refreshMfa()
+      setNotice('Two-factor authentication disabled.')
+    } catch (e) {
+      setError(e?.message || 'Failed to disable 2FA')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
   const avatarSeed = useMemo(() => {
     return me?.profile?.username || me?.user?.id || 'user'
   }, [me])
@@ -67,20 +186,27 @@ export default function Settings() {
   const onUploadAvatar = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Avatar must be JPG, PNG, or WEBP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Avatar must be <= 5MB.')
+      return
+    }
     setNotice('')
     setError('')
     setBusy(true)
+    setUploadPct(0)
     try {
-      const res = await backendUpload('/api/me/avatar', file)
+      const res = await backendUploadWithProgress('/api/me/avatar', file, {
+        onProgress: (p) => setUploadPct(Math.round(p * 100)),
+      })
 
       // Refresh cached profile summary (so NavBar updates instantly)
       const next = await backendGet('/api/me/summary')
       setMe(next)
-      try {
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: next }))
-      } catch {
-        // ignore
-      }
 
       setNotice('Profile picture updated.')
       return res
@@ -88,6 +214,7 @@ export default function Settings() {
       setError(e2?.message || 'Upload failed')
     } finally {
       setBusy(false)
+      setUploadPct(0)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -105,11 +232,6 @@ export default function Settings() {
         settings: { ...(me?.settings || {}), isPrivate: next },
       }
       setMe(merged)
-      try {
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), data: merged }))
-      } catch {
-        // ignore
-      }
       setNotice(next ? 'Account is now private.' : 'Account is now public.')
     } catch (e) {
       setIsPrivate(!next)
@@ -117,13 +239,31 @@ export default function Settings() {
     }
   }
 
-  const onSaveUnits = () => {
+  useEffect(() => {
+    setUnitsState(unitsPref)
+  }, [unitsPref])
+
+  const toWeeklyGoalMeters = (txt) => {
+    const x = Number(String(txt || '').trim())
+    if (!Number.isFinite(x) || x <= 0) return 0
+    const meters = units === 'mi' ? x * 1609.344 : x * 1000
+    return Math.round(meters)
+  }
+
+  const onSaveWeeklyGoal = async () => {
+    setNotice('')
+    setError('')
+    setBusy(true)
     try {
-      localStorage.setItem('pace42.units', units)
-    } catch {
-      // ignore
+      const meters = toWeeklyGoalMeters(weeklyGoal)
+      const res = await backendJson('PUT', '/api/me', { weeklyGoalDistanceMeters: meters || 0 })
+      setMe((prev) => ({ ...(prev || {}), profile: res?.profile || prev?.profile }))
+      setNotice(meters ? 'Weekly goal updated.' : 'Weekly goal cleared.')
+    } catch (e) {
+      setError(e?.message || 'Failed to update weekly goal')
+    } finally {
+      setBusy(false)
     }
-    setNotice('Preferences saved.')
   }
 
   const onChangeEmail = async (e) => {
@@ -214,15 +354,13 @@ export default function Settings() {
       <NavBar />
 
       <main className="settings-wrap">
-        <header className="settings-head">
-          <div className="settings-kicker">Control Room</div>
-          <h1>Settings</h1>
-          <p>Privacy, login, and preferences. Keep it tight.</p>
-        </header>
-
-        {loading ? <div className="settings-banner">Loading...</div> : null}
-        {error ? <div className="settings-banner error">{error}</div> : null}
-        {notice ? <div className="settings-banner ok">{notice}</div> : null}
+        {loading || error || notice ? (
+          <div className="settings-toast" role="status" aria-live="polite">
+            {loading ? <div className="settings-toast-inner">Loading…</div> : null}
+            {error ? <div className="settings-toast-inner error">{error}</div> : null}
+            {notice ? <div className="settings-toast-inner ok">{notice}</div> : null}
+          </div>
+        ) : null}
 
         <div className="settings-grid">
           <aside className="settings-nav" aria-label="Settings sections">
@@ -241,13 +379,13 @@ export default function Settings() {
               <a href="#privacy">Privacy</a>
               <a href="#email">Email</a>
               <a href="#password">Password</a>
+              <a href="#twofa">2FA</a>
               <a href="#prefs">Preferences</a>
+              <a href="#api">API</a>
               <a href="#danger">Danger Zone</a>
             </div>
 
-            <div className="settings-nav-foot">
-              <div className="settings-nav-note">Tip: keep your account private if you only want followers to see workouts.</div>
-            </div>
+            <div className="settings-nav-foot" />
           </aside>
 
           <div className="settings-panels">
@@ -273,6 +411,9 @@ export default function Settings() {
                   <input ref={fileRef} type="file" accept="image/*" onChange={onUploadAvatar} style={{ display: 'none' }} />
                 </div>
               </div>
+              {busy && uploadPct > 0 ? (
+                <div className="settings-row-help">Uploading: {uploadPct}%</div>
+              ) : null}
             </section>
 
             <section className="settings-card" id="privacy" style={{ '--i': 1 }}>
@@ -339,7 +480,88 @@ export default function Settings() {
               </form>
             </section>
 
-            <section className="settings-card" id="prefs" style={{ '--i': 4 }}>
+            <section className="settings-card" id="twofa" style={{ '--i': 4 }}>
+              <div className="settings-card-title">
+                <Lock size={18} />
+                <h2>Two-factor authentication</h2>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Authenticator app (TOTP)</div>
+                  <div className="settings-row-help">
+                    {mfaEnabled
+                      ? 'Enabled. You will be asked for a 6-digit code on every login.'
+                      : 'Not enabled. Use an authenticator app like Google Authenticator or Authy.'}
+                  </div>
+                </div>
+                <div className="settings-row-actions">
+                  {!mfaEnabled ? (
+                    <button className="settings-btn primary" type="button" onClick={onEnable2fa} disabled={mfaBusy || loading}>
+                      Enable 2FA
+                    </button>
+                  ) : (
+                    <button className="settings-btn danger" type="button" onClick={onDisable2fa} disabled={mfaBusy || loading}>
+                      Disable 2FA
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {mfaEnroll ? (
+                <div className="mfa-panel">
+                  <div className="mfa-qr">
+                    <div className="mfa-qr-inner">
+                      {(() => {
+                        const qr = normalizeQrValue(mfaEnroll?.totp?.qr_code)
+                        if (!qr) return <div className="mfa-qr-text">QR unavailable</div>
+
+                        // Supabase usually returns a data URL.
+                        if (qr.startsWith('data:image/') || qr.startsWith('data:')) {
+                          return <img className="mfa-qr-img" src={qr} alt="2FA QR code" />
+                        }
+
+                        // Fallback: raw SVG markup.
+                        if (qr.startsWith('<svg') || qr.includes('<svg')) {
+                          return <div className="mfa-qr-svg" dangerouslySetInnerHTML={{ __html: qr }} />
+                        }
+
+                        // Last resort: show as text to avoid injecting unknown markup.
+                        return <div className="mfa-qr-text">{qr}</div>
+                      })()}
+                    </div>
+                  </div>
+                  <div className="mfa-side">
+                    <div className="settings-row-label">Verify setup</div>
+                    <div className="settings-row-help">
+                      Scan the QR code, then enter the 6-digit code to finish enabling 2FA.
+                    </div>
+
+                    <div className="mfa-verify">
+                      <input
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value)}
+                        placeholder="123 456"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                      />
+                      <button type="button" className="settings-btn" onClick={onVerify2fa} disabled={mfaBusy || mfaCode.replace(/\s+/g, '').length < 6}>
+                        Verify
+                      </button>
+                    </div>
+
+                    {mfaEnroll?.totp?.secret ? (
+                      <div className="mfa-secret">
+                        <div className="settings-row-help">Manual key</div>
+                        <div className="mono">{mfaEnroll.totp.secret}</div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="settings-card" id="prefs" style={{ '--i': 5 }}>
               <div className="settings-card-title">
                 <SlidersHorizontal size={18} />
                 <h2>Preferences</h2>
@@ -351,28 +573,65 @@ export default function Settings() {
                   <div className="settings-row-help">Choose how distances are displayed.</div>
                 </div>
                 <div className="settings-row-actions">
-                  <div className="seg">
-                    <button
-                      className={units === 'km' ? 'seg-btn on' : 'seg-btn'}
-                      type="button"
-                      onClick={() => setUnits('km')}
-                    >
-                      km
-                    </button>
-                    <button
-                      className={units === 'mi' ? 'seg-btn on' : 'seg-btn'}
-                      type="button"
-                      onClick={() => setUnits('mi')}
-                    >
-                      mi
-                    </button>
-                  </div>
-                  <button className="settings-btn" type="button" onClick={onSaveUnits}>Save</button>
+                  <SegmentedControl
+                    value={units}
+                    ariaLabel="Units"
+                    options={[
+                      { value: 'km', label: 'km' },
+                      { value: 'mi', label: 'mi' },
+                    ]}
+                    onChange={(v) => {
+                      const next = v === 'mi' ? 'mi' : 'km'
+                      setUnitsState(next)
+                      setUnits(next)
+                    }}
+                    disabled={busy || loading}
+                  />
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Weekly distance goal</div>
+                  <div className="settings-row-help">Set a weekly target to show the goal widget on Home.</div>
+                </div>
+                <div className="settings-row-actions">
+                  <input
+                    value={weeklyGoal}
+                    onChange={(e) => setWeeklyGoal(e.target.value)}
+                    placeholder={units === 'mi' ? 'e.g. 15' : 'e.g. 25'}
+                    inputMode="decimal"
+                    style={{ width: 140 }}
+                    disabled={busy || loading}
+                  />
+                  <div className="settings-row-help" style={{ margin: 0, whiteSpace: 'nowrap' }}>{units === 'mi' ? 'mi / week' : 'km / week'}</div>
+                  <button className="settings-btn" type="button" onClick={onSaveWeeklyGoal} disabled={busy || loading}>
+                    Save
+                  </button>
                 </div>
               </div>
             </section>
 
-            <section className="settings-card danger" id="danger" style={{ '--i': 5 }}>
+            <section className="settings-card" id="api" style={{ '--i': 6 }}>
+              <div className="settings-card-title">
+                <KeyRound size={18} />
+                <h2>API</h2>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Public API documentation</div>
+                  <div className="settings-row-help">How to authenticate, rate limits, and endpoints.</div>
+                </div>
+                <div className="settings-row-actions">
+                  <button className="settings-btn" type="button" onClick={() => navigate('/api-docs')} disabled={busy || loading}>
+                    Open docs
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="settings-card danger" id="danger" style={{ '--i': 7 }}>
               <div className="settings-card-title">
                 <span className="danger-dot" aria-hidden="true" />
                 <h2>Danger Zone</h2>

@@ -5,8 +5,7 @@ import Signup from "./pages/Signup";
 import Verification from "./pages/Verification";
 import PersonalInfo from "./pages/Personal-info";
 import AuthCallback from "./pages/AuthCallback";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
+import Mfa from "./pages/Mfa";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Home from "./pages/Home";
 import AddActivity from "./pages/AddActivity";
@@ -17,6 +16,8 @@ import Search from "./pages/Search";
 import UserProfile from "./pages/UserProfile";
 import Chat from "./pages/Chat";
 import ChatThread from "./pages/ChatThread";
+import ApiDocs from "./pages/ApiDocs";
+import Training from "./pages/Training";
 
 function App() {
   return (
@@ -35,8 +36,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/mfa" element={<Mfa />} />
         <Route
           path="/activities/new"
           element={
@@ -112,6 +112,24 @@ function App() {
           element={
             <ProtectedRoute>
               <ChatThread />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/training"
+          element={
+            <ProtectedRoute>
+              <Training />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/api-docs"
+          element={
+            <ProtectedRoute>
+              <ApiDocs />
             </ProtectedRoute>
           }
         />

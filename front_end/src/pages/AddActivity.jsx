@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { 
   Activity, 
@@ -20,12 +20,16 @@ import {
 
 import NavBar from '../components/NavBar'
 import { createActivity, importGpx, uploadActivityPhoto } from '../api/activities'
+import { getUnits, useUnitsValue } from '../preferences'
+import { distanceInUnits, formatPaceOrSpeed } from '../utils/format'
 import '../styles/AddActivity.css'
 
-function toMeters(km) {
-  const n = Number(km)
+function toMeters(value, units) {
+  const n = Number(value)
   if (!Number.isFinite(n)) return null
-  return Math.max(1, Math.round(n * 1000))
+  const u = units === 'mi' ? 'mi' : 'km'
+  const meters = u === 'mi' ? n * 1609.344 : n * 1000
+  return Math.max(1, Math.round(meters))
 }
 
 function toSeconds(hours, minutes, seconds) {
@@ -37,13 +41,32 @@ function toSeconds(hours, minutes, seconds) {
   return total > 0 ? total : null
 }
 
+function fmtInputNumber(n) {
+  if (!Number.isFinite(n)) return ''
+  const s = n.toFixed(2)
+  return s.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')
+}
+
+function validateStartedAt(value) {
+  const raw = String(value || '').trim()
+  if (!raw) throw new Error('Choose a date/time')
+
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) throw new Error('Invalid date/time')
+
+  const year = d.getFullYear()
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  if (year < 1900 || year > currentYear) throw new Error('Invalid date/time')
+  if (d.getTime() > now.getTime() + 60_000) throw new Error('Date/time cannot be in the future')
+
+  return d
+}
+
 const SPORT_OPTIONS = [
   { value: 'run', label: 'Run', icon: '🏃', color: '#f97316' },
   { value: 'walk', label: 'Walk', icon: '🚶', color: '#22c55e' },
-  { value: 'cycle', label: 'Cycle', icon: '🚴', color: '#3b82f6' },
-  { value: 'swim', label: 'Swim', icon: '🏊', color: '#06b6d4' },
-  { value: 'hike', label: 'Hike', icon: '🥾', color: '#8b5cf6' },
-  { value: 'yoga', label: 'Yoga', icon: '🧘', color: '#ec4899' },
+  { value: 'ride', label: 'Cycle', icon: '🚴', color: '#3b82f6' },
 ]
 
 const VISIBILITY_OPTIONS = [
@@ -57,6 +80,9 @@ export default function AddActivity() {
   const [params, setParams] = useSearchParams()
   const mode = (params.get('mode') || 'manual').toLowerCase()
 
+  const units = useUnitsValue()
+  const prevUnitsRef = useRef(units)
+
   const [sport, setSport] = useState('run')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -66,10 +92,27 @@ export default function AddActivity() {
   const [hours, setHours] = useState('0')
   const [minutes, setMinutes] = useState('30')
   const [seconds, setSeconds] = useState('0')
-  const [distanceKm, setDistanceKm] = useState('5')
+  const [distanceKm, setDistanceKm] = useState(() => (getUnits() === 'mi' ? '3.1' : '5'))
+
+  useEffect(() => {
+    const prev = prevUnitsRef.current
+    if (prev === units) return
+
+    const n = Number(distanceKm)
+    if (Number.isFinite(n) && n > 0) {
+      const meters = toMeters(n, prev)
+      if (meters) {
+        const next = distanceInUnits(meters, units)
+        setDistanceKm(fmtInputNumber(next))
+      }
+    }
+
+    prevUnitsRef.current = units
+  }, [units])
 
   const [gpxFile, setGpxFile] = useState(null)
   const [photos, setPhotos] = useState([])
+  const [uploadNote, setUploadNote] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const photoInputRef = useRef(null)
   const gpxInputRef = useRef(null)
@@ -77,6 +120,17 @@ export default function AddActivity() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [activeSection, setActiveSection] = useState('details')
+
+  const maxStartedAt = useMemo(() => {
+    const d = new Date()
+    const pad = (n) => String(n).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    const mm = pad(d.getMonth() + 1)
+    const dd = pad(d.getDate())
+    const hh = pad(d.getHours())
+    const mi = pad(d.getMinutes())
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+  }, [])
 
   async function runWithConcurrency(items, limit, fn) {
     const results = []
@@ -110,7 +164,13 @@ export default function AddActivity() {
   const onPickPhotos = (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    setPhotos((prev) => [...prev, ...files].slice(0, 8))
+
+    const filtered = files.filter((f) => ['image/jpeg', 'image/png', 'image/webp'].includes(f.type) && f.size <= 25 * 1024 * 1024)
+    if (filtered.length !== files.length) {
+      setError('Some files were skipped (only JPG/PNG/WEBP up to 25MB).')
+    }
+
+    setPhotos((prev) => [...prev, ...filtered].slice(0, 8))
     e.target.value = ''
   }
 
@@ -137,17 +197,18 @@ export default function AddActivity() {
   }
 
   const submitManual = async () => {
+    if (!String(title || '').trim()) throw new Error('Title is required')
     const dur = toSeconds(hours, minutes, seconds)
     if (!dur) throw new Error('Duration must be greater than 0')
-    const meters = toMeters(distanceKm)
+    const meters = toMeters(distanceKm, units)
     if (!meters) throw new Error('Distance must be a number')
-    if (!startedAt) throw new Error('Choose a date/time')
+    const started = validateStartedAt(startedAt)
 
     const payload = {
       sport,
-      title: title || undefined,
+      title: String(title || '').trim(),
       description: description || undefined,
-      startedAt: new Date(startedAt).toISOString(),
+      startedAt: started.toISOString(),
       durationSeconds: dur,
       distanceMeters: meters,
       visibility,
@@ -158,7 +219,18 @@ export default function AddActivity() {
     if (!activityId) throw new Error('Activity created but missing id')
 
     if (photos.length) {
-      await runWithConcurrency(photos, 3, (file) => uploadActivityPhoto(activityId, file))
+      let done = 0
+      setUploadNote(`Uploading photos 0/${photos.length}`)
+      await runWithConcurrency(photos, 1, async (file) => {
+        await uploadActivityPhoto(activityId, file, {
+          onProgress: (p) => {
+            setUploadNote(`Uploading photos ${done}/${photos.length} (${Math.round(p * 100)}%)`)
+          },
+        })
+        done += 1
+        setUploadNote(`Uploading photos ${done}/${photos.length}`)
+      })
+      setUploadNote('')
     }
 
     navigate(`/activities/${activityId}`)
@@ -166,18 +238,35 @@ export default function AddActivity() {
 
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
+    if (gpxFile.size > 20 * 1024 * 1024) throw new Error('GPX must be <= 20MB')
+    if (!String(title || '').trim()) throw new Error('Title is required')
+    setUploadNote('Uploading GPX 0%')
     const res = await importGpx(gpxFile, {
       sport,
-      title,
+      title: String(title || '').trim(),
       description,
       visibility,
+    }, {
+      onProgress: (p) => setUploadNote(`Uploading GPX ${Math.round(p * 100)}%`),
     })
+    setUploadNote('')
 
     const activityId = res?.activity?.id
     if (!activityId) throw new Error('Import succeeded but missing activity id')
 
     if (photos.length) {
-      await runWithConcurrency(photos, 3, (file) => uploadActivityPhoto(activityId, file))
+      let done = 0
+      setUploadNote(`Uploading photos 0/${photos.length}`)
+      await runWithConcurrency(photos, 1, async (file) => {
+        await uploadActivityPhoto(activityId, file, {
+          onProgress: (p) => {
+            setUploadNote(`Uploading photos ${done}/${photos.length} (${Math.round(p * 100)}%)`)
+          },
+        })
+        done += 1
+        setUploadNote(`Uploading photos ${done}/${photos.length}`)
+      })
+      setUploadNote('')
     }
 
     navigate(`/activities/${activityId}`)
@@ -312,6 +401,7 @@ export default function AddActivity() {
                         value={startedAt}
                         onChange={(e) => setStartedAt(e.target.value)}
                         className="text-input"
+                        max={maxStartedAt}
                       />
                     </div>
 
@@ -376,7 +466,7 @@ export default function AddActivity() {
                           onChange={(e) => setDistanceKm(e.target.value)}
                           className="text-input"
                         />
-                        <span className="distance-unit">km</span>
+                        <span className="distance-unit">{units}</span>
                       </div>
                     </div>
                   </div>
@@ -518,15 +608,13 @@ export default function AddActivity() {
                 <section className="sidebar-card stats-preview">
                   <label className="sidebar-label">Preview</label>
                   <div className="stat-row">
-                    <span className="stat-label">Pace</span>
+                    <span className="stat-label">Pace/Speed</span>
                     <span className="stat-value">
                       {(() => {
-                        const totalMinutes = (Number(hours) * 60) + Number(minutes) + (Number(seconds) / 60)
-                        const pace = totalMinutes / Number(distanceKm)
-                        if (!isFinite(pace)) return '--'
-                        const pMin = Math.floor(pace)
-                        const pSec = Math.round((pace - pMin) * 60)
-                        return `${pMin}:${pSec.toString().padStart(2, '0')}/km`
+                        const meters = toMeters(distanceKm, units)
+                        const secs = toSeconds(hours, minutes, seconds)
+                        if (!meters || !secs) return '--'
+                        return formatPaceOrSpeed(sport, meters, secs, units)
                       })()}
                     </span>
                   </div>
@@ -549,6 +637,13 @@ export default function AddActivity() {
               <span>{error}</span>
             </div>
           )}
+
+          {busy && uploadNote ? (
+            <div className="form-error" style={{ borderColor: 'rgba(16,185,129,0.45)', background: 'rgba(16,185,129,0.08)' }}>
+              <div className="error-icon">↑</div>
+              <span>{uploadNote}</span>
+            </div>
+          ) : null}
 
           {/* Footer Actions */}
           <div className="form-footer">

@@ -20,6 +20,20 @@
   --shadow-glow: 0 0 20px rgba(252, 76, 2, 0.2);
 }
 
+:root[data-theme="dark"] {
+  --color-bg: #0b1220;
+  --color-surface: rgba(255, 255, 255, 0.06);
+  --color-surface-hover: rgba(255, 255, 255, 0.10);
+  --color-border: rgba(255, 250, 242, 0.14);
+  --color-text: rgba(255, 250, 242, 0.92);
+  --color-text-secondary: rgba(255, 250, 242, 0.72);
+  --color-text-muted: rgba(255, 250, 242, 0.52);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-md: 0 10px 30px rgb(0 0 0 / 0.40);
+  --shadow-lg: 0 18px 60px rgb(0 0 0 / 0.50);
+  --shadow-glow: 0 0 22px rgba(252, 76, 2, 0.24);
+}
+
 .profile-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #fafaf9 0%, #f5f5f4 100%);
@@ -256,6 +270,15 @@
   transition: background 0.2s ease;
 }
 
+.stat-box.clickable {
+  cursor: pointer;
+}
+
+.stat-box.clickable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .stat-box:hover {
   background: var(--color-surface-hover);
 }
@@ -313,6 +336,114 @@
   height: fit-content;
   min-width: 320px;
   z-index: 3;
+}
+
+/* PR / Performance card (stats.png-inspired) */
+.sidebar-card.pr-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pr-k {
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.pr-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.pr-btn {
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 800;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.pr-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pr-table {
+  display: grid;
+}
+
+.pr-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.pr-row:first-child {
+  border-top: 0;
+}
+
+.pr-row .l {
+  color: var(--color-text);
+}
+
+.pr-row .r {
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.pr-row .r.best a {
+  color: #0077cc;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.pr-row .r.best a:hover {
+  text-decoration: underline;
+}
+
+.pr-subhead {
+  padding: 12px 16px 8px;
+}
+
+.pr-subhead .t {
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.pr-subhead .s {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pr-sep {
+  height: 1px;
+  background: var(--color-border);
+}
+
+.pr-empty {
+  padding: 12px 16px;
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme="dark"] .pr-row {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .pr-row .r.best a {
+  color: #66b9ff;
 }
 
 /* Cards */
@@ -496,6 +627,12 @@
   animation: slideIn 0.4s ease forwards;
   opacity: 0;
   transform: translateY(10px);
+  cursor: pointer;
+}
+
+.workout-item:focus-visible {
+  outline: 3px solid rgba(252, 76, 2, 0.28);
+  outline-offset: 3px;
 }
 
 @keyframes slideIn {

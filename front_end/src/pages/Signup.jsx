@@ -3,9 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
-
-
 export default function Signup() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
@@ -18,7 +15,10 @@ export default function Signup() {
         setError("");
         setLoading(true);
         try {
-            const { error: signUpError } = await supabase.auth.signUp({
+            if (String(password || '').length < 8) {
+                throw new Error('Password must be at least 8 characters')
+            }
+            const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
@@ -28,7 +28,13 @@ export default function Signup() {
                 },
             });
             if (signUpError) throw signUpError;
-            navigate("/verification", { state: { email } });
+
+            // If email confirmations are disabled (common in local dev), Supabase returns a session.
+            if (data?.session) {
+                navigate("/personal-info", { replace: true });
+            } else {
+                navigate("/verification", { state: { email } });
+            }
         } catch (err) {
             setError(err?.message || "Signup failed");
         } finally {
@@ -50,11 +56,6 @@ export default function Signup() {
         }
         if (data?.url) window.location.href = data.url;
     };
-
-    const onIntra = () => {
-        setError("")
-        window.location.href = `${BACKEND_URL}/api/auth/intra/start?mode=signup&next=${encodeURIComponent('/personal-info')}`
-    }
 
     return (
         <div className="Signup">
@@ -78,10 +79,6 @@ export default function Signup() {
                         <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
                         <span>Sign Up With Google</span>
                     </button>
-                    <button className="social-btn google" type="button" onClick={onIntra}>
-                        <img className="icon icon-42" src="/auth/42.svg" alt="" aria-hidden="true" />
-                        <span>Sign Up With Intra</span>
-                    </button>
                 </div>
 
                 <div className="divider">
@@ -104,6 +101,7 @@ export default function Signup() {
                         className="pass-in"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        minLength={8}
                     />
                     {error ? <p className="terms dark-text">{error}</p> : null}
                     <button className="sign-button full" type="submit" disabled={loading}>
