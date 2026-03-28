@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolve } from 'node:path';
 
 import { PrismaModule } from './prisma';
 import { MeModule } from './modules/me/me.module';
@@ -15,7 +16,7 @@ import { HealthController } from './health.controller';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env'],
+      envFilePath: [resolve(process.cwd(), '..', '.env')],
     }),
 
     PrismaModule,
