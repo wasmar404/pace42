@@ -1,46 +1,60 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-pace42}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pace42}
-      POSTGRES_DB: ${POSTGRES_DB:-pace42}
-    ports:
-      - "5432:5432"
+  supabase:
+    image: alpine:3.20
+    working_dir: /work
+    network_mode: host
+    env_file:
+      - ./.env
+    command:
+      - sh
+      - -lc
+      - |
+        set -eu
+        i=0
+        until apk add --no-cache curl tar docker-cli ca-certificates; do
+          i=$$((i + 1))
+          if [ $$i -ge 15 ]; then
+            echo "[supabase] apk add failed" >&2
+            exit 1
+          fi
+          sleep 2
+        done
+        mkdir -p .bin
+        if [ ! -x .bin/supabase ]; then
+          arch=$$(uname -m)
+          case "$$arch" in
+            x86_64|amd64) tgz=supabase_linux_amd64.tar.gz ;;
+            aarch64|arm64) tgz=supabase_linux_arm64.tar.gz ;;
+            *) echo "unsupported arch: $$arch" >&2; exit 1 ;;
+          esac
+          url="https://github.com/supabase/cli/releases/latest/download/$$tgz"
+          echo "[supabase] downloading $$url"
+          curl -fsSL "$$url" -o .bin/supabase.tgz
+          tar -xzf .bin/supabase.tgz -C .bin
+          rm -f .bin/supabase.tgz
+          chmod +x .bin/supabase
+        fi
+        echo "[supabase] restarting"
+        ./.bin/supabase stop --no-backup || true
+        ./.bin/supabase start
+        ./.bin/supabase status
+        tail -f /dev/null
     volumes:
-      - pace42_db:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+      - ./:/work
+      - /var/run/docker.sock:/var/run/docker.sock
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
-      PORT: "3004"
-      NODE_ENV: development
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
-
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-pace42}:${POSTGRES_PASSWORD:-pace42}@db:5432/${POSTGRES_DB:-pace42}}
-      DIRECT_URL: ${DIRECT_URL:-postgresql://${POSTGRES_USER:-pace42}:${POSTGRES_PASSWORD:-pace42}@db:5432/${POSTGRES_DB:-pace42}}
-
-      SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in .env}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
-
-      SUPABASE_AVATARS_BUCKET: ${SUPABASE_AVATARS_BUCKET:-avatars}
-      SUPABASE_ACTIVITY_MEDIA_BUCKET: ${SUPABASE_ACTIVITY_MEDIA_BUCKET:-activity-media}
-      SUPABASE_GPX_BUCKET: ${SUPABASE_GPX_BUCKET:-gpx}
-      SUPABASE_IMPORT_GPX_FUNCTION: ${SUPABASE_IMPORT_GPX_FUNCTION:-import-gpx}
-    ports:
-      - "3004:3004"
+      DB_HOST: 127.0.0.1
+      DB_PORT: "54322"
+    network_mode: host
     depends_on:
-      db:
-        condition: service_healthy
+      - supabase
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
@@ -49,15 +63,11 @@ services:
     build:
       context: ./front_end
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
-      NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
-
-      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3004}
-      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set VITE_SUPABASE_URL in .env}
-      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?set VITE_SUPABASE_ANON_KEY in .env}
-    ports:
-      - "5173:5173"
+    network_mode: host
     depends_on:
       - backend
     volumes:
@@ -65,6 +75,5 @@ services:
       - frontend_node_modules:/app/node_modules
 
 volumes:
-  pace42_db:
   backend_node_modules:
   frontend_node_modules:

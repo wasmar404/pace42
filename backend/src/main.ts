@@ -11,8 +11,16 @@ async function main() {
 
   app.use(compression()); //compress HTTP responses before sending them to the client
 
+  const rawOrigins = String(process.env.CORS_ORIGIN ?? '').trim();
+  const origins = rawOrigins
+    ? rawOrigins
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined;
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN,
+    origin: origins && origins.length ? origins : rawOrigins || true,
     credentials: true,
   });
 

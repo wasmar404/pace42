@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, NotFoundException, Query } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -37,10 +37,19 @@ export class MeController {
     private readonly config: ConfigService,
   ) {}
 
-  private async requireProfile(userId: string) {
+  private async ensureProfile(userId: string) {
     const profile = await this.prisma.profile.findUnique({ where: { userId } });
-    if (!profile) throw new NotFoundException('Profile not found. Complete onboarding first.');
-    return profile;
+    if (profile) return profile;
+
+    const suffix = userId.replace(/-/g, '').slice(0, 12);
+    const username = `athlete_${suffix}`;
+
+    return await this.prisma.profile.create({
+      data: {
+        userId,
+        username,
+      },
+    });
   }
 
   private getActivities(userId: string, opts: { take?: number; select?: object } = {}) {
@@ -78,7 +87,7 @@ export class MeController {
   async getMe(@CurrentUser() user?: { userId: string; email?: string }) {
     if (!user) throw new BadRequestException('Missing user');
 
-    const profile = await this.requireProfile(user.userId);
+    const profile = await this.ensureProfile(user.userId);
 
     return {
       user: {
@@ -91,7 +100,7 @@ export class MeController {
 
   @Get('summary')
   async getMySummary(@CurrentUser() user: { userId: string; email?: string }) {
-    const profile = await this.requireProfile(user.userId);
+    const profile = await this.ensureProfile(user.userId);
 
     const since4w = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
 
@@ -144,7 +153,7 @@ export class MeController {
       where: { userId: user.userId },
       select: { onboardingCompletedAt: true },
     });
-    if (!existing) throw new NotFoundException('Profile not found. Complete onboarding first.');
+    if (!existing) await this.ensureProfile(user.userId);
 
     const hasPersonalPayload =
       dto.firstName !== undefined ||
@@ -213,7 +222,7 @@ export class MeController {
     const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
     const avatarUrl = publicData.publicUrl;
 
-    await this.requireProfile(user.userId);
+    await this.ensureProfile(user.userId);
     await this.prisma.profile.update({ where: { userId: user.userId }, data: { avatarUrl } });
 
     return { avatarUrl };
@@ -237,7 +246,7 @@ export class MeController {
 
   @Get('activities')
   async myActivities(@CurrentUser() user: { userId: string }, @Query('take') take?: string) {
-    await this.requireProfile(user.userId);
+    await this.ensureProfile(user.userId);
 
     const n = Number(take ?? 500);
     const limit = Number.isFinite(n) ? Math.max(1, Math.min(2000, Math.floor(n))) : 500;
