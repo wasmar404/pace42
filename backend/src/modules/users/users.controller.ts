@@ -12,11 +12,18 @@ function isUuidV4(value: string): boolean {
 
 @Controller('users')
 export class UsersController {
-  private readonly summaryCache = new Map<string, { expiresAt: number; data: any }>();
-
   constructor(
     private readonly prisma: PrismaService,
   ) {}
+
+  private pagination(query: { skip?: string; take?: string }) {
+    const skipRaw = typeof query?.skip === 'string' ? query.skip : '0';
+    const takeRaw = typeof query?.take === 'string' ? query.take : '50';
+
+    const skip = Math.max(0, Number.parseInt(skipRaw, 10) || 0);
+    const take = Math.min(100, Math.max(1, Number.parseInt(takeRaw, 10) || 50));
+    return { skip, take };
+  }
 
   @Get(':id([0-9a-fA-F-]{36})/summary')
   @UseGuards(OptionalSupabaseAuthGuard)
@@ -26,10 +33,6 @@ export class UsersController {
 
     const viewerId = (req as any)?.user?.userId as string | undefined;
     const isSelf = viewerId === id;
-
-    const cacheKey = `${viewerId ?? 'anon'}:${id}`;
-    const cached = this.summaryCache.get(cacheKey);
-    if (cached && Date.now() < cached.expiresAt) return cached.data;
 
     const [profile, followersCount, followingCount] = await Promise.all([
       this.prisma.profile.findUnique({
@@ -161,13 +164,135 @@ export class UsersController {
       recentPhotos: recentPhotos.map((p: { publicUrl: string | null }) => p.publicUrl).filter(Boolean),
     };
 
-    this.summaryCache.set(cacheKey, { expiresAt: Date.now() + 5000, data: resp });
-    if (this.summaryCache.size > 5000) {
-      const firstKey = this.summaryCache.keys().next().value as string | undefined;
-      if (typeof firstKey === 'string') this.summaryCache.delete(firstKey);
-    }
-
     return resp;
+  }
+
+  @Get(':id([0-9a-fA-F-]{36})/followers')
+  @UseGuards(OptionalSupabaseAuthGuard)
+  async listFollowers(@Param('id') id: string, @Req() req: Request, @Query() query: { skip?: string; take?: string }) {
+    if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
+
+    const { skip, take } = this.pagination(query);
+    const viewerId = (req as any)?.user?.userId as string | undefined;
+
+    const target = await this.prisma.profile.findUnique({ where: { userId: id }, select: { userId: true, onboardingCompletedAt: true } });
+    if (!target) throw new BadRequestException('User not found');
+    if (!target.onboardingCompletedAt) throw new BadRequestException('User not found');
+
+    const [total, rows] = await Promise.all([
+      this.prisma.follow.count({ where: { followingId: id } }),
+      this.prisma.follow.findMany({
+        where: { followingId: id },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        select: { followerId: true, createdAt: true },
+      }),
+    ]);
+
+    const ids = rows.map((r) => r.followerId);
+    if (!ids.length) return { total, items: [] };
+
+    const [profiles, viewerFollows] = await Promise.all([
+      this.prisma.profile.findMany({
+        where: { userId: { in: ids }, onboardingCompletedAt: { not: null } },
+        select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+      }),
+      viewerId
+        ? this.prisma.follow.findMany({ where: { followerId: viewerId, followingId: { in: ids } }, select: { followingId: true } })
+        : Promise.resolve([] as Array<{ followingId: string }>),
+    ]);
+
+    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+    const followingSet = new Set(viewerFollows.map((f) => f.followingId));
+
+    const items = rows
+      .map((r) => {
+        const p = byId.get(r.followerId);
+        if (!p) return null;
+        return {
+          user: {
+            id: p.userId,
+            username: p.username,
+            firstName: p.firstName,
+            lastName: p.lastName,
+            avatarUrl: p.avatarUrl,
+          },
+          relationship: {
+            isSelf: viewerId ? viewerId === p.userId : false,
+            isFollowing: viewerId ? followingSet.has(p.userId) : false,
+          },
+          createdAt: r.createdAt,
+        };
+      })
+      .filter(Boolean);
+
+    return { total, items };
+  }
+
+  @Get(':id([0-9a-fA-F-]{36})/following')
+  @UseGuards(OptionalSupabaseAuthGuard)
+  async listFollowing(@Param('id') id: string, @Req() req: Request, @Query() query: { skip?: string; take?: string }) {
+    if (!id) throw new BadRequestException('Missing user id');
+    if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
+
+    const { skip, take } = this.pagination(query);
+    const viewerId = (req as any)?.user?.userId as string | undefined;
+
+    const target = await this.prisma.profile.findUnique({ where: { userId: id }, select: { userId: true, onboardingCompletedAt: true } });
+    if (!target) throw new BadRequestException('User not found');
+    if (!target.onboardingCompletedAt) throw new BadRequestException('User not found');
+
+    const [total, rows] = await Promise.all([
+      this.prisma.follow.count({ where: { followerId: id } }),
+      this.prisma.follow.findMany({
+        where: { followerId: id },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        select: { followingId: true, createdAt: true },
+      }),
+    ]);
+
+    const ids = rows.map((r) => r.followingId);
+    if (!ids.length) return { total, items: [] };
+
+    const [profiles, viewerFollows] = await Promise.all([
+      this.prisma.profile.findMany({
+        where: { userId: { in: ids }, onboardingCompletedAt: { not: null } },
+        select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+      }),
+      viewerId
+        ? this.prisma.follow.findMany({ where: { followerId: viewerId, followingId: { in: ids } }, select: { followingId: true } })
+        : Promise.resolve([] as Array<{ followingId: string }>),
+    ]);
+
+    const byId = new Map(profiles.map((p) => [p.userId, p] as const));
+    const followingSet = new Set(viewerFollows.map((f) => f.followingId));
+
+    const items = rows
+      .map((r) => {
+        const p = byId.get(r.followingId);
+        if (!p) return null;
+        return {
+          user: {
+            id: p.userId,
+            username: p.username,
+            firstName: p.firstName,
+            lastName: p.lastName,
+            avatarUrl: p.avatarUrl,
+          },
+          relationship: {
+            isSelf: viewerId ? viewerId === p.userId : false,
+            isFollowing: viewerId ? followingSet.has(p.userId) : false,
+          },
+          createdAt: r.createdAt,
+        };
+      })
+      .filter(Boolean);
+
+    return { total, items };
   }
 
   @Post(':id([0-9a-fA-F-]{36})/follow')

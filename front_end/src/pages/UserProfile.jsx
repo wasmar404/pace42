@@ -25,6 +25,7 @@ import {
 import NavBar from '../components/NavBar'
 import { followUser, getUserSummary, unfollowUser } from '../api/users'
 import Avatar from '../components/Avatar'
+import FollowModal from '../components/profile/FollowModal'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
@@ -108,6 +109,9 @@ export default function UserProfile() {
   const [busy, setBusy] = useState(false)
   const [hero, setHero] = useState(DEFAULT_HERO)
 
+  const [followOpen, setFollowOpen] = useState(false)
+  const [followTab, setFollowTab] = useState('followers')
+
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -135,6 +139,17 @@ export default function UserProfile() {
 
   const name = useMemo(() => displayName(data?.profile, data?.user), [data])
   const stats = data?.stats || {}
+
+  const followUserForModal = useMemo(() => {
+    const uid = data?.user?.id
+    if (!uid) return null
+    return {
+      id: uid,
+      username: data?.user?.username,
+      name,
+      avatarUrl: data?.profile?.avatarUrl,
+    }
+  }, [data, name])
 
   const onToggleFollow = async () => {
     if (!data || data?.relationship?.isSelf) return
@@ -279,7 +294,24 @@ export default function UserProfile() {
 
         {/* Stats Grid */}
         <section className="user-stats-grid">
-          <div className="stat-box">
+          <div
+            className="stat-box clickable"
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              if (!followUserForModal?.id) return
+              setFollowTab('followers')
+              setFollowOpen(true)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                if (!followUserForModal?.id) return
+                setFollowTab('followers')
+                setFollowOpen(true)
+              }
+            }}
+          >
             <div className="stat-icon">
               <Users size={18} />
             </div>
@@ -288,7 +320,24 @@ export default function UserProfile() {
               <span className="stat-label">Followers</span>
             </div>
           </div>
-          <div className="stat-box">
+          <div
+            className="stat-box clickable"
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              if (!followUserForModal?.id) return
+              setFollowTab('following')
+              setFollowOpen(true)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                if (!followUserForModal?.id) return
+                setFollowTab('following')
+                setFollowOpen(true)
+              }
+            }}
+          >
             <div className="stat-icon">
               <User size={18} />
             </div>
@@ -334,6 +383,16 @@ export default function UserProfile() {
             </div>
           </div>
         </section>
+
+        <FollowModal
+          open={followOpen}
+          user={followUserForModal}
+          followersCount={Number(stats.followersCount || 0)}
+          followingCount={Number(stats.followingCount || 0)}
+          tab={followTab}
+          onTab={setFollowTab}
+          onClose={() => setFollowOpen(false)}
+        />
 
         {/* Hero Images */}
         <section className="profile-hero">

@@ -15,6 +15,7 @@ import {
 import NavBar from '../components/NavBar'
 import { backendGet } from '../backendApi'
 import Avatar from '../components/Avatar'
+import FollowModal from '../components/profile/FollowModal'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
@@ -94,6 +95,9 @@ export default function Profile() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
+  const [followOpen, setFollowOpen] = useState(false)
+  const [followTab, setFollowTab] = useState('followers')
+
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -135,6 +139,16 @@ export default function Profile() {
   }, [me])
 
   const recent = activities.slice(0, 3)
+
+  const followUser = useMemo(() => {
+    if (!me?.user?.id) return null
+    return {
+      id: me.user.id,
+      username: me?.user?.username,
+      name: displayName,
+      avatarUrl: me?.profile?.avatarUrl,
+    }
+  }, [me, displayName])
 
   const stats = useMemo(() => {
     const totalDistance = activities.reduce((sum, a) => sum + (Number(a.distanceMeters) || 0), 0)
@@ -220,11 +234,45 @@ export default function Profile() {
                   <span className="stat-value">{totalActivities}</span>
                   <span className="stat-label">Total</span>
                 </div>
-                <div className="stat-box">
+                <div
+                  className="stat-box clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (!followUser?.id) return
+                    setFollowTab('followers')
+                    setFollowOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (!followUser?.id) return
+                      setFollowTab('followers')
+                      setFollowOpen(true)
+                    }
+                  }}
+                >
                   <span className="stat-value">{followersCount}</span>
                   <span className="stat-label">Followers</span>
                 </div>
-                <div className="stat-box">
+                <div
+                  className="stat-box clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (!followUser?.id) return
+                    setFollowTab('following')
+                    setFollowOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (!followUser?.id) return
+                      setFollowTab('following')
+                      setFollowOpen(true)
+                    }
+                  }}
+                >
                   <span className="stat-value">{followingCount}</span>
                   <span className="stat-label">Following</span>
                 </div>
@@ -390,6 +438,16 @@ export default function Profile() {
             </div>
           </aside>
         </div>
+
+        <FollowModal
+          open={followOpen}
+          user={followUser}
+          followersCount={followersCount}
+          followingCount={followingCount}
+          tab={followTab}
+          onTab={setFollowTab}
+          onClose={() => setFollowOpen(false)}
+        />
       </main>
     </div>
   )

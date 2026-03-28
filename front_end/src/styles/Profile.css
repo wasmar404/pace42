@@ -270,6 +270,15 @@
   transition: background 0.2s ease;
 }
 
+.stat-box.clickable {
+  cursor: pointer;
+}
+
+.stat-box.clickable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .stat-box:hover {
   background: var(--color-surface-hover);
 }
