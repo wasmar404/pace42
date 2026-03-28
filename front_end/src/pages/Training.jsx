@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, CalendarDays, ChevronDown, ChevronRight, Clock, Filter, List, Route, Search, SlidersHorizontal, TrendingUp, X, Zap } from 'lucide-react'
+import { Activity, CalendarDays, ChevronDown, ChevronRight, Clock, Filter, List, Route, Search, Shield, SlidersHorizontal, TrendingUp, X, Zap } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
@@ -61,6 +61,25 @@ function sportLabel(s) {
 
 // All available filter definitions
 const FILTER_DEFS = [
+  { key: 'sport',   label: 'Sport',        icon: Activity,     type: 'select',
+    options: [
+      { value: 'any', label: 'Any' },
+      { value: 'run', label: 'Run' },
+      { value: 'walk', label: 'Walk' },
+      { value: 'cycle', label: 'Ride' },
+      { value: 'swim', label: 'Swim' },
+      { value: 'hike', label: 'Hike' },
+      { value: 'yoga', label: 'Yoga' },
+    ],
+  },
+  { key: 'visibility', label: 'Visibility', icon: Shield,       type: 'select',
+    options: [
+      { value: 'any', label: 'Any' },
+      { value: 'public', label: 'Public' },
+      { value: 'followers', label: 'Followers' },
+      { value: 'only_me', label: 'Only me' },
+    ],
+  },
   { key: 'from',    label: 'Date from',    icon: CalendarDays, type: 'date'   },
   { key: 'to',      label: 'Date to',      icon: CalendarDays, type: 'date'   },
   { key: 'minDist', label: 'Min distance', icon: Route,        type: 'number', placeholder: '0'  },
@@ -87,9 +106,12 @@ export default function Training() {
   const [activeKeys, setActiveKeys] = useState([])
   // Filter values
   const [vals, setVals] = useState({
+    sport: 'any', visibility: 'any',
     from: '', to: '', minDist: '', maxDist: '',
     minDur: '', maxDur: '', source: 'any',
   })
+
+  const [sort, setSort] = useState('startedAt_desc')
 
   const [q,       setQ]       = useState('')
   const [showPicker, setShowPicker] = useState(false)
@@ -99,6 +121,9 @@ export default function Training() {
   const [stats,   setStats]   = useState({ total: 0, distanceMeters: 0, durationSeconds: 0 })
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
+
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
 
   const tokenRef = useRef(0)
   const trimmed  = useMemo(() => String(q || '').trim(), [q])
@@ -146,7 +171,7 @@ export default function Training() {
 
   const clearAll = () => {
     setActiveKeys([])
-    setVals({ from: '', to: '', minDist: '', maxDist: '', minDur: '', maxDur: '', source: 'any' })
+    setVals({ sport: 'any', visibility: 'any', from: '', to: '', minDist: '', maxDist: '', minDur: '', maxDur: '', source: 'any' })
   }
 
   const activeCount = activeKeys.filter((k) => {
@@ -155,6 +180,8 @@ export default function Training() {
   }).length
 
   const params = useMemo(() => {
+    const sportV = activeKeys.includes('sport') ? (vals.sport || 'any') : 'any'
+    const visV = activeKeys.includes('visibility') ? (vals.visibility || 'any') : 'any'
     const fromV = activeKeys.includes('from') ? vals.from : ''
     const toV = activeKeys.includes('to') ? vals.to : ''
     const minDistanceMeters  = activeKeys.includes('minDist') ? metersFromUnits(vals.minDist, units) : ''
@@ -166,8 +193,12 @@ export default function Training() {
     const minDurationSeconds = Number.isFinite(minDurNum) && minDurNum > 0 ? Math.round(minDurNum * 60) : ''
     const maxDurationSeconds = Number.isFinite(maxDurNum) && maxDurNum > 0 ? Math.round(maxDurNum * 60) : ''
     const src = activeKeys.includes('source') ? (vals.source || 'any') : 'any'
+
+    const [sortBy, sortDir] = String(sort || 'startedAt_desc').split('_')
     return {
       q: trimmed,
+      sport: sportV,
+      visibility: visV,
       from: fromV || '',
       to: toV || '',
       source: src,
@@ -175,9 +206,12 @@ export default function Training() {
       maxDistanceMeters: maxDistanceMeters || '',
       minDurationSeconds: minDurationSeconds || '',
       maxDurationSeconds: maxDurationSeconds || '',
-      take: 200,
+      sortBy,
+      sortDir,
+      page,
+      take: perPage,
     }
-  }, [trimmed, vals, units, activeKeys])
+  }, [trimmed, vals, units, activeKeys, sort, page, perPage])
 
   useEffect(() => {
     const run = async (tok) => {
@@ -220,26 +254,21 @@ export default function Training() {
 
   const availableToAdd = FILTER_DEFS.filter((d) => !activeKeys.includes(d.key))
 
-  const [page, setPage] = useState(1)
-  const perPage = 10
-
   const pageCount = useMemo(() => {
-    const n = Math.ceil((items || []).length / perPage)
+    const total = Number(stats?.total || 0)
+    const n = total > 0 ? Math.ceil(total / perPage) : 1
     return Math.max(1, n)
-  }, [items])
+  }, [stats, perPage])
 
   useEffect(() => {
     setPage(1)
-  }, [trimmed, vals, activeKeys, units])
+  }, [trimmed, vals, activeKeys, units, sort, perPage])
 
   useEffect(() => {
     setPage((p) => Math.min(Math.max(1, p), pageCount))
   }, [pageCount])
 
-  const pageItems = useMemo(() => {
-    const start = (page - 1) * perPage
-    return (items || []).slice(start, start + perPage)
-  }, [items, page])
+  const pageItems = items
 
   const who = useMemo(() => {
     const u = me?.profile?.username
@@ -275,6 +304,34 @@ export default function Training() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by title, notes, or sport…"
               />
+              {q ? (
+                <button type="button" className="clear" aria-label="Clear search" onClick={() => setQ('')}>
+                  <X size={16} />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="tf-sort" aria-label="Sort">
+              <SlidersHorizontal size={15} />
+              <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                <option value="startedAt_desc">Newest</option>
+                <option value="startedAt_asc">Oldest</option>
+                <option value="distance_desc">Distance (high)</option>
+                <option value="distance_asc">Distance (low)</option>
+                <option value="duration_desc">Duration (high)</option>
+                <option value="duration_asc">Duration (low)</option>
+                <option value="createdAt_desc">Created (new)</option>
+                <option value="createdAt_asc">Created (old)</option>
+              </select>
+            </div>
+
+            <div className="tf-take" aria-label="Items per page">
+              <List size={15} />
+              <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value) || 10)}>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
             </div>
 
             {/* filter button + picker */}

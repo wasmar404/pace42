@@ -88,6 +88,8 @@ export class ActivitiesController {
   async mine(
     @CurrentUser() user: { userId: string },
     @Query('q') q?: string,
+    @Query('sport') sport?: string,
+    @Query('visibility') visibility?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('minDistanceMeters') minDistanceMeters?: string,
@@ -95,14 +97,43 @@ export class ActivitiesController {
     @Query('minDurationSeconds') minDurationSeconds?: string,
     @Query('maxDurationSeconds') maxDurationSeconds?: string,
     @Query('source') source?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('page') page?: string,
     @Query('take') take?: string,
   ) {
     const query = String(q || '').trim();
+    const sportQ0 = String(sport || '').trim().toLowerCase();
+    const sportQ = sportQ0 === 'ride' ? 'cycle' : sportQ0;
+    const visQ = String(visibility || '').trim().toLowerCase();
     const src = String(source || 'any').trim().toLowerCase();
     const allowedSource = new Set(['any', 'manual', 'gpx']);
     if (!allowedSource.has(src)) throw new BadRequestException('Invalid source');
 
-    const limit = Math.max(1, Math.min(200, Number(take || 50) || 50));
+    const allowedVisibility = new Set(['any', 'public', 'followers', 'only_me']);
+    if (visQ && !allowedVisibility.has(visQ)) throw new BadRequestException('Invalid visibility');
+
+    const allowedSports = new Set(['run', 'walk', 'cycle', 'swim', 'hike', 'yoga']);
+    if (sportQ && !allowedSports.has(sportQ)) throw new BadRequestException('Invalid sport');
+
+    const limit = Math.max(1, Math.min(50, Number(take || 20) || 20));
+    const pageNum = Math.max(1, Math.floor(Number(page || 1) || 1));
+    const skip = (pageNum - 1) * limit;
+
+    const sb = String(sortBy || 'startedAt').trim();
+    const sd = String(sortDir || 'desc').trim().toLowerCase();
+    const allowedSortBy = new Set(['startedAt', 'createdAt', 'distance', 'duration']);
+    if (!allowedSortBy.has(sb)) throw new BadRequestException('Invalid sortBy');
+    if (sd !== 'asc' && sd !== 'desc') throw new BadRequestException('Invalid sortDir');
+
+    const orderBy =
+      sb === 'createdAt'
+        ? { createdAt: sd as any }
+        : sb === 'distance'
+          ? { distanceMeters: sd as any }
+          : sb === 'duration'
+            ? { durationSeconds: sd as any }
+            : { startedAt: sd as any };
 
     const fromTs = from ? Date.parse(from) : NaN;
     const toTs = to ? Date.parse(to) : NaN;
@@ -118,6 +149,8 @@ export class ActivitiesController {
 
     const where: any = {
       userId: user.userId,
+      ...(sportQ ? { sport: sportQ } : {}),
+      ...(visQ && visQ !== 'any' ? { visibility: visQ } : {}),
       ...(src !== 'any' ? { source: src } : {}),
       ...(query.length >= 2
         ? {
@@ -154,8 +187,9 @@ export class ActivitiesController {
     const [acts, agg] = await Promise.all([
       this.prisma.activity.findMany({
         where,
-        orderBy: { startedAt: 'desc' },
+        orderBy,
         take: limit,
+        skip,
         select: {
           id: true,
           sport: true,
@@ -219,6 +253,8 @@ export class ActivitiesController {
 
     return {
       items,
+      page: pageNum,
+      take: limit,
       stats: {
         total: Number(agg._count?._all ?? 0),
         distanceMeters: Number(agg._sum?.distanceMeters ?? 0),
