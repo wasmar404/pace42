@@ -33,6 +33,3 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-
-# TypeScript
-*.tsbuildinfo
