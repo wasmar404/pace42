@@ -128,7 +128,7 @@ cmd_down() {
   if [ -f "$ROOT_DIR/.env" ]; then
     docker compose down
   else
-    SUPABASE_URL=http://dummy SUPABASE_ANON_KEY=dummy SUPABASE_SERVICE_ROLE_KEY=dummy docker compose down
+    SUPABASE_URL=http://dummy SUPABASE_ANON_KEY=dummy SUPABASE_SERVICE_ROLE_KEY=dummy VITE_SUPABASE_URL=http://dummy VITE_SUPABASE_ANON_KEY=dummy docker compose down
   fi
 
   echo "[dev] stopping Supabase (local)"

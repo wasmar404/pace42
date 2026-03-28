@@ -24,10 +24,8 @@ services:
       NODE_ENV: development
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
 
-      DB_HOST: db
-      DB_PORT: "5432"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-pace42}:${POSTGRES_PASSWORD:-pace42}@db:5432/${POSTGRES_DB:-pace42}
-      DIRECT_URL: postgresql://${POSTGRES_USER:-pace42}:${POSTGRES_PASSWORD:-pace42}@db:5432/${POSTGRES_DB:-pace42}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-pace42}:${POSTGRES_PASSWORD:-pace42}@db:5432/${POSTGRES_DB:-pace42}}
+      DIRECT_URL: ${DIRECT_URL:-postgresql://${POSTGRES_USER:-pace42}:${POSTGRES_PASSWORD:-pace42}@db:5432/${POSTGRES_DB:-pace42}}
 
       SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in .env}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
@@ -56,8 +54,8 @@ services:
       CHOKIDAR_USEPOLLING: "true"
 
       VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3004}
-      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-${SUPABASE_URL:?set SUPABASE_URL in .env}}
-      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set VITE_SUPABASE_URL in .env}
+      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?set VITE_SUPABASE_ANON_KEY in .env}
     ports:
       - "5173:5173"
     depends_on:

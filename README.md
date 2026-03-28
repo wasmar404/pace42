@@ -24,6 +24,10 @@ cp .env.docker.example .env
 
 Fill in `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 
+Also set:
+- `VITE_SUPABASE_URL` (usually same as `SUPABASE_URL`)
+- `VITE_SUPABASE_ANON_KEY` (usually same as `SUPABASE_ANON_KEY`)
+
 2) Run everything (db + backend + frontend):
 
 ```bash
