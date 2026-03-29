@@ -20,7 +20,7 @@
 
 .chat-head h1 {
   margin: 0;
-  font-size: 34px;
+  font-size: 50px;
   font-family: "Fraunces", serif;
   letter-spacing: -0.02em;
   color: #0b1220;
@@ -285,14 +285,15 @@
   width: 44px;
   height: 44px;
   border-radius: 16px;
-  background: rgba(190, 174, 167, 0.1);
-  border: 1px solid #b0b3b9;
+  background: #fff5f0;
+  border: none;
+  color: #fc4c02;
   display: grid;
   place-items: center;
 }
 
 .chat-empty .icon .lucide-message-circle {
-  color: #fc4c02;
+  color: inherit;
 }
 
 .chat-empty .t {

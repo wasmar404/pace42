@@ -309,6 +309,7 @@ body {
   text-decoration: none;
   color: var(--p42-ink);
   font-family: var(--p42-font);
+  font-size: 1rem;
   font-weight: 900;
   background: transparent;
   border: 1px solid transparent;
@@ -321,6 +322,10 @@ body {
   background: transparent;
   border-color: #fc4c02;
   color: var(--p42-ink);
+}
+
+.nav-avatar-menu button.nav-avatar-item {
+  color: #fc4c02;
 }
 
 .nav-avatar img {

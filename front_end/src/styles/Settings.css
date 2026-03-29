@@ -309,15 +309,29 @@
   justify-content: flex-end;
 }
 
+.settings-row-actions input:not([type="file"]) {
+  border: 1px solid #fc4c02;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0b1220;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.settings-row-actions input:not([type="file"]):focus {
+  border-color: #fc4c02;
+  box-shadow: 0 0 0 4px rgba(252, 76, 2, 0.12);
+}
+
 .settings-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   border-radius: 999px;
   padding: 11px 13px;
-  border: 1px solid rgba(11, 18, 32, 0.16);
-  background: rgba(255, 255, 255, 0.92);
-  color: #0b1220;
+  border: #fc4c02;
+  background: #fc4c02;
+  color: #fff;
   font-weight: 950;
   cursor: pointer;
   box-shadow: 0 12px 20px rgba(11, 18, 32, 0.08);
@@ -329,7 +343,8 @@
 }
 
 .settings-btn.primary {
-  background: rgba(11, 18, 32, 0.92);
+  border: 1px solid #fc4c02;
+  background: #fc4c02;
   color: #fff;
 }
 
