@@ -119,8 +119,8 @@
   gap: 8px;
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(11, 18, 32, 0.16);
-  background: rgba(11, 18, 32, 0.92);
+  border: 1px solid #fc4c02;
+  background: #fc4c02;
   color: rgba(255, 255, 255, 0.92);
   font-weight: 950;
   text-decoration: none;
@@ -130,7 +130,7 @@
   font-size: 14px;
 }
 
-.training-new:hover { background: rgba(11, 18, 32, 1); }
+.training-new:hover { background: #fc4c02; }
 
 /* ── FILTERS CARD ─────────────────────────────────────────────── */
 .training-filters {
@@ -155,13 +155,13 @@
   gap: 10px;
   padding: 11px 14px;
   border-radius: 18px;
-  border: 1px solid rgba(11, 18, 32, 0.10);
+  border: 1px solid #fc4c02;
   background: rgba(255, 255, 255, 0.72);
   color: rgba(11, 18, 32, 0.52);
 }
 
 :root[data-theme="dark"] .training-filters .search {
-  border-color: rgba(255, 250, 242, 0.10);
+  border-color: #fc4c02;
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -320,15 +320,13 @@
 .recent-label .s-icon {
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(252, 76, 2, 0.10);
-  color: rgba(252, 76, 2, 0.92);
+  border: none;
+  background: var(--color-primary-light) !important;
+  color: #fc4c02;
 }
-
-:root[data-theme="dark"] .recent-label .s-icon { border-color: rgba(255, 250, 242, 0.14); }
 
 .recent-card {
   border-radius: 22px;
@@ -513,15 +511,13 @@
 .list-label .s-icon {
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(252, 76, 2, 0.10);
-  color: rgba(252, 76, 2, 0.92);
+  border: none;
+  background: var(--color-primary-light);
+  color: #fc4c02;
 }
-
-:root[data-theme="dark"] .list-label .s-icon { border-color: rgba(255, 250, 242, 0.14); }
 
 .cards { display: grid; gap: 10px; }
 
@@ -801,15 +797,13 @@
 .training-empty .icon {
   width: 44px;
   height: 44px;
-  border-radius: 16px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(11, 18, 32, 0.12);
-  background: rgba(252, 76, 2, 0.10);
-  color: rgba(252, 76, 2, 0.92);
+  border: none;
+  background: var(--color-primary-light);
+  color: #fc4c02;
 }
-
-:root[data-theme="dark"] .training-empty .icon { border-color: rgba(255, 250, 242, 0.14); }
 
 .training-empty .t {
   font-weight: 950;
@@ -888,6 +882,25 @@
   background: rgba(255, 255, 255, 0.78);
   color: rgba(11, 18, 32, 0.76);
 }
+
+.tf-sort {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.tf-take {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.tf-sort-wrap { position: relative; }
+.tf-take-wrap { position: relative; }
 
 :root[data-theme="dark"] .tf-sort,
 :root[data-theme="dark"] .tf-take {
@@ -979,6 +992,16 @@
   box-shadow: 0 20px 60px rgba(11, 18, 32, 0.16);
   overflow: hidden;
   backdrop-filter: blur(12px);
+}
+
+.tf-sort-picker {
+  left: 0;
+  right: auto;
+  min-width: 240px;
+}
+
+.tf-take-picker {
+  min-width: 200px;
 }
 
 :root[data-theme="dark"] .tf-picker {

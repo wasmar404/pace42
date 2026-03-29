@@ -90,6 +90,19 @@ const FILTER_DEFS = [
     options: [{ value: 'any', label: 'Any' }, { value: 'manual', label: 'Manual' }, { value: 'gpx', label: 'GPX' }] },
 ]
 
+const SORT_OPTIONS = [
+  { value: 'startedAt_desc', label: 'Newest' },
+  { value: 'startedAt_asc', label: 'Oldest' },
+  { value: 'distance_desc', label: 'Distance (high)' },
+  { value: 'distance_asc', label: 'Distance (low)' },
+  { value: 'duration_desc', label: 'Duration (high)' },
+  { value: 'duration_asc', label: 'Duration (low)' },
+  { value: 'createdAt_desc', label: 'Created (new)' },
+  { value: 'createdAt_asc', label: 'Created (old)' },
+]
+
+const TAKE_OPTIONS = [10, 20, 50]
+
 function filterSublabel(key, units) {
   if (key === 'minDist' || key === 'maxDist') return unitsLabel(units)
   if (key === 'minDur'  || key === 'maxDur')  return 'min'
@@ -115,7 +128,11 @@ export default function Training() {
 
   const [q,       setQ]       = useState('')
   const [showPicker, setShowPicker] = useState(false)
+  const [showSortPicker, setShowSortPicker] = useState(false)
+  const [showTakePicker, setShowTakePicker] = useState(false)
   const pickerRef = useRef(null)
+  const sortPickerRef = useRef(null)
+  const takePickerRef = useRef(null)
 
   const [items,   setItems]   = useState([])
   const [stats,   setStats]   = useState({ total: 0, distanceMeters: 0, durationSeconds: 0 })
@@ -130,15 +147,21 @@ export default function Training() {
 
   // Close picker on outside click
   useEffect(() => {
-    if (!showPicker) return
+    if (!showPicker && !showSortPicker && !showTakePicker) return
     const handler = (e) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) {
         setShowPicker(false)
       }
+      if (sortPickerRef.current && !sortPickerRef.current.contains(e.target)) {
+        setShowSortPicker(false)
+      }
+      if (takePickerRef.current && !takePickerRef.current.contains(e.target)) {
+        setShowTakePicker(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showPicker])
+  }, [showPicker, showSortPicker, showTakePicker])
 
   useEffect(() => {
     let cancelled = false
@@ -253,6 +276,8 @@ export default function Training() {
     : formatDistance(0, units)
 
   const availableToAdd = FILTER_DEFS.filter((d) => !activeKeys.includes(d.key))
+  const sortLabel = SORT_OPTIONS.find((s) => s.value === sort)?.label || 'Newest'
+  const takeLabel = TAKE_OPTIONS.includes(perPage) ? String(perPage) : '10'
 
   const pageCount = useMemo(() => {
     const total = Number(stats?.total || 0)
@@ -311,27 +336,74 @@ export default function Training() {
               ) : null}
             </div>
 
-            <div className="tf-sort" aria-label="Sort">
-              <SlidersHorizontal size={15} />
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="startedAt_desc">Newest</option>
-                <option value="startedAt_asc">Oldest</option>
-                <option value="distance_desc">Distance (high)</option>
-                <option value="distance_asc">Distance (low)</option>
-                <option value="duration_desc">Duration (high)</option>
-                <option value="duration_asc">Duration (low)</option>
-                <option value="createdAt_desc">Created (new)</option>
-                <option value="createdAt_asc">Created (old)</option>
-              </select>
+            <div className="tf-sort-wrap" ref={sortPickerRef}>
+              <button
+                type="button"
+                className="tf-sort"
+                aria-label="Sort"
+                onClick={() => setShowSortPicker((v) => !v)}
+                aria-expanded={showSortPicker}
+              >
+                <SlidersHorizontal size={15} />
+                <span>{sortLabel}</span>
+                <ChevronDown size={13} className={`tf-chevron${showSortPicker ? ' open' : ''}`} />
+              </button>
+
+              {showSortPicker && (
+                <div className="tf-picker tf-sort-picker" role="menu" aria-label="Sort options">
+                  <div className="tf-picker-head">Sort by</div>
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className="tf-picker-item"
+                      onClick={() => {
+                        setSort(opt.value)
+                        setShowSortPicker(false)
+                      }}
+                      role="menuitem"
+                    >
+                      {opt.label}
+                      {sort === opt.value ? <span className="tf-picker-sub">Selected</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="tf-take" aria-label="Items per page">
-              <List size={15} />
-              <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value) || 10)}>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
+            <div className="tf-take-wrap" ref={takePickerRef}>
+              <button
+                type="button"
+                className="tf-take"
+                aria-label="Items per page"
+                onClick={() => setShowTakePicker((v) => !v)}
+                aria-expanded={showTakePicker}
+              >
+                <List size={15} />
+                <span>{takeLabel}</span>
+                <ChevronDown size={13} className={`tf-chevron${showTakePicker ? ' open' : ''}`} />
+              </button>
+
+              {showTakePicker && (
+                <div className="tf-picker tf-take-picker" role="menu" aria-label="Items per page options">
+                  <div className="tf-picker-head">Items per page</div>
+                  {TAKE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="tf-picker-item"
+                      onClick={() => {
+                        setPerPage(opt)
+                        setShowTakePicker(false)
+                      }}
+                      role="menuitem"
+                    >
+                      {opt}
+                      {perPage === opt ? <span className="tf-picker-sub">Selected</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* filter button + picker */}
