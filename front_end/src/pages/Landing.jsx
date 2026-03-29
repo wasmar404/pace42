@@ -1,5 +1,8 @@
 import "../styles/Landing.css";
 import { Link } from "react-router-dom";
+import cyclistsImg from "../assets/cyclists.jpg";
+import runnersImg from "../assets/runners.jpg";
+import logoImg from "../assets/logo.png";
 
 export default function Landing() {
     return (
@@ -16,7 +19,7 @@ export default function Landing() {
 
                 {/* Center Card */}
                 <div className="center-card">
-                    <img src="/src/assets/logo.png" alt="Pace42 Logo" className="logo" />
+                    <img src={logoImg} alt="Pace42 Logo" className="logo" />
                     <p className="tagline">
                         Track your progress and cheer each other on. Join Pace42 for free.
                     </p>
@@ -36,7 +39,7 @@ export default function Landing() {
                 {/* Right Background Image */}
                 <div className="right-panel">
                     <img 
-                        src="/src/assets/runners.jpg" 
+                        src={runnersImg}
                         alt="Runners" 
                         className="bg-image"
                     />
