@@ -14,8 +14,6 @@ import {
   Target,
   ChevronRight,
   ChevronUp,
-  Share2,
-  MoreHorizontal,
   Loader2,
   UserPlus,
   Globe,
@@ -255,12 +253,6 @@ export default function UserProfile() {
                   You
                 </span>
               )}
-              <button className="btn-icon">
-                <Share2 size={18} />
-              </button>
-              <button className="btn-icon">
-                <MoreHorizontal size={18} />
-              </button>
             </div>
           </div>
 
