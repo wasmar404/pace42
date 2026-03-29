@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Nested dependencies (monorepo)
+**/node_modules/
+
 
 
 # Logs
@@ -20,7 +23,9 @@ lerna-debug.log*
 
 # Build output / caches
 dist/
+**/dist/
 build/
+**/build/
 coverage/
 .cache/
 .next/
@@ -37,10 +42,11 @@ Thumbs.db
 # Local env / secrets
 .env
 .env.*
+!.env.example
 backend/.env
 front_end/.env
 
-# Local Supabase CLI artifacts
+# Supabase CLI artifacts (if used)
 .bin/
 supabase/.temp/
 supabase/.branches/
