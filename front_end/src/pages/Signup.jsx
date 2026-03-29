@@ -1,4 +1,5 @@
 import "../styles/Signup.css";
+import googleIcon from "../assets/google.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
@@ -76,7 +77,7 @@ export default function Signup() {
                 </p>
                 <div className="social-buttons">
                     <button className="social-btn google" type="button" onClick={onGoogle}>
-                        <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
+                        <img className="icon" src={googleIcon} alt="" aria-hidden="true" />
                         <span>Sign Up With Google</span>
                     </button>
                 </div>

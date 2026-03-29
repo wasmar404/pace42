@@ -1,4 +1,5 @@
 import "../styles/Login.css";
+import googleIcon from "../assets/google.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
@@ -87,7 +88,7 @@ export default function Login() {
 
                 <div className="social-buttons">
                     <button className="social-btn google" type="button" onClick={onGoogle}>
-                        <img className="icon" src="/auth/google.png" alt="" aria-hidden="true" />
+                        <img className="icon" src={googleIcon} alt="" aria-hidden="true" />
                         <span>Continue with Google</span>
                     </button>
                 </div>
