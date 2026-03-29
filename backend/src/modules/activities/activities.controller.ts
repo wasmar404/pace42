@@ -23,7 +23,7 @@ import { randomUUID } from 'node:crypto';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { OptionalSupabaseAuthGuard } from '../../auth/supabase.optional.guard';
 import { CurrentUser } from '../../auth/supabase.user';
-import { getSupabaseAdminClient } from '../../auth/supabase.auth';
+import { getSupabaseAdminClient, toPublicUrl } from '../../auth/supabase.auth';
 import { CreateActivityDto } from './activities.dto';
 import { PrismaService } from '../../prisma';
 
@@ -658,7 +658,7 @@ export class ActivitiesController {
     if (uploadError) throw new BadRequestException(uploadError.message);
 
     const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
-    const publicUrl = publicData.publicUrl;
+    const publicUrl = toPublicUrl(publicData.publicUrl);
 
     await this.prisma.activityMedia.create({
       data: {

@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma';
 import { SupabaseAuthGuard } from '../../auth/supabase.guard';
 import { CurrentUser } from '../../auth/supabase.user';
 import { UpdateMeDto } from '../../me/me.dto';
-import { getSupabaseAdminClient } from '../../auth/supabase.auth';
+import { getSupabaseAdminClient, toPublicUrl } from '../../auth/supabase.auth';
 
 const ACTIVITY_BASE_SELECT = {
   id: true,
@@ -220,7 +220,7 @@ export class MeController {
     if (uploadError) throw new BadRequestException(uploadError.message);
 
     const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
-    const avatarUrl = publicData.publicUrl;
+    const avatarUrl = toPublicUrl(publicData.publicUrl);
 
     await this.ensureProfile(user.userId);
     await this.prisma.profile.update({ where: { userId: user.userId }, data: { avatarUrl } });

@@ -29,13 +29,22 @@ services:
     volumes:
       - supabase_db_data:/var/lib/postgresql/data
       - supabase_db_config:/etc/postgresql-custom
-      - ./supabase/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:ro
-      - ./supabase/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:ro
-      - ./supabase/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:ro
-      - ./supabase/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:ro
-      - ./supabase/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
-      - ./supabase/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
-      - ./supabase/volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+
+  db-init:
+    build:
+      context: ./supabase/db-init
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDB: ${POSTGRES_DB:-postgres}
+      JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
 
   analytics:
     image: supabase/logflare:1.31.2
@@ -43,6 +52,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "http://localhost:4000/health"]
       interval: 5s
@@ -85,6 +96,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public}
@@ -101,6 +114,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
       interval: 5s
@@ -153,6 +168,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       PORT: 4000
       DB_HOST: db
@@ -191,10 +208,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       rest:
         condition: service_started
       imgproxy:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     environment:
       ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
       SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
@@ -213,6 +237,24 @@ services:
       IMGPROXY_URL: http://imgproxy:5001
     volumes:
       - supabase_storage:/var/lib/storage
+
+  buckets-init:
+    build:
+      context: ./supabase/db-init
+    restart: on-failure
+    depends_on:
+      storage:
+        condition: service_healthy
+    entrypoint: ["/buckets-init.sh"]
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDB: ${POSTGRES_DB:-postgres}
+      SUPABASE_AVATARS_BUCKET: ${SUPABASE_AVATARS_BUCKET:-test}
+      SUPABASE_ACTIVITY_MEDIA_BUCKET: ${SUPABASE_ACTIVITY_MEDIA_BUCKET:-activity-media}
+      SUPABASE_GPX_BUCKET: ${SUPABASE_GPX_BUCKET:-gpx}
 
   functions:
     image: supabase/edge-runtime:v1.71.2
@@ -269,7 +311,8 @@ services:
       - "54323:3000"
 
   kong:
-    image: kong/kong:3.9.1
+    build:
+      context: ./supabase/kong-build
     restart: unless-stopped
     depends_on:
       studio:
@@ -281,9 +324,6 @@ services:
       retries: 20
     ports:
       - "54321:8000"
-    volumes:
-      - ./supabase/volumes/api/kong.yml:/home/kong/temp.yml:ro
-      - ./supabase/volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
@@ -297,7 +337,6 @@ services:
       SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-admin}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-admin}
-    entrypoint: /home/kong/kong-entrypoint.sh
 
   # -------------------------
   # pace42 app
@@ -318,11 +357,13 @@ services:
       PORT: ${PORT:-3004}
       NODE_ENV: ${NODE_ENV:-development}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CHOKIDAR_USEPOLLING: "true"
 
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
       DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
 
       SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:54321}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
