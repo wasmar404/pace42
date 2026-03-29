@@ -33,3 +33,14 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Local env / secrets
+.env
+.env.*
+backend/.env
+front_end/.env
+
+# Local Supabase CLI artifacts
+.bin/
+supabase/.temp/
+supabase/.branches/
