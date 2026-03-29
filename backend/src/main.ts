@@ -9,7 +9,7 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
 async function main() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(compression()); //compress HTTP responses before sending them to the client
+  app.use(compression()); 
 
   const rawOrigins = String(process.env.CORS_ORIGIN ?? '').trim();
   const origins = rawOrigins
@@ -24,7 +24,7 @@ async function main() {
     credentials: true,
   });
 
-  app.setGlobalPrefix('api'); // this just to add /api
+  app.setGlobalPrefix('api');
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({

@@ -773,7 +773,6 @@ export class ActivitiesController {
       },
     });
 
-    // No timing logs.
 
     return { activity };
   }

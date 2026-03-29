@@ -18,12 +18,16 @@ import Chat from "./pages/Chat";
 import ChatThread from "./pages/ChatThread";
 import ApiDocs from "./pages/ApiDocs";
 import Training from "./pages/Training";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route
           path="/home"
           element={

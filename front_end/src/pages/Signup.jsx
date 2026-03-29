@@ -22,20 +22,11 @@ export default function Signup() {
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
-                options: {
-                    // After the user clicks the email confirmation link,
-                    // Supabase will redirect them back to this URL.
-                    emailRedirectTo: `${window.location.origin}/verification?next=/personal-info`,
-                },
             });
             if (signUpError) throw signUpError;
 
-            // If email confirmations are disabled (common in local dev), Supabase returns a session.
-            if (data?.session) {
-                navigate("/personal-info", { replace: true });
-            } else {
-                navigate("/verification", { state: { email } });
-            }
+            // With auto-confirm enabled, user gets a session immediately
+            navigate("/personal-info", { replace: true });
         } catch (err) {
             setError(err?.message || "Signup failed");
         } finally {

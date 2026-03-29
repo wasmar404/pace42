@@ -31,4 +31,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 SQL
 
+echo "[buckets-init] applying storage RLS policies..."
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -f /sql/storage-policies.sql
+
 echo "[buckets-init] done."

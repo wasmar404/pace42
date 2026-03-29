@@ -15,7 +15,6 @@ export class CreateActivityDto {
   @IsString()
   description?: string;
 
-  // ISO date string
   @IsString()
   startedAt!: string;
 

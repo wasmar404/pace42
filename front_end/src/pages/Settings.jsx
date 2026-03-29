@@ -280,7 +280,7 @@ export default function Settings() {
     try {
       const { error: err } = await supabase.auth.updateUser({ email })
       if (err) throw err
-      setNotice('Email update requested. Check your inbox to confirm.')
+      setNotice('Email updated successfully.')
     } catch (e2) {
       setError(e2?.message || 'Failed to update email')
     } finally {

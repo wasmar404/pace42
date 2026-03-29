@@ -12,13 +12,13 @@ JWT_EXP="${JWT_EXP:-3600}"
 export PGPASSWORD
 
 # Wait for Postgres to be ready
-until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB"; do
   echo "[db-init] waiting for postgres..."
   sleep 2
 done
 
 # Idempotency check — skip if already initialized
-DB_EXISTS=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -tAc "SELECT 1 FROM pg_database WHERE datname = '_supabase'")
+DB_EXISTS=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -tAc "SELECT 1 FROM pg_database WHERE datname = '_supabase'")
 if [ "$DB_EXISTS" = "1" ]; then
   echo "[db-init] already initialized, skipping."
   exit 0
@@ -27,7 +27,7 @@ fi
 echo "[db-init] initializing Supabase databases and roles..."
 
 # 1. Create _supabase database
-psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -c "CREATE DATABASE _supabase WITH OWNER supabase_admin;"
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -c "CREATE DATABASE _supabase WITH OWNER supabase_admin;"
 
 # 2. Set service user passwords
 psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDB" -c "

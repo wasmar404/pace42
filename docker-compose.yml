@@ -40,7 +40,7 @@ services:
     environment:
       PGHOST: db
       PGPORT: 5432
-      PGUSER: postgres
+      PGUSER: supabase_admin
       PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDB: ${POSTGRES_DB:-postgres}
       JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
@@ -249,7 +249,7 @@ services:
     environment:
       PGHOST: db
       PGPORT: 5432
-      PGUSER: postgres
+      PGUSER: supabase_admin
       PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDB: ${POSTGRES_DB:-postgres}
       SUPABASE_AVATARS_BUCKET: ${SUPABASE_AVATARS_BUCKET:-test}
