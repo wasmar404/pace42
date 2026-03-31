@@ -38,7 +38,12 @@ export default function Login() {
         })
 
         if (error) {
-            setError(error.message)
+            const msg = error.message || 'Login failed'
+            if (String(msg).toLowerCase().includes('email not confirmed')) {
+                setError('Email not confirmed in Supabase. Delete/confirm the user in Supabase Auth users, then sign up again (or disable confirmations and create a new user).')
+            } else {
+                setError(msg)
+            }
         } else {
             // Enforce: email/password accounts cannot be linked to OAuth.
             const { data } = await supabase.auth.getUser().catch(() => ({ data: null }))

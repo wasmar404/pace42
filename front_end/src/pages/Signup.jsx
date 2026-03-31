@@ -25,10 +25,27 @@ export default function Signup() {
             });
             if (signUpError) throw signUpError;
 
-            // With auto-confirm enabled, user gets a session immediately
+            if (data?.session) {
+                navigate("/personal-info", { replace: true });
+                return
+            }
+
+            // If email confirmations are enabled (or user is still unconfirmed),
+            // signUp may not return a session. Try to sign in immediately.
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+            if (signInError) throw signInError
+
             navigate("/personal-info", { replace: true });
         } catch (err) {
-            setError(err?.message || "Signup failed");
+            const msg = err?.message || "Signup failed"
+            if (String(msg).toLowerCase().includes('email not confirmed')) {
+                setError('Email not confirmed in Supabase. Delete/confirm the user in Supabase Auth users, then sign up again.')
+            } else {
+                setError(msg)
+            }
         } finally {
             setLoading(false);
         }
@@ -102,7 +119,7 @@ export default function Signup() {
                 </form>
 
                 <p className="terms dark-text">
-                    By continuing, you are agreeing to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+                    By continuing, you are agreeing to our <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>.
                 </p>
 
                 <p className="login-link">

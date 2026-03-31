@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Verification from "./pages/Verification";
 import PersonalInfo from "./pages/Personal-info";
 import AuthCallback from "./pages/AuthCallback";
 import Mfa from "./pages/Mfa";
@@ -38,7 +37,6 @@ function App() {
         />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/verification" element={<Verification />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/mfa" element={<Mfa />} />
         <Route

@@ -1,6 +1,18 @@
 #!/bin/sh
 set -eu
 
+if [ ! -d node_modules ]; then
+  echo "[backend] installing dependencies (node_modules missing)"
+  npm ci
+else
+  # Common corruption symptom: iconv-lite missing its encodings folder.
+  if [ ! -f node_modules/iconv-lite/encodings/index.js ]; then
+    echo "[backend] reinstalling dependencies (iconv-lite encodings missing)"
+    rm -rf node_modules
+    npm ci
+  fi
+fi
+
 if [ -n "${DB_HOST:-}" ] && [ -n "${DB_PORT:-}" ]; then
   echo "[backend] waiting for db at ${DB_HOST}:${DB_PORT}"
   while ! nc -z "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; do

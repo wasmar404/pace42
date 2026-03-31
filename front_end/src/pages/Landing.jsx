@@ -29,7 +29,7 @@ export default function Landing() {
                         </Link>
                     </div>
                     <p className="terms">
-                        By continuing, you are agreeing to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+                        By continuing, you are agreeing to our <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>.
                     </p>
                 </div>
 
