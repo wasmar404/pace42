@@ -16,6 +16,7 @@ import NavBar from '../components/NavBar'
 import { backendGet } from '../backendApi'
 import Avatar from '../components/Avatar'
 import FollowModal from '../components/profile/FollowModal'
+import { readAvatarSeed, readAvatarUrl, readSupabaseSessionUserSync } from '../utils/avatarCache'
 import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
@@ -85,7 +86,15 @@ const SPORT_ICONS = {
 export default function Profile() {
   const navigate = useNavigate()
   const units = useUnitsValue()
-  const [me, setMe] = useState(null)
+  const [me, setMe] = useState(() => {
+    const u = readSupabaseSessionUserSync()
+    if (!u?.id) return null
+    const cachedUrl = readAvatarUrl()
+    return {
+      user: { id: u.id, email: u.email },
+      profile: cachedUrl ? { avatarUrl: cachedUrl } : null,
+    }
+  })
   const [activities, setActivities] = useState([])
   const [last4WeeksCount, setLast4WeeksCount] = useState(0)
   const [totalActivities, setTotalActivities] = useState(0)
@@ -104,6 +113,13 @@ export default function Profile() {
       setError('')
       setLoading(true)
       try {
+        // Fast path: fetch minimal profile first to render the card immediately.
+        const basic = await backendGet('/api/me').catch(() => null)
+        if (!cancelled && basic) {
+          setMe({ user: basic?.user, profile: basic?.profile })
+        }
+
+        // Full summary for counts, recent photos, and recent activities.
         const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setMe({ user: res?.user, profile: res?.profile })
@@ -198,7 +214,7 @@ export default function Profile() {
               <div className="profile-card-content">
                 <div className="profile-avatar-large">
                   {me ? (
-                    <Avatar avatarUrl={me?.profile?.avatarUrl} seed={me?.profile?.username || me?.user?.id || displayName} alt={displayName} loading="eager" />
+                    <Avatar avatarUrl={me?.profile?.avatarUrl} seed={me?.user?.id || readAvatarSeed('athlete')} alt={displayName} loading="eager" />
                   ) : (
                     <div className="avatar-placeholder">
                       <User size={40} />

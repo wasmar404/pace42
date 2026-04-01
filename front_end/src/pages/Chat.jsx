@@ -5,7 +5,7 @@ import { MessageCircle, Plus } from 'lucide-react'
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
 import TimeText from '../components/ui/TimeText'
-import { getOrCreateConversation, listConversations, searchMutuals } from '../api/chat'
+import { getOrCreateConversation, listConversations, searchUsers } from '../api/chat'
 import { getChatSocket } from '../chat/socket'
 import '../styles/Chat.css'
 
@@ -16,9 +16,9 @@ export default function Chat() {
   const [error, setError] = useState('')
 
   const [q, setQ] = useState('')
-  const [mutuals, setMutuals] = useState([])
-  const [mutualsLoading, setMutualsLoading] = useState(true)
-  const [mutualsError, setMutualsError] = useState('')
+  const [users, setUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [usersError, setUsersError] = useState('')
   const [presence, setPresence] = useState({})
   const watchedRef = useRef([])
   const debounceRef = useRef(null)
@@ -44,10 +44,10 @@ export default function Chat() {
     return s
   }, [itemsUniq])
 
-  const mutualsToShow = useMemo(() => {
+  const usersToShow = useMemo(() => {
     const seen = new Set()
     const out = []
-    for (const u of mutuals || []) {
+    for (const u of users || []) {
       const id = u?.id
       if (!id || seen.has(id)) continue
       seen.add(id)
@@ -56,18 +56,16 @@ export default function Chat() {
       out.push(u)
     }
     return out
-  }, [mutuals, conversationOtherIds])
-
-  const totalUnread = useMemo(() => itemsUniq.reduce((a, c) => a + Number(c.unreadCount || 0), 0), [itemsUniq])
+  }, [users, conversationOtherIds])
 
   const refresh = async () => {
     const res = await listConversations()
     setItems(res?.conversations || [])
   }
 
-  const refreshMutuals = async (query) => {
-    const res = await searchMutuals(query)
-    setMutuals(res?.items || [])
+  const refreshUsers = async (query) => {
+    const res = await searchUsers(query)
+    setUsers(res?.users || [])
   }
 
   useEffect(() => {
@@ -94,35 +92,24 @@ export default function Chat() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    async function run() {
-      setMutualsError('')
-      setMutualsLoading(true)
-      try {
-        await refreshMutuals('')
-      } catch (e) {
-        if (!cancelled) setMutualsError(e?.message || 'Failed to load mutuals')
-      } finally {
-        if (!cancelled) setMutualsLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
-      setMutualsError('')
-      setMutualsLoading(true)
+      const query = String(q || '').trim()
+      if (query.length < 2) {
+        setUsers([])
+        setUsersError('')
+        setUsersLoading(false)
+        return
+      }
+
+      setUsersError('')
+      setUsersLoading(true)
       try {
-        await refreshMutuals(q)
+        await refreshUsers(query)
       } catch (e) {
-        setMutualsError(e?.message || 'Failed to load mutuals')
+        setUsersError(e?.message || 'Failed to search users')
       } finally {
-        setMutualsLoading(false)
+        setUsersLoading(false)
       }
     }, 250)
 
@@ -131,13 +118,13 @@ export default function Chat() {
     }
   }, [q])
 
-  const onPickMutual = async (userId) => {
+  const onPickUser = async (userId) => {
     try {
       const res = await getOrCreateConversation(userId)
       const convoId = res?.conversation?.id
       if (convoId) navigate(`/chat/${convoId}`)
     } catch (e) {
-      setMutualsError(e?.message || 'Could not start chat')
+      setUsersError(e?.message || 'Could not start chat')
     }
   }
 
@@ -179,9 +166,6 @@ export default function Chat() {
         s.on('message:new', () => {
           void refresh().catch(() => {})
         })
-        s.on('conversation:read', () => {
-          void refresh().catch(() => {})
-        })
 
         // Initial watch list (will be updated by effect below as data loads)
         s.emit('presence:watch', { userIds: [] })
@@ -194,7 +178,6 @@ export default function Chat() {
       cancelled = true
       try {
         s?.off('message:new')
-        s?.off('conversation:read')
         s?.off('presence:update')
         s?.off('presence:state')
         s?.off('connect')
@@ -213,7 +196,7 @@ export default function Chat() {
     for (const c of itemsUniq) {
       if (c?.otherUser?.id) ids.push(c.otherUser.id)
     }
-    for (const u of mutualsToShow) {
+    for (const u of usersToShow) {
       if (u?.id) ids.push(u.id)
     }
     const uniq = Array.from(new Set(ids))
@@ -234,7 +217,8 @@ export default function Chat() {
     return () => {
       cancelled = true
     }
-  }, [itemsUniq, mutualsToShow])
+  }, [itemsUniq, usersToShow])
+
 
   return (
     <div className="chat-page">
@@ -244,11 +228,11 @@ export default function Chat() {
         <header className="chat-head">
           <div>
             <h1>Chat</h1>
-            <p>Mutual followers can message each other.</p>
+            <p>Start a conversation with any user.</p>
           </div>
           <div className="chat-pill">
             <MessageCircle size={14} />
-            <span>{totalUnread} unread</span>
+            <span>Conversations</span>
           </div>
         </header>
 
@@ -260,8 +244,8 @@ export default function Chat() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search mutuals..."
-              aria-label="Search mutual followers"
+              placeholder="Search users..."
+              aria-label="Search users"
             />
             <button className="btn" type="button" onClick={() => navigate('/search')}>
               <Plus size={16} />
@@ -269,16 +253,17 @@ export default function Chat() {
             </button>
           </div>
 
-          {mutualsLoading ? <div className="chat-banner">Loading mutuals...</div> : null}
-          {mutualsError ? <div className="chat-banner err">{mutualsError}</div> : null}
+          {!q.trim() || q.trim().length < 2 ? <div className="chat-banner">Type 2+ characters to search users.</div> : null}
+          {usersLoading ? <div className="chat-banner">Searching...</div> : null}
+          {usersError ? <div className="chat-banner err">{usersError}</div> : null}
 
-          {!mutualsLoading && !mutualsError ? (
+          {!usersLoading && !usersError ? (
             <div className="chat-mutuals">
-              {mutualsToShow.map((u) => {
+              {usersToShow.map((u) => {
                 const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || (u?.username ? `@${u.username}` : 'User')
                 const st = u?.id ? presence[u.id] : null
                 return (
-                  <button key={u.id} type="button" className="chat-mutual" onClick={() => onPickMutual(u.id)}>
+                  <button key={u.id} type="button" className="chat-mutual" onClick={() => onPickUser(u.id)}>
                     <div className="av">
                       <Avatar avatarUrl={u?.avatarUrl} seed={u?.username || u?.id || name} alt="" />
                       {st ? <span className={st.online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" /> : null}
@@ -300,10 +285,10 @@ export default function Chat() {
           {!loading && !itemsUniq.length ? (
             <div className="chat-empty">
               <div className="icon"><MessageCircle size={22} /></div>
-              <div>
-                <div className="t">No conversations yet</div>
-                <div className="s">Search mutual followers to start a chat.</div>
-              </div>
+                <div>
+                  <div className="t">No conversations yet</div>
+                  <div className="s">Search users to start a chat.</div>
+                </div>
               <button className="btn" type="button" onClick={() => navigate('/search')}>
                 <Plus size={16} />
                 Find athletes
@@ -329,7 +314,6 @@ export default function Chat() {
                 </div>
                 <div className="sub">
                   <div className="msg">{c?.lastMessageText || 'Say hello'}</div>
-                  {c.unreadCount > 0 ? <div className="unread">{c.unreadCount}</div> : null}
                 </div>
               </div>
             </Link>

@@ -5,40 +5,53 @@ import { MessageCircle, Search } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
 import Avatar from './Avatar'
+import { readAvatarSeed, readAvatarUrl, readSupabaseSessionUserSync, writeAvatarSeed, writeAvatarUrl } from '../utils/avatarCache'
 import '../styles/NavBar.css'
 import logo from '../assets/logo-removebg-preview.png'
 
 export default function NavBar() {
   const navigate = useNavigate()
 
-  const [avatarUrl, setAvatarUrl] = useState('')
-  const [avatarSeed, setAvatarSeed] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(() => readAvatarUrl())
+  const [avatarSeed, setAvatarSeed] = useState(() => {
+    const u = readSupabaseSessionUserSync()
+    return u?.id || readAvatarSeed('athlete')
+  })
   const [menuOpen, setMenuOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
-  const [chatUnread, setChatUnread] = useState(0)
   const menuRef = useRef(null)
   const avatarRef = useRef(null)
   const avatarCloseTimerRef = useRef(null)
 
-  const refreshChatUnread = async () => {
-    try {
-      const res = await backendGet('/api/chat/unread')
-      const n = Number(res?.unreadMessages || 0)
-      setChatUnread(Number.isFinite(n) ? n : 0)
-    } catch {
-      // ignore
-    }
-  }
-
   useEffect(() => {
     let cancelled = false
 
+    // Set a stable seed as early as possible from the auth session.
+    void supabase.auth.getSession().then(({ data }) => {
+      const id = data?.session?.user?.id
+      if (!id || cancelled) return
+      setAvatarSeed(id)
+      writeAvatarSeed(id)
+    }).catch(() => {})
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const id = session?.user?.id
+      if (!id) return
+      if (cancelled) return
+      setAvatarSeed(id)
+      writeAvatarSeed(id)
+    })
+
     async function loadMe() {
       try {
-        const res = await backendGet('/api/me/summary')
+        const res = await backendGet('/api/me')
         if (cancelled) return
-        setAvatarUrl(res?.profile?.avatarUrl || '')
-        setAvatarSeed(res?.profile?.username || res?.user?.id || '')
+        const nextUrl = res?.profile?.avatarUrl || ''
+        const nextSeed = res?.user?.id || 'athlete'
+        setAvatarUrl(nextUrl)
+        setAvatarSeed(nextSeed)
+        writeAvatarUrl(nextUrl)
+        writeAvatarSeed(nextSeed)
       } catch {
         // ignore (user might not be logged in yet)
       }
@@ -47,34 +60,8 @@ export default function NavBar() {
     void loadMe()
     return () => {
       cancelled = true
+      sub?.subscription?.unsubscribe()
     }
-  }, [])
-
-  useEffect(() => {
-    // Poll unread count while app is open.
-    let cancelled = false
-    let t
-    const tick = async () => {
-      if (cancelled) return
-      await refreshChatUnread()
-    }
-
-    void tick()
-    t = setInterval(tick, 15000)
-
-    const onFocus = () => {
-      void refreshChatUnread()
-    }
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onFocus)
-
-    return () => {
-      cancelled = true
-      clearInterval(t)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onFocus)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -92,11 +79,6 @@ export default function NavBar() {
     return () => {
       if (avatarCloseTimerRef.current) clearTimeout(avatarCloseTimerRef.current)
     }
-  }, [])
-
-  useEffect(() => {
-    void refreshChatUnread()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const logout = async () => {
@@ -144,7 +126,6 @@ export default function NavBar() {
         <div className="nav-actions">
           <Link to="/chat" className="nav-icon nav-chat-btn" aria-label="Chat">
             <MessageCircle size={18} strokeWidth={2.4} />
-            {chatUnread > 0 ? <span className="nav-badge" aria-hidden="true" /> : null}
           </Link>
           <button className="nav-ghost" type="button" onClick={logout}>Logout</button>
 

@@ -221,7 +221,7 @@ export default function UserProfile() {
             <div className="profile-avatar-large">
               <Avatar 
                 avatarUrl={data?.profile?.avatarUrl} 
-                seed={data?.user?.username || data?.user?.id || name} 
+                seed={data?.user?.id || 'athlete'}
                 alt={name}
                 loading="eager" 
               />

@@ -9,22 +9,9 @@ import { ChatService } from './chat.service';
 export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
-  @Get('unread')
-  async unread(@CurrentUser() user: { userId: string }) {
-    return await this.chat.getUnreadSummary(user.userId);
-  }
-
   @Get('conversations')
   async list(@CurrentUser() user: { userId: string }) {
     return await this.chat.listConversations(user.userId);
-  }
-
-  @Get('mutuals')
-  async mutuals(
-    @CurrentUser() user: { userId: string },
-    @Query('q') q?: string,
-  ) {
-    return await this.chat.searchMutuals(user.userId, String(q ?? ''), 10);
   }
 
   @Post('conversations/with/:otherUserId')
@@ -55,11 +42,5 @@ export class ChatController {
     return await this.chat.sendMessage(user.userId, conversationId, String(body?.body ?? ''), body?.clientId);
   }
 
-  @Post('conversations/:id/read')
-  async read(
-    @CurrentUser() user: { userId: string },
-    @Param('id') conversationId: string,
-  ) {
-    return await this.chat.markRead(user.userId, conversationId);
-  }
+  // read receipts removed
 }

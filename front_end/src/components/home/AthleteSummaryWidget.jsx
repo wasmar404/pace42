@@ -14,7 +14,7 @@ export default function AthleteSummaryWidget({ me, avatarSeed }) {
     <section className="w w-ath">
       <div className="ath-top">
         <div className="ath-av">
-          <Avatar avatarUrl={p?.avatarUrl} seed={avatarSeed} alt="" />
+          <Avatar avatarUrl={p?.avatarUrl} seed={avatarSeed} alt="" loading="eager" />
         </div>
         <div className="ath-name">{name}</div>
         {email ? <div className="ath-sub">{email}</div> : null}

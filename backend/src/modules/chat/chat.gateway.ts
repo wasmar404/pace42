@@ -36,15 +36,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chat: ChatService,
   ) {}
 
-  // In-memory presence for a single backend instance.
-  private readonly onlineSocketsByUser = new Map<string, Set<string>>();
+  private readonly onlineSocketByUser = new Map<string, string>();
   private readonly lastSeenByUser = new Map<string, string>();
   private readonly watchedBySocket = new Map<string, Set<string>>();
   private readonly watchersByUser = new Map<string, Set<string>>();
 
   private getPresence(userId: string): Presence {
-    const sockets = this.onlineSocketsByUser.get(userId);
-    const online = Boolean(sockets && sockets.size > 0);
+    const online = this.onlineSocketByUser.has(userId);
     return {
       online,
       lastSeenAt: online ? null : this.lastSeenByUser.get(userId) ?? null,
@@ -61,26 +59,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private setOnline(userId: string, socketId: string) {
-    const set = this.onlineSocketsByUser.get(userId) ?? new Set<string>();
-    const wasOnline = set.size > 0;
-    set.add(socketId);
-    this.onlineSocketsByUser.set(userId, set);
+    const prevSocketId = this.onlineSocketByUser.get(userId);
+    const wasOnline = Boolean(prevSocketId);
+
+    this.onlineSocketByUser.set(userId, socketId);
+
+    if (prevSocketId && prevSocketId !== socketId) {
+      try {
+        const s = this.server.sockets.sockets.get(prevSocketId);
+        s?.disconnect(true);
+      } catch {
+      }
+    }
+
     if (!wasOnline) this.notifyPresence(userId);
   }
 
   private setOffline(userId: string, socketId: string) {
-    const set = this.onlineSocketsByUser.get(userId);
-    if (!set) return;
-    const wasOnline = set.size > 0;
-    set.delete(socketId);
-    if (set.size === 0) {
-      this.onlineSocketsByUser.delete(userId);
-      this.lastSeenByUser.set(userId, new Date().toISOString());
-    } else {
-      this.onlineSocketsByUser.set(userId, set);
-    }
-    const nowOnline = Boolean(this.onlineSocketsByUser.get(userId)?.size);
-    if (wasOnline && !nowOnline) this.notifyPresence(userId);
+    const active = this.onlineSocketByUser.get(userId);
+    if (!active) return;
+    if (active !== socketId) return;
+
+    this.onlineSocketByUser.delete(userId);
+    this.lastSeenByUser.set(userId, new Date().toISOString());
+    this.notifyPresence(userId);
   }
 
   private unwatchAll(socketId: string) {
@@ -143,7 +145,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const ids = Array.isArray(body?.userIds) ? body.userIds.map((x) => String(x)).filter(Boolean) : [];
     const uniq = Array.from(new Set(ids)).slice(0, 200);
 
-    // Replace watched list for this socket.
     this.unwatchAll(client.id);
     const watched = new Set<string>(uniq);
     this.watchedBySocket.set(client.id, watched);
@@ -167,7 +168,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId) return;
     const conversationId = String(body?.conversationId ?? '');
     if (!conversationId) return;
-    // Validate access by attempting read.
     await this.chat.getMessages(userId, conversationId, { limit: 1 });
     await client.join(`c:${conversationId}`);
     client.emit('conversation:joined', { conversationId });
@@ -188,8 +188,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const res = await this.chat.sendMessage(userId, conversationId, text, clientId);
       const payload = { message: res.message, clientId: res.clientId ?? null };
-      // Emit to both users' personal rooms only to avoid duplicates
-      // (each socket is also in a conversation room).
       this.server.to(`u:${userId}`).emit('message:new', payload);
       this.server.to(`u:${res.otherUserId}`).emit('message:new', payload);
       return payload;
@@ -200,17 +198,4 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('conversation:read')
-  async readConversation(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { conversationId?: string },
-  ) {
-    const userId = client.userId;
-    if (!userId) return;
-    const conversationId = String(body?.conversationId ?? '');
-    if (!conversationId) return;
-    await this.chat.markRead(userId, conversationId);
-    this.server.to(`u:${userId}`).emit('conversation:read', { conversationId });
-    return { ok: true };
-  }
 }

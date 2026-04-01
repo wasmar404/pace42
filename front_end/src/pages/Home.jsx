@@ -7,11 +7,13 @@ import {
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
+import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getGoals, getHomeFeed, getRecommendedUsers } from '../api/home'
 import { useUnitsValue } from '../preferences'
 import { formatDistance } from '../utils/format'
+import { readAvatarSeed, readSupabaseSessionUserSync, writeAvatarSeed } from '../utils/avatarCache'
 
 import ActivityCard from '../components/home/ActivityCard'
 import AthleteSummaryWidget from '../components/home/AthleteSummaryWidget'
@@ -24,7 +26,18 @@ import '../styles/Home.css'
 
 export default function Home() {
   const units = useUnitsValue()
-  const [me, setMe] = useState(null)
+  const [me, setMe] = useState(() => {
+    const u = readSupabaseSessionUserSync()
+    if (!u?.id) return null
+    return {
+      user: { id: u.id, email: u.email },
+      profile: null,
+      stats: { followersCount: 0, followingCount: 0, totalActivities: 0 },
+      recentActivities: [],
+      recentPhotos: [],
+      settings: { isPrivate: false },
+    }
+  })
   const [feed, setFeed] = useState([])
   const [feedSource, setFeedSource] = useState('')
   const [recUsers, setRecUsers] = useState([])
@@ -36,32 +49,52 @@ export default function Home() {
   const [socialId, setSocialId] = useState('')
   const [socialTab, setSocialTab] = useState('comments')
 
+  const [seedFallback, setSeedFallback] = useState(() => {
+    const u = readSupabaseSessionUserSync()
+    return u?.id || readAvatarSeed('athlete')
+  })
+
   const meId = me?.user?.id
 
   const avatarSeed = useMemo(() => {
-    const p = me?.profile
-    return p?.username || meId || 'athlete'
-  }, [meId, me])
+    return meId || seedFallback || 'athlete'
+  }, [meId, seedFallback])
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase.auth.getSession().then(({ data }) => {
+      const id = data?.session?.user?.id
+      if (!id || cancelled) return
+      setSeedFallback(id)
+      writeAvatarSeed(id)
+    }).catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     async function run() {
       setLoading(true)
       setError('')
-        try {
-          const [meRes, feedRes, recRes, goalsRes] = await Promise.all([
-            backendGet('/api/me/summary'),
-            getHomeFeed(20),
-            getRecommendedUsers(6),
-            getGoals(7),
-          ])
-          if (cancelled) return
-          setMe(meRes)
-          setFeed((feedRes?.items || []).filter((it) => it?.type !== 'announcement'))
-          setFeedSource(feedRes?.source || '')
-          setRecUsers(recRes?.items || [])
-          setGoals(goalsRes)
-        } catch (e) {
+      try {
+        // Fast path: fetch basic profile for immediate UI.
+        const meBasic = await backendGet('/api/me').catch(() => null)
+        if (!cancelled && meBasic) setMe(meBasic)
+
+        const [feedRes, recRes, goalsRes] = await Promise.all([
+          getHomeFeed(20),
+          getRecommendedUsers(6),
+          getGoals(7),
+        ])
+        if (cancelled) return
+        setFeed((feedRes?.items || []).filter((it) => it?.type !== 'announcement'))
+        setFeedSource(feedRes?.source || '')
+        setRecUsers(recRes?.items || [])
+        setGoals(goalsRes)
+      } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load feed')
       } finally {
@@ -69,6 +102,20 @@ export default function Home() {
       }
     }
     void run()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    // Background: fetch full summary (counts/photos) without blocking initial paint.
+    void backendGet('/api/me/summary')
+      .then((res) => {
+        if (cancelled) return
+        if (res) setMe(res)
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }

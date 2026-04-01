@@ -4,8 +4,8 @@ export function listConversations() {
   return backendGet('/api/chat/conversations')
 }
 
-export function searchMutuals(q = '') {
-  return backendGet(`/api/chat/mutuals?q=${encodeURIComponent(String(q || ''))}`)
+export function searchUsers(q = '') {
+  return backendGet(`/api/search/users?q=${encodeURIComponent(String(q || ''))}`)
 }
 
 export function getOrCreateConversation(otherUserId) {
@@ -22,8 +22,4 @@ export function getMessages(conversationId, params = {}) {
 
 export function sendMessage(conversationId, body, clientId) {
   return backendJson('POST', `/api/chat/conversations/${conversationId}/messages`, { body, clientId })
-}
-
-export function markRead(conversationId) {
-  return backendJson('POST', `/api/chat/conversations/${conversationId}/read`, {})
 }

@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { readAvatarSvg, writeAvatarSvg } from '../utils/avatarCache'
+
+import multiavatar from '@multiavatar/multiavatar/esm'
+
 const cache = new Map()
 
 function pickInitial(seed) {
@@ -32,33 +36,42 @@ function toDataUri(svg) {
 export default function Avatar({ avatarUrl, seed, alt = '', className = '', loading = 'lazy', size }) {
   const seedStr = useMemo(() => String(seed || 'user'), [seed])
 
-  const [src, setSrc] = useState(() => avatarUrl || cache.get(seedStr) || placeholderDataUri(seedStr))
+  const [src, setSrc] = useState(() => {
+    if (avatarUrl) return avatarUrl
+    const cached = cache.get(seedStr) || readAvatarSvg(seedStr)
+    if (cached) return cached
+
+    try {
+      const svg = multiavatar(seedStr, true)
+      const uri = toDataUri(svg)
+      cache.set(seedStr, uri)
+      writeAvatarSvg(seedStr, uri)
+      return uri
+    } catch {
+      return placeholderDataUri(seedStr)
+    }
+  })
 
   useEffect(() => {
-    setSrc(avatarUrl || cache.get(seedStr) || placeholderDataUri(seedStr))
-  }, [avatarUrl, seedStr])
+    if (avatarUrl) {
+      setSrc(avatarUrl)
+      return
+    }
 
-  useEffect(() => {
-    let cancelled = false
-    if (avatarUrl) return () => {}
-    if (cache.has(seedStr)) return () => {}
+    const cached = cache.get(seedStr) || readAvatarSvg(seedStr)
+    if (cached) {
+      setSrc(cached)
+      return
+    }
 
-    void (async () => {
-      try {
-        const mod = await import('@multiavatar/multiavatar/esm')
-        const multiavatar = mod?.default
-        if (!multiavatar) return
-        const svg = multiavatar(seedStr, true)
-        const uri = toDataUri(svg)
-        cache.set(seedStr, uri)
-        if (!cancelled) setSrc(uri)
-      } catch {
-        // keep placeholder
-      }
-    })()
-
-    return () => {
-      cancelled = true
+    try {
+      const svg = multiavatar(seedStr, true)
+      const uri = toDataUri(svg)
+      cache.set(seedStr, uri)
+      writeAvatarSvg(seedStr, uri)
+      setSrc(uri)
+    } catch {
+      setSrc(placeholderDataUri(seedStr))
     }
   }, [avatarUrl, seedStr])
 

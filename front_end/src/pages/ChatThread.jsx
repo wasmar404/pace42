@@ -5,7 +5,7 @@ import { ArrowLeft, Send, UserRound, Wifi, WifiOff } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
-import { getMessages, listConversations, markRead, sendMessage } from '../api/chat'
+import { getMessages, listConversations, sendMessage } from '../api/chat'
 import { getChatSocket } from '../chat/socket'
 import { backendGet } from '../backendApi'
 import '../styles/Chat.css'
@@ -114,7 +114,6 @@ export default function ChatThread() {
         const res = await getMessages(id, { limit: 80 })
         if (cancelled) return
         setMessages(res?.messages || [])
-        await markRead(id)
         requestScrollToBottom('auto')
       } catch (e) {
         if (cancelled) return
@@ -188,7 +187,6 @@ export default function ChatThread() {
             })
           })
 
-          void markRead(id).catch(() => {})
           void refreshConvo().catch(() => {})
           requestScrollToBottom('auto')
         })

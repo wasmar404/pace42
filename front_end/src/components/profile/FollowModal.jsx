@@ -98,7 +98,7 @@ export default function FollowModal({ open, user, followersCount, followingCount
         <header className="sm-head">
           <div className="sm-left">
             <div className="sm-av">
-              <Avatar avatarUrl={user?.avatarUrl} seed={user?.username || userId || user?.name} alt="" />
+              <Avatar avatarUrl={user?.avatarUrl} seed={userId || 'athlete'} alt="" />
             </div>
             <div className="sm-title">
               <div className="t1">{title}</div>
@@ -148,7 +148,7 @@ export default function FollowModal({ open, user, followersCount, followingCount
                   }}
                 >
                   <div className="av">
-                    <Avatar avatarUrl={r?.user?.avatarUrl} seed={r?.user?.username || r?.user?.id} alt="" />
+                    <Avatar avatarUrl={r?.user?.avatarUrl} seed={r?.user?.id || 'athlete'} alt="" />
                   </div>
                   <div className="main">
                     <div className="who">{nameOf(r?.user)}</div>

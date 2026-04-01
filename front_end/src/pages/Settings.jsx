@@ -4,6 +4,7 @@ import { AlertTriangle, KeyRound, Lock, Mail, Shield, SlidersHorizontal, Upload,
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
+import { readAvatarSeed, writeAvatarSeed, writeAvatarUrl } from '../utils/avatarCache'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import { backendGet, backendJson, backendUploadWithProgress } from '../backendApi'
 import { supabase } from '../supabaseClient'
@@ -178,7 +179,7 @@ export default function Settings() {
   }
 
   const avatarSeed = useMemo(() => {
-    return me?.profile?.username || me?.user?.id || 'user'
+    return me?.user?.id || readAvatarSeed('athlete')
   }, [me])
 
   const onPickAvatar = () => fileRef.current?.click()
@@ -204,9 +205,11 @@ export default function Settings() {
         onProgress: (p) => setUploadPct(Math.round(p * 100)),
       })
 
-      // Refresh cached profile summary (so NavBar updates instantly)
-      const next = await backendGet('/api/me/summary')
+      // Refresh cached profile (so NavBar updates instantly)
+      const next = await backendGet('/api/me')
       setMe(next)
+      writeAvatarSeed(next?.user?.id || '')
+      writeAvatarUrl(next?.profile?.avatarUrl || '')
 
       setNotice('Profile picture updated.')
       return res
