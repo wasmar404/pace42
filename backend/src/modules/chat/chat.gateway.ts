@@ -27,6 +27,7 @@ type Presence = {
     credentials: true,
   },
 })
+
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
@@ -98,14 +99,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private async authSocket(client: AuthedSocket): Promise<string> {
-    const header = (client.handshake.headers?.authorization as string | undefined) ?? '';
-    const tokenFromHeader = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : '';
-    const tokenFromAuth =
+    const token =
       client.handshake.auth && typeof (client.handshake.auth as any).token === 'string'
         ? String((client.handshake.auth as any).token)
         : '';
-    const tokenFromQuery = typeof client.handshake.query?.token === 'string' ? (client.handshake.query.token as string) : '';
-    const token = tokenFromHeader || tokenFromAuth || tokenFromQuery;
     if (!token) throw new Error('Missing token');
 
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');

@@ -42,5 +42,4 @@ export class ChatController {
     return await this.chat.sendMessage(user.userId, conversationId, String(body?.body ?? ''), body?.clientId);
   }
 
-  // read receipts removed
 }
