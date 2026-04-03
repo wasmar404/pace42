@@ -51,7 +51,6 @@ export default function Chat() {
       const id = u?.id
       if (!id || seen.has(id)) continue
       seen.add(id)
-      // If there's already a conversation with this mutual, don't show them twice.
       if (conversationOtherIds.has(id)) continue
       out.push(u)
     }
@@ -88,7 +87,6 @@ export default function Chat() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -167,10 +165,8 @@ export default function Chat() {
           void refresh().catch(() => {})
         })
 
-        // Initial watch list (will be updated by effect below as data loads)
         s.emit('presence:watch', { userIds: [] })
       } catch {
-        // ignore
       }
     })()
 
@@ -182,11 +178,9 @@ export default function Chat() {
         s?.off('presence:state')
         s?.off('connect')
       } catch {
-        // ignore
       }
       if (cancelled) {}
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -210,7 +204,6 @@ export default function Chat() {
         if (cancelled) return
         s.emit('presence:watch', { userIds: uniq })
       } catch {
-        // ignore
       }
     })()
 
@@ -265,7 +258,7 @@ export default function Chat() {
                 return (
                   <button key={u.id} type="button" className="chat-mutual" onClick={() => onPickUser(u.id)}>
                     <div className="av">
-                      <Avatar avatarUrl={u?.avatarUrl} seed={u?.username || u?.id || name} alt="" />
+                      <Avatar avatarUrl={u?.avatarUrl} seed={u?.id || u?.userId || u?.username || name} alt="" />
                       {st ? <span className={st.online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" /> : null}
                     </div>
                     <div className="main">
@@ -299,7 +292,7 @@ export default function Chat() {
           {itemsUniq.map((c) => (
             <Link to={`/chat/${c.id}`} className="chat-row" key={c.id}>
               <div className="av">
-                <Avatar avatarUrl={c?.otherUser?.avatarUrl} seed={c?.otherUser?.username || c?.otherUser?.id || c?.otherUser?.name} alt="" />
+                <Avatar avatarUrl={c?.otherUser?.avatarUrl} seed={c?.otherUser?.id || c?.otherUser?.userId || c?.otherUser?.username || c?.otherUser?.name} alt="" />
                 {c?.otherUser?.id && presence[c.otherUser.id] ? (
                   <span className={presence[c.otherUser.id].online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" />
                 ) : null}

@@ -27,8 +27,11 @@ export class ChatService {
 
     for (const [conversationId, set] of counts.entries()) {
       if (set.has(userId) && set.has(otherUserId)) {
-        const convo = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
-        if (convo) return convo;
+        try {
+          return await this.prisma.conversation.findUniqueOrThrow({ where: { id: conversationId } });
+        } catch {
+          throw new NotFoundException('Conversation not found');
+        }
       }
     }
 

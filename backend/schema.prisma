@@ -117,8 +117,6 @@ model Conversation {
 model ConversationParticipant {
   conversationId String       @map("conversation_id") @db.Uuid
   userId         String       @map("user_id") @db.Uuid
-  unreadCount    Int          @default(0) @map("unread_count")
-  lastReadAt     DateTime?    @map("last_read_at") @db.Timestamptz(6)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 

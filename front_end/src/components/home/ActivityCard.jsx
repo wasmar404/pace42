@@ -58,7 +58,7 @@ export default function ActivityCard({ item, meId, units, onOpenSocial, onSocial
       <header className="feed-head">
         <Link to={mine ? '/profile' : `/users/${athlete?.id}`} className="athlete">
           <span className="av">
-            <Avatar avatarUrl={athlete?.avatarUrl} seed={athlete?.username || athlete?.id || athlete?.name} alt="" />
+            <Avatar avatarUrl={athlete?.avatarUrl} seed={athlete?.id || athlete?.userId || athlete?.username || athlete?.name} alt="" />
           </span>
           <span className="who">
             <span className="name">{athlete?.name || 'Athlete'}</span>

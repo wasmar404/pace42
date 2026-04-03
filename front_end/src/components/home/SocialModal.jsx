@@ -87,7 +87,7 @@ export default function SocialModal({ open, item, tab, onTab, onClose, onSocialU
         <header className="sm-head">
           <div className="sm-left">
             <div className="sm-av">
-              <Avatar avatarUrl={athlete?.avatarUrl} seed={athlete?.username || athlete?.id || athlete?.name} alt="" />
+              <Avatar avatarUrl={athlete?.avatarUrl} seed={athlete?.id || athlete?.userId || athlete?.username || athlete?.name} alt="" />
             </div>
             <div className="sm-title">
               <div className="t1">{athlete?.name || 'Athlete'}</div>
@@ -117,7 +117,7 @@ export default function SocialModal({ open, item, tab, onTab, onClose, onSocialU
               {kudos.map((k, idx) => (
                 <div key={`${k?.actor?.id || 'k'}-${k?.createdAt || idx}`} className="sm-row">
                   <div className="av">
-                    <Avatar avatarUrl={k?.actor?.avatarUrl} seed={k?.actor?.username || k?.actor?.id || k?.actor?.name} alt="" />
+                    <Avatar avatarUrl={k?.actor?.avatarUrl} seed={k?.actor?.id || k?.actor?.userId || k?.actor?.username || k?.actor?.name} alt="" />
                   </div>
                   <div className="main">
                     <div className="who">{k?.actor?.name || 'Athlete'}</div>
@@ -137,7 +137,7 @@ export default function SocialModal({ open, item, tab, onTab, onClose, onSocialU
               {comments.map((c) => (
                 <div key={c.id} className="sm-row">
                   <div className="av">
-                    <Avatar avatarUrl={c?.actor?.avatarUrl} seed={c?.actor?.username || c?.actor?.id || c?.actor?.name} alt="" />
+                    <Avatar avatarUrl={c?.actor?.avatarUrl} seed={c?.actor?.id || c?.actor?.userId || c?.actor?.username || c?.actor?.name} alt="" />
                   </div>
                   <div className="main">
                     <div className="who">{c?.actor?.name || 'Athlete'}</div>

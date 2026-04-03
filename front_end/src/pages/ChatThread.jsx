@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Send, UserRound, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Send, UserRound } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
-import { getMessages, listConversations, sendMessage } from '../api/chat'
+import { getMessages, listConversations } from '../api/chat'
 import { getChatSocket } from '../chat/socket'
 import { backendGet } from '../backendApi'
 import '../styles/Chat.css'
@@ -32,16 +32,14 @@ export default function ChatThread() {
   const pendingScrollRef = useRef(null)
   const [scrollTick, setScrollTick] = useState(0)
 
-  // ─── FIX: track in-flight sends so the poll doesn't stomp optimistic messages ───
-  const sendingRef = useRef(false)
-
   const other = convo?.otherUser
 
   const presenceText = useMemo(() => {
     if (!other?.id) return ''
     if (presence?.online) return 'Online'
+    if (presence?.lastSeenAt) return 'Last seen ' + fmtTime(presence.lastSeenAt)
     return 'Offline'
-  }, [other?.id, other?.username, presence])
+  }, [other?.id, presence?.online, presence?.lastSeenAt])
 
   const seenRef = useRef(new Set())
 
@@ -50,7 +48,6 @@ export default function ChatThread() {
     setScrollTick((x) => x + 1)
   }
 
-  // Auto-scroll after every messages change (catches polling + socket + optimistic)
   useEffect(() => {
     const el = threadRef.current
     if (!el) return
@@ -58,7 +55,6 @@ export default function ChatThread() {
     if (isNearBottom) el.scrollTop = el.scrollHeight
   }, [messages])
 
-  // ResizeObserver to catch layout shifts (textarea grow, images loading)
   useEffect(() => {
     const el = threadRef.current
     if (!el) return
@@ -78,12 +74,10 @@ export default function ChatThread() {
       const el = threadRef.current
       if (el) el.scrollTop = el.scrollHeight
     } catch {
-      // ignore
     }
     try {
       bottomRef.current?.scrollIntoView({ behavior })
     } catch {
-      // ignore
     }
   }, [scrollTick])
 
@@ -93,7 +87,6 @@ export default function ChatThread() {
         const me = await backendGet('/api/me')
         setMeId(me?.user?.id || '')
       } catch {
-        // ignore
       }
     })()
   }, [])
@@ -126,7 +119,6 @@ export default function ChatThread() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   useEffect(() => {
@@ -170,7 +162,6 @@ export default function ChatThread() {
 
         s.emit('conversation:join', { conversationId: id })
 
-        // flushSync so DOM is updated before we scroll
         s.on('message:new', (payload) => {
           const m = payload?.message
           if (!m || m.conversationId !== id) return
@@ -200,7 +191,6 @@ export default function ChatThread() {
           setError(payload?.error || 'Failed to send')
         })
       } catch {
-        // ignore
         setRt('disconnected')
       }
     })()
@@ -216,68 +206,23 @@ export default function ChatThread() {
         s?.off('disconnect')
         s?.off('connect_error')
       } catch {
-        // ignore
       }
       if (cancelled) {}
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, other?.id])
 
-  // Fallback polling — skips while a send is in-flight to avoid stomping optimistic messages
-  useEffect(() => {
-    let alive = true
-
-    const poll = async () => {
-      // ─── FIX: don't poll while sending — stops the optimistic message
-      //         getting wiped before the server confirms it ───
-      if (sendingRef.current) return
-
-      try {
-        const res = await getMessages(id, { limit: 80 })
-        if (!alive) return
-        const server = res?.messages || []
-        for (const m of server) {
-          if (m?.id) seenRef.current.add(m.id)
-        }
-
-        setMessages((prev) => {
-          const now = Date.now()
-          // Keep optimistic messages not yet confirmed by the server
-          const pending = prev.filter((m) => {
-            if (!m?.clientId) return false
-            const t = Date.parse(m.createdAt)
-            if (!Number.isFinite(t)) return false
-            return now - t < 20_000
-          })
-          // Drop pending msgs whose real id already exists in the server list
-          const serverIds = new Set(server.map((m) => m.id))
-          const unconfirmed = pending.filter(
-            (m) => !serverIds.has(m.id?.replace('tmp-', ''))
-          )
-          return [...server, ...unconfirmed]
-        })
-      } catch {
-        // ignore
-      }
-    }
-
-    const t = setInterval(poll, 2500)
-    void poll()
-    return () => {
-      alive = false
-      clearInterval(t)
-    }
-  }, [id])
-
-  const canSend = useMemo(() => text.trim().length > 0 && !sending, [text, sending])
+  const canSend = useMemo(() => text.trim().length > 0 && !sending && rt === 'connected', [text, sending, rt])
   const hasAlert = loading || Boolean(error)
 
   const onSend = async () => {
     const t = text.trim()
     if (!t) return
+    if (rt !== 'connected') {
+      setError('Realtime disconnected')
+      return
+    }
     setText('')
     setSending(true)
-    sendingRef.current = true  // ─── FIX: block poll while sending ───
     setError('')
 
     const clientId = `c-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -292,40 +237,25 @@ export default function ChatThread() {
         clientId,
       }
 
-      // flushSync so optimistic message is in the DOM before we scroll
       flushSync(() => {
         setMessages((prev) => [...prev, optimistic])
       })
       requestScrollToBottom('auto')
 
-      // Send via socket if possible, fallback to REST
-      try {
-        const s = await getChatSocket()
-        const ack = await new Promise((resolve, reject) => {
-          s.timeout(8000).emit('message:send', { conversationId: id, text: t, clientId }, (err, resp) => {
-            if (err) return reject(err)
-            resolve(resp)
-          })
+      const s = await getChatSocket()
+      const ack = await new Promise((resolve, reject) => {
+        s.timeout(8000).emit('message:send', { conversationId: id, text: t, clientId }, (err, resp) => {
+          if (err) return reject(err)
+          resolve(resp)
         })
-        if (ack && ack.error) throw new Error(ack.error)
-      } catch {
-        const res = await sendMessage(id, t, clientId)
-        const m = res?.message
-        setMessages((prev) => {
-          const next = prev.filter((x) => x?.clientId !== clientId)
-          if (m?.id && !seenRef.current.has(m.id)) {
-            seenRef.current.add(m.id)
-            return [...next, m]
-          }
-          return next
-        })
-      }
+      })
+      if (ack && ack.error) throw new Error(ack.error)
       void refreshConvo().catch(() => {})
     } catch (e) {
+      setMessages((prev) => prev.filter((x) => x?.clientId !== clientId))
       setError(e?.message || 'Failed to send')
     } finally {
       setSending(false)
-      sendingRef.current = false  // ─── FIX: unblock poll after send completes ───
     }
   }
 
@@ -345,7 +275,7 @@ export default function ChatThread() {
 
             <div className="peer">
               <div className="av">
-                <Avatar avatarUrl={other?.avatarUrl} seed={other?.username || other?.id || other?.name} alt="" />
+                <Avatar avatarUrl={other?.avatarUrl} seed={other?.id || other?.userId || other?.username || other?.name} alt="" />
                 {other?.id && presence ? (
                   <span className={presence.online ? 'presence-dot on' : 'presence-dot'} aria-hidden="true" />
                 ) : null}
@@ -357,13 +287,6 @@ export default function ChatThread() {
             </div>
 
             <div className="thread-right">
-              <div
-                className={`rt-pill ${rt === 'connected' ? 'ok' : 'bad'}`}
-                title={rt === 'connected' ? 'Realtime connected' : 'Realtime offline (polling)'}
-              >
-                {rt === 'connected' ? <Wifi size={14} /> : <WifiOff size={14} />}
-                <span>{rt === 'connected' ? 'Live' : 'Syncing'}</span>
-              </div>
               {other?.id ? (
                 <Link to={`/users/${other.id}`} className="profile-link" aria-label="Open profile">
                   <UserRound size={16} />

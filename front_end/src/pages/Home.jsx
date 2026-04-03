@@ -229,7 +229,7 @@ export default function Home() {
                     <div key={u.id} className="rec">
                       <Link to={`/users/${u.id}`} className="r-who">
                         <span className="av">
-                          <Avatar avatarUrl={u.avatarUrl} seed={u.username || u.id || u.name} alt="" />
+                          <Avatar avatarUrl={u.avatarUrl} seed={u.id || u.userId || u.username || u.name} alt="" />
                         </span>
                         <span>
                           <span className="name">{u.name}</span>

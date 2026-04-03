@@ -162,7 +162,7 @@ export default function SearchPage() {
                       <div className="athlete-avatar-wrapper">
                         <Avatar
                           avatarUrl={u.avatarUrl}
-                          seed={u.username || u.id || displayName(u)}
+                          seed={u.id || u.userId || u.username || displayName(u)}
                           alt={displayName(u)}
                           size={56}
                         />
