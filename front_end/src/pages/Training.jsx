@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, CalendarDays, ChevronDown, ChevronRight, Clock, Filter, List, Route, Search, Shield, SlidersHorizontal, TrendingUp, X, Zap } from 'lucide-react'
+import { Activity, CalendarDays, ChevronDown, ChevronRight, Clock, Filter, List, Route, Search, SlidersHorizontal, TrendingUp, X, Zap } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
@@ -72,14 +72,6 @@ const FILTER_DEFS = [
       { value: 'yoga', label: 'Yoga' },
     ],
   },
-  { key: 'visibility', label: 'Visibility', icon: Shield,       type: 'select',
-    options: [
-      { value: 'any', label: 'Any' },
-      { value: 'public', label: 'Public' },
-      { value: 'followers', label: 'Followers' },
-      { value: 'only_me', label: 'Only me' },
-    ],
-  },
   { key: 'from',    label: 'Date from',    icon: CalendarDays, type: 'date'   },
   { key: 'to',      label: 'Date to',      icon: CalendarDays, type: 'date'   },
   { key: 'minDist', label: 'Min distance', icon: Route,        type: 'number', placeholder: '0'  },
@@ -106,7 +98,7 @@ export default function Training() {
   const [activeKeys, setActiveKeys] = useState([])
   // Filter values
   const [vals, setVals] = useState({
-    sport: 'any', visibility: 'any',
+    sport: 'any',
     from: '', to: '', minDist: '', maxDist: '',
     minDur: '', maxDur: '', source: 'any',
   })
@@ -171,7 +163,7 @@ export default function Training() {
 
   const clearAll = () => {
     setActiveKeys([])
-    setVals({ sport: 'any', visibility: 'any', from: '', to: '', minDist: '', maxDist: '', minDur: '', maxDur: '', source: 'any' })
+    setVals({ sport: 'any', from: '', to: '', minDist: '', maxDist: '', minDur: '', maxDur: '', source: 'any' })
   }
 
   const activeCount = activeKeys.filter((k) => {
@@ -181,7 +173,6 @@ export default function Training() {
 
   const params = useMemo(() => {
     const sportV = activeKeys.includes('sport') ? (vals.sport || 'any') : 'any'
-    const visV = activeKeys.includes('visibility') ? (vals.visibility || 'any') : 'any'
     const fromV = activeKeys.includes('from') ? vals.from : ''
     const toV = activeKeys.includes('to') ? vals.to : ''
     const minDistanceMeters  = activeKeys.includes('minDist') ? metersFromUnits(vals.minDist, units) : ''
@@ -198,7 +189,6 @@ export default function Training() {
     return {
       q: trimmed,
       sport: sportV,
-      visibility: visV,
       from: fromV || '',
       to: toV || '',
       source: src,

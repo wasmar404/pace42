@@ -65,10 +65,6 @@ export class PublicCreateActivityDto {
   @Max(2_000_000)
   distanceMeters!: number;
 
-  @IsOptional()
-  @IsString()
-  @IsIn(['public', 'followers', 'only_me'])
-  visibility?: string;
 }
 
 export class PublicUpdateActivityDto {
@@ -105,8 +101,4 @@ export class PublicUpdateActivityDto {
   @Max(2_000_000)
   distanceMeters?: number;
 
-  @IsOptional()
-  @IsString()
-  @IsIn(['public', 'followers', 'only_me'])
-  visibility?: string;
 }

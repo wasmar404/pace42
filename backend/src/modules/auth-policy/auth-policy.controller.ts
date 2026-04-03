@@ -15,7 +15,6 @@ export class AuthPolicyController {
     return { service: getSupabaseAdminClient(), supabaseServiceRoleKey };
   }
 
-  // Best-effort cleanup when OAuth signup is not allowed.
   @Post('reject-oauth')
   @UseGuards(SupabaseAuthGuard)
   async rejectOauth(
@@ -29,7 +28,6 @@ export class AuthPolicyController {
         await service.auth.admin.deleteUser(user.userId);
       }
     } catch {
-      // ignore - user may already be gone
     }
 
     return { ok: true };
@@ -46,7 +44,6 @@ export class AuthPolicyController {
     const { service, supabaseServiceRoleKey } = await this.adminClient();
 
     if (!supabaseServiceRoleKey) {
-      // Without service role we can't enforce safely.
       return { ok: true };
     }
 
@@ -82,16 +79,13 @@ export class AuthPolicyController {
     const hasGoogle = providers.includes('google');
     const hasEmail = providers.includes('email');
 
-    // Disallow accounts that have both OAuth + email/password identities.
     if (hasGoogle && hasEmail) {
-      // Only delete automatically if it was just created (likely accidental linking/creation).
       if (ageMs < 15 * 60 * 1000) {
         await service.auth.admin.deleteUser(reqUser.userId).catch(() => {});
       }
       throw new ForbiddenException('This email cannot use both Google and password login.');
     }
 
-    // Disallow duplicate emails across auth users (OAuth + password).
     if (email) {
       let matches = 0;
       for (let page = 1; page <= 5; page++) {
@@ -116,9 +110,7 @@ export class AuthPolicyController {
     const oauthSignedUp = meta.oauthSignedUp === true;
     const oauthProvider = String(meta.oauthProvider ?? '').toLowerCase();
 
-    // Prevent users from using the signup flow again for an existing account.
-    // We can't stop Supabase from redirecting back, but we can block app access and
-    // force them to use the login flow.
+   
     if (mode === 'signup') {
       const tooOldForSignup = ageMs > 60 * 60 * 1000; // 60 minutes
       const alreadySignedUpWithThisMethod = oauthSignedUp && (!oauthProvider || oauthProvider === method);
@@ -135,9 +127,7 @@ export class AuthPolicyController {
           }).catch(() => {});
         }
       } else {
-        // login mode
         if (!oauthSignedUp) {
-          // Allow older existing accounts (grandfather) and mark them.
           if (ageMs > 15 * 60 * 1000) {
             await service.auth.admin.updateUserById(reqUser.userId, {
               user_metadata: { ...meta, oauthSignedUp: true, oauthProvider: 'google' },

@@ -44,7 +44,6 @@ export class UsersController {
           lastName: true,
           avatarUrl: true,
           bio: true,
-          isPrivate: true,
           onboardingCompletedAt: true,
         },
       }),
@@ -69,18 +68,12 @@ export class UsersController {
       isFollowing = Boolean(follow);
     }
 
-    const visibilityFilter: string[] = [];
-    if (isSelf) visibilityFilter.push('public', 'followers', 'only_me');
-    else if (isFollowing) visibilityFilter.push('public', 'followers');
-    else if (!profile.isPrivate) visibilityFilter.push('public');
-
     const since4w = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
 
     const [recentActivities, totalVisibleActivities, last4WeeksCount, sums, recentPhotos] = await Promise.all([
       this.prisma.activity.findMany({
         where: {
           userId: id,
-          ...(visibilityFilter.length ? { visibility: { in: visibilityFilter } } : { visibility: { in: ['__none__'] } }),
         },
         orderBy: { startedAt: 'desc' },
         take: 2,
@@ -93,7 +86,6 @@ export class UsersController {
           startedAt: true,
           durationSeconds: true,
           distanceMeters: true,
-          visibility: true,
           source: true,
           routePolyline: true,
         },
@@ -101,20 +93,17 @@ export class UsersController {
       this.prisma.activity.count({
         where: {
           userId: id,
-          ...(visibilityFilter.length ? { visibility: { in: visibilityFilter } } : { visibility: { in: ['__none__'] } }),
         },
       }),
       this.prisma.activity.count({
         where: {
           userId: id,
-          ...(visibilityFilter.length ? { visibility: { in: visibilityFilter } } : { visibility: { in: ['__none__'] } }),
           startedAt: { gte: since4w },
         },
       }),
       this.prisma.activity.aggregate({
         where: {
           userId: id,
-          ...(visibilityFilter.length ? { visibility: { in: visibilityFilter } } : { visibility: { in: ['__none__'] } }),
         },
         _sum: {
           distanceMeters: true,
@@ -147,9 +136,6 @@ export class UsersController {
       relationship: {
         isSelf,
         isFollowing,
-      },
-      settings: {
-        isPrivate: Boolean(profile.isPrivate),
       },
       stats: {
         followersCount,
@@ -378,38 +364,13 @@ export class UsersController {
 
   @Get(':id([0-9a-fA-F-]{36})/activities')
   @UseGuards(OptionalSupabaseAuthGuard)
-  async getUserActivities(@Param('id') id: string, @Req() req: Request) {
+  async getUserActivities(@Param('id') id: string) {
     if (!id) throw new BadRequestException('Missing user id');
     if (!isUuidV4(id)) throw new BadRequestException('Invalid user id');
-
-    const viewerId = (req as any)?.user?.userId as string | undefined;
-    const isOwner = viewerId === id;
-
-    let includeFollowers = false;
-    if (viewerId && !isOwner) {
-      const follow = await this.prisma.follow.findUnique({
-        where: {
-          followerId_followingId: {
-            followerId: viewerId,
-            followingId: id,
-          },
-        },
-      });
-      includeFollowers = Boolean(follow);
-    }
-
-    const p = await this.prisma.profile.findUnique({ where: { userId: id }, select: { isPrivate: true } });
-    const isPrivate = Boolean(p?.isPrivate);
-
-    const visibilityFilter: string[] = [];
-    if (isOwner) visibilityFilter.push('public', 'followers', 'only_me');
-    else if (includeFollowers) visibilityFilter.push('public', 'followers');
-    else if (!isPrivate) visibilityFilter.push('public');
 
     const activities = await this.prisma.activity.findMany({
       where: {
         userId: id,
-        ...(visibilityFilter.length ? { visibility: { in: visibilityFilter } } : { visibility: { in: ['__none__'] } }),
       },
       orderBy: { startedAt: 'desc' },
     });

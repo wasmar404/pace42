@@ -32,7 +32,6 @@ export function importGpx(file, meta = {}, opts = {}) {
   form.append('file', file)
   if (meta?.title) form.append('title', meta.title)
   if (meta?.description) form.append('description', meta.description)
-  if (meta?.visibility) form.append('visibility', meta.visibility)
   if (meta?.sport) form.append('sport', meta.sport)
 
   return backendUploadWithProgress('/api/activities/import/gpx', form, opts)

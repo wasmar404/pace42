@@ -35,15 +35,12 @@ export class HomeController {
 
     const hasFollowing = followingIds.length > 0;
 
-    // Over-fetch a bit for explore so we can filter out private accounts.
     const seedActivities = await this.prisma.activity.findMany({
       where: hasFollowing
         ? {
             userId: { in: followingIds },
-            visibility: { in: ['public', 'followers'] },
           }
         : {
-            visibility: 'public',
             userId: { not: user.userId },
           },
       orderBy: { startedAt: 'desc' },
@@ -57,7 +54,6 @@ export class HomeController {
         startedAt: true,
         durationSeconds: true,
         distanceMeters: true,
-        visibility: true,
         routePolyline: true,
         createdAt: true,
       },
@@ -68,20 +64,13 @@ export class HomeController {
     const actors = seedActorIds.length
       ? await this.prisma.profile.findMany({
           where: { userId: { in: seedActorIds } },
-          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true, isPrivate: true },
+          select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
         })
       : [];
 
     const actorById = new Map<string, any>(actors.map((a: any) => [a.userId, a] as const));
 
-    const activities = hasFollowing
-      ? seedActivities.slice(0, limit)
-      : seedActivities
-          .filter((a: any) => {
-            const p = actorById.get(a.userId) as any;
-            return p ? !p.isPrivate : false;
-          })
-          .slice(0, limit);
+    const activities = seedActivities.slice(0, limit);
 
     const activityIds = activities.map((a: any) => a.id);
 
@@ -154,7 +143,6 @@ export class HomeController {
           startedAt: a.startedAt.toISOString(),
           durationSeconds: a.durationSeconds,
           distanceMeters: a.distanceMeters,
-          visibility: a.visibility,
           routePolyline: a.routePolyline ?? null,
           imageUrl: mediaByActivity.get(a.id) ?? null,
         },

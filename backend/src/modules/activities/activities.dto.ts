@@ -30,9 +30,4 @@ export class CreateActivityDto {
   @Max(1_000_000)
   distanceMeters!: number;
 
-  @IsOptional()
-  @IsString()
-  @IsIn(['public', 'followers', 'only_me'])
-  visibility?: string;
-
 }

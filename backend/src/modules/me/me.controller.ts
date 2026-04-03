@@ -18,7 +18,6 @@ const ACTIVITY_BASE_SELECT = {
   startedAt: true,
   durationSeconds: true,
   distanceMeters: true,
-  visibility: true,
   source: true,
   routePolyline: true,
 } as const;
@@ -216,9 +215,6 @@ export class MeController {
       },
       recentActivities,
       recentPhotos: recentPhotos.map((p: any) => p.publicUrl).filter(Boolean),
-      settings: {
-        isPrivate: Boolean(profile?.isPrivate ?? false),
-      },
     };
 
     return resp;
@@ -258,7 +254,6 @@ export class MeController {
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         gender: dto.gender,
         bio: dto.bio,
-        ...(typeof dto.isPrivate === 'boolean' ? { isPrivate: dto.isPrivate } : {}),
         ...(onboardingCompletedAt ? { onboardingCompletedAt } : {}),
         ...(weeklyGoalDistanceMeters !== undefined ? { weeklyGoalDistanceMeters } : {}),
       },

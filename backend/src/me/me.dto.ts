@@ -1,14 +1,4 @@
-import {
-  IsBoolean,
-  IsDateString,
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateMeDto {
@@ -38,10 +28,6 @@ export class UpdateMeDto {
   @IsOptional()
   @IsDateString()
   onboardingCompletedAt?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isPrivate?: boolean;
 
   @IsOptional()
   @Type(() => Number)

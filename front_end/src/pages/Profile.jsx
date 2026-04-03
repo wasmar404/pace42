@@ -229,12 +229,7 @@ export default function Profile() {
                     <span className="profile-handle">@{me.profile.username}</span>
                   )}
                   
-                 <div className="profile-badges">
-                   <span className="badge badge-public">
-                     <Zap size={12} />
-                     {me?.profile?.isPrivate ? 'Private' : 'Public'}
-                   </span>
-                 </div>
+                 <div className="profile-badges" />
                 </div>
               </div>
             </div>

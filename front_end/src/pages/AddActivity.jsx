@@ -8,9 +8,6 @@ import {
   Camera, 
   X, 
   ChevronDown, 
-  Globe, 
-  Users, 
-  Lock,
   Zap,
   Trash2,
   Calendar,
@@ -69,12 +66,6 @@ const SPORT_OPTIONS = [
   { value: 'ride', label: 'Cycle', icon: '🚴', color: '#3b82f6' },
 ]
 
-const VISIBILITY_OPTIONS = [
-  { value: 'public', label: 'Everyone', icon: Globe, description: 'Visible to all' },
-  { value: 'followers', label: 'Followers', icon: Users, description: 'Only followers' },
-  { value: 'only_me', label: 'Only me', icon: Lock, description: 'Private' },
-]
-
 export default function AddActivity() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -87,7 +78,6 @@ export default function AddActivity() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [startedAt, setStartedAt] = useState('')
-  const [visibility, setVisibility] = useState('public')
 
   const [hours, setHours] = useState('0')
   const [minutes, setMinutes] = useState('30')
@@ -211,7 +201,6 @@ export default function AddActivity() {
       startedAt: started.toISOString(),
       durationSeconds: dur,
       distanceMeters: meters,
-      visibility,
     }
 
     const res = await createActivity(payload)
@@ -245,7 +234,6 @@ export default function AddActivity() {
       sport,
       title: String(title || '').trim(),
       description,
-      visibility,
     }, {
       onProgress: (p) => setUploadNote(`Uploading GPX ${Math.round(p * 100)}%`),
     })
@@ -287,7 +275,6 @@ export default function AddActivity() {
   }
 
   const selectedSport = SPORT_OPTIONS.find(s => s.value === sport)
-  const selectedVisibility = VISIBILITY_OPTIONS.find(v => v.value === visibility)
 
   return (
     <div className="add-activity">
@@ -525,35 +512,6 @@ export default function AddActivity() {
 
             {/* Right Column - Sidebar */}
             <div className="form-sidebar">
-              {/* Visibility Card */}
-              <section className="sidebar-card">
-                <label className="sidebar-label">Visibility</label>
-                <div className="visibility-options">
-                  {VISIBILITY_OPTIONS.map((option) => {
-                    const Icon = option.icon
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`visibility-option ${visibility === option.value ? 'active' : ''}`}
-                        onClick={() => setVisibility(option.value)}
-                      >
-                        <div className="visibility-icon">
-                          <Icon size={20} />
-                        </div>
-                        <div className="visibility-info">
-                          <span className="visibility-name">{option.label}</span>
-                          <span className="visibility-desc">{option.description}</span>
-                        </div>
-                        <div className="visibility-check">
-                          {visibility === option.value && <Zap size={16} />}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-
               {/* Photos Card */}
               <section className="sidebar-card">
                 <div className="sidebar-header">

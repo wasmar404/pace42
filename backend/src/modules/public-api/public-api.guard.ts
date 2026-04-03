@@ -56,7 +56,6 @@ export class PublicApiGuard implements CanActivate {
     const provided = readApiKey(req);
     if (!provided || provided !== expected) throw new ForbiddenException('Invalid API key');
 
-    // Simple in-memory rate limit (school-project level): per API key + IP.
     const LIMIT = 120;
     const WINDOW_MS = 60_000;
     const ip = readIp(req);
@@ -69,7 +68,6 @@ export class PublicApiGuard implements CanActivate {
       res?.setHeader?.('X-RateLimit-Remaining', String(hit.remaining));
       res?.setHeader?.('X-RateLimit-Reset', String(Math.ceil(hit.resetAt / 1000)));
     } catch {
-      // ignore
     }
 
     if (!hit.ok) throw new HttpException('Rate limit exceeded', 429);

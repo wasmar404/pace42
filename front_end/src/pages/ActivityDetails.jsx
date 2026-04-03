@@ -17,13 +17,6 @@ function formatSport(sport) {
   return sport.charAt(0).toUpperCase() + sport.slice(1)
 }
 
-function formatVisibility(v) {
-  if (v === 'public') return 'Everyone'
-  if (v === 'followers') return 'Followers'
-  if (v === 'only_me') return 'Only me'
-  return v
-}
-
 // Sport emoji accent for the decorative background glyph
 function sportAccent(sport) {
   if (!sport) return '◎'
@@ -129,7 +122,6 @@ export default function ActivityDetails() {
             <Pill>
               <TimeText iso={activity?.startedAt} variant="datetime-long" />
             </Pill>
-            <Pill>{formatVisibility(activity?.visibility)}</Pill>
             {activity?.source ? <Pill>{activity.source}</Pill> : null}
           </div>
         </div>

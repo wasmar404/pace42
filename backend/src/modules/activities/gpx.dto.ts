@@ -12,11 +12,6 @@ export class ImportGpxDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['public', 'followers', 'only_me'])
-  visibility?: string;
-
-  @IsOptional()
-  @IsString()
   @IsIn(['run', 'walk', 'ride'])
   sport?: string;
 }

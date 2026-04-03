@@ -35,7 +35,7 @@ export default function Home() {
       stats: { followersCount: 0, followingCount: 0, totalActivities: 0 },
       recentActivities: [],
       recentPhotos: [],
-      settings: { isPrivate: false },
+      settings: {},
     }
   })
   const [feed, setFeed] = useState([])

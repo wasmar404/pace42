@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, KeyRound, Lock, Mail, Shield, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
+import { AlertTriangle, KeyRound, Lock, Mail, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
@@ -37,7 +37,6 @@ export default function Settings() {
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [isPrivate, setIsPrivate] = useState(false)
 
   const unitsPref = useUnitsValue()
   const [units, setUnitsState] = useState(unitsPref)
@@ -61,7 +60,6 @@ export default function Settings() {
         const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setMe(res)
-        setIsPrivate(safeBool(res?.settings?.isPrivate))
         setNewEmail(res?.user?.email || '')
 
         const goalMeters = Number(res?.profile?.weeklyGoalDistanceMeters || 0)
@@ -222,25 +220,6 @@ export default function Settings() {
     }
   }
 
-  const onTogglePrivacy = async () => {
-    const next = !isPrivate
-    setIsPrivate(next)
-    setNotice('')
-    setError('')
-    try {
-      const res = await backendJson('PUT', '/api/me', { isPrivate: next })
-      const merged = {
-        ...(me || {}),
-        profile: res?.profile || me?.profile,
-        settings: { ...(me?.settings || {}), isPrivate: next },
-      }
-      setMe(merged)
-      setNotice(next ? 'Account is now private.' : 'Account is now public.')
-    } catch (e) {
-      setIsPrivate(!next)
-      setError(e?.message || 'Failed to update privacy')
-    }
-  }
 
   useEffect(() => {
     setUnitsState(unitsPref)
@@ -379,8 +358,7 @@ export default function Settings() {
 
             <div className="settings-nav-links">
               <a href="#profile">Profile</a>
-              <a href="#privacy">Privacy</a>
-              <a href="#email">Email</a>
+                <a href="#email">Email</a>
               <a href="#password">Password</a>
               <a href="#twofa">2FA</a>
               <a href="#prefs">Preferences</a>
@@ -419,32 +397,7 @@ export default function Settings() {
               ) : null}
             </section>
 
-            <section className="settings-card" id="privacy" style={{ '--i': 1 }}>
-              <div className="settings-card-title">
-                <Shield size={18} />
-                <h2>Privacy</h2>
-              </div>
-
-              <div className="settings-row">
-                <div className="settings-row-main">
-                  <div className="settings-row-label">Private account</div>
-                  <div className="settings-row-help">When private, only followers can see your workouts and followers-only content.</div>
-                </div>
-                <div className="settings-row-actions">
-                  <button
-                    className={isPrivate ? 'settings-toggle on' : 'settings-toggle'}
-                    type="button"
-                    onClick={onTogglePrivacy}
-                    disabled={busy || loading}
-                    aria-label={isPrivate ? 'Disable private account' : 'Enable private account'}
-                  >
-                    <span className="dot" />
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section className="settings-card" id="email" style={{ '--i': 2 }}>
+            <section className="settings-card" id="email" style={{ '--i': 1 }}>
               <div className="settings-card-title">
                 <Mail size={18} />
                 <h2>Email</h2>

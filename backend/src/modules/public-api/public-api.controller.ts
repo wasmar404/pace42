@@ -43,14 +43,12 @@ export class PublicApiController {
         firstName: 'Pace42',
         lastName: 'API',
         onboardingCompletedAt: new Date(),
-        isPrivate: true,
       },
       update: {
         username,
         firstName: 'Pace42',
         lastName: 'API',
         onboardingCompletedAt: new Date(),
-        isPrivate: true,
       },
     });
   }
@@ -84,7 +82,7 @@ export class PublicApiController {
       },
       take: limit,
       orderBy: { updatedAt: 'desc' },
-      select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true, isPrivate: true },
+      select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
     });
 
     return {
@@ -94,7 +92,6 @@ export class PublicApiController {
         firstName: u.firstName ?? null,
         lastName: u.lastName ?? null,
         avatarUrl: u.avatarUrl ?? null,
-        isPrivate: Boolean(u.isPrivate ?? false),
       })),
     };
   }
@@ -113,7 +110,6 @@ export class PublicApiController {
 
     const acts = await this.prisma.activity.findMany({
       where: {
-        visibility: 'public',
         ...(since ? { startedAt: { gte: since } } : {}),
       },
       orderBy: { startedAt: 'desc' },
@@ -173,7 +169,6 @@ export class PublicApiController {
     await this.ensureSystemOwnerProfile(ownerId);
 
     const startedAt = this.parseDateOrThrow('startedAt', dto.startedAt);
-    const visibility = dto.visibility ?? 'public';
 
     const activity = await this.prisma.activity.create({
       data: {
@@ -184,7 +179,6 @@ export class PublicApiController {
         startedAt,
         durationSeconds: dto.durationSeconds,
         distanceMeters: dto.distanceMeters,
-        visibility,
         source: 'public_api',
         routePolyline: null,
         mapImageUrl: null,
@@ -197,7 +191,6 @@ export class PublicApiController {
         startedAt: true,
         durationSeconds: true,
         distanceMeters: true,
-        visibility: true,
         source: true,
         createdAt: true,
         updatedAt: true,
@@ -229,7 +222,6 @@ export class PublicApiController {
     if (typeof dto.startedAt === 'string') data.startedAt = this.parseDateOrThrow('startedAt', dto.startedAt);
     if (typeof dto.durationSeconds === 'number') data.durationSeconds = dto.durationSeconds;
     if (typeof dto.distanceMeters === 'number') data.distanceMeters = dto.distanceMeters;
-    if (typeof dto.visibility === 'string') data.visibility = dto.visibility;
 
     const activity = await this.prisma.activity.update({
       where: { id },
@@ -242,7 +234,6 @@ export class PublicApiController {
         startedAt: true,
         durationSeconds: true,
         distanceMeters: true,
-        visibility: true,
         source: true,
         createdAt: true,
         updatedAt: true,

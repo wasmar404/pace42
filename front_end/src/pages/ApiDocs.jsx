@@ -6,19 +6,18 @@ const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 export default function ApiDocs() {
   const authBlock = `x-api-key: <PUBLIC_API_KEY>\n# or\nauthorization: Bearer <PUBLIC_API_KEY>`
   const rateBlock = `X-RateLimit-Limit\nX-RateLimit-Remaining\nX-RateLimit-Reset`
-  const createActivityBody = `{
+const createActivityBody = `{
   "sport": "run",
   "title": "Intervals",
   "description": "8x400m",
   "startedAt": "2026-03-26T10:00:00.000Z",
   "durationSeconds": 1800,
-  "distanceMeters": 5000,
-  "visibility": "public"
+  "distanceMeters": 5000
 }`
 
-  const updateActivityBody = `{
+const updateActivityBody = `{
   "title": "Intervals (updated)",
-  "visibility": "followers"
+  "description": "Updated description"
 }`
 
   const deleteBody = `{

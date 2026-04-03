@@ -19,7 +19,6 @@ model Profile {
   bio                   String?
   onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  isPrivate             Boolean   @default(false) @map("is_private")
   weeklyGoalDistanceMeters Int?   @map("weekly_goal_distance_meters")
 
   @@map("profiles")
@@ -34,7 +33,6 @@ model Activity {
   startedAt       DateTime          @map("started_at") @db.Timestamptz(6)
   durationSeconds Int               @map("duration_seconds")
   distanceMeters  Int               @map("distance_meters")
-  visibility      String
   source          String
   routePolyline   String?           @map("route_polyline")
   mapImageUrl     String?           @map("map_image_url")
@@ -46,7 +44,6 @@ model Activity {
 
   @@index([userId])
   @@index([startedAt])
-  @@index([visibility])
   @@map("activities")
 }
 

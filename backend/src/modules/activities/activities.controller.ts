@@ -35,51 +35,12 @@ export class ActivitiesController {
   ) {}
 
   private async ensureCanViewActivity(params: { viewerId?: string; activityId: string }) {
-    const { viewerId, activityId } = params;
+    const { activityId } = params;
     const activity = await this.prisma.activity.findUnique({
       where: { id: activityId },
-      select: { id: true, userId: true, visibility: true },
+      select: { id: true, userId: true },
     });
     if (!activity) throw new NotFoundException('Activity not found');
-
-    if (activity.userId === viewerId) return activity;
-
-    if (activity.visibility === 'only_me') throw new NotFoundException('Activity not found');
-
-    if (activity.visibility === 'followers') {
-      if (!viewerId) throw new NotFoundException('Activity not found');
-      const follow = await this.prisma.follow.findUnique({
-        where: {
-          followerId_followingId: {
-            followerId: viewerId,
-            followingId: activity.userId,
-          },
-        },
-      });
-      if (!follow) throw new NotFoundException('Activity not found');
-    }
-
-    // visibility public: allow
-    // Account privacy overrides public activities
-    if (activity.visibility === 'public') {
-      const p = await this.prisma.profile.findUnique({
-        where: { userId: activity.userId },
-        select: { isPrivate: true },
-      });
-      if (p?.isPrivate) {
-        if (!viewerId) throw new NotFoundException('Activity not found');
-        const follow = await this.prisma.follow.findUnique({
-          where: {
-            followerId_followingId: {
-              followerId: viewerId,
-              followingId: activity.userId,
-            },
-          },
-        });
-        if (!follow) throw new NotFoundException('Activity not found');
-      }
-    }
-
     return activity;
   }
 
@@ -89,7 +50,6 @@ export class ActivitiesController {
     @CurrentUser() user: { userId: string },
     @Query('q') q?: string,
     @Query('sport') sport?: string,
-    @Query('visibility') visibility?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('minDistanceMeters') minDistanceMeters?: string,
@@ -105,13 +65,9 @@ export class ActivitiesController {
     const query = String(q || '').trim();
     const sportQ0 = String(sport || '').trim().toLowerCase();
     const sportQ = sportQ0 === 'ride' ? 'cycle' : sportQ0;
-    const visQ = String(visibility || '').trim().toLowerCase();
     const src = String(source || 'any').trim().toLowerCase();
     const allowedSource = new Set(['any', 'manual', 'gpx']);
     if (!allowedSource.has(src)) throw new BadRequestException('Invalid source');
-
-    const allowedVisibility = new Set(['any', 'public', 'followers', 'only_me']);
-    if (visQ && !allowedVisibility.has(visQ)) throw new BadRequestException('Invalid visibility');
 
     const allowedSports = new Set(['run', 'walk', 'cycle', 'swim', 'hike', 'yoga']);
     if (sportQ && !allowedSports.has(sportQ)) throw new BadRequestException('Invalid sport');
@@ -150,7 +106,6 @@ export class ActivitiesController {
     const where: any = {
       userId: user.userId,
       ...(sportQ ? { sport: sportQ } : {}),
-      ...(visQ && visQ !== 'any' ? { visibility: visQ } : {}),
       ...(src !== 'any' ? { source: src } : {}),
       ...(query.length >= 2
         ? {
@@ -198,7 +153,6 @@ export class ActivitiesController {
           startedAt: true,
           durationSeconds: true,
           distanceMeters: true,
-          visibility: true,
           source: true,
           mapImageUrl: true,
           createdAt: true,
@@ -239,7 +193,6 @@ export class ActivitiesController {
         startedAt: a.startedAt.toISOString(),
         durationSeconds: a.durationSeconds,
         distanceMeters: a.distanceMeters,
-        visibility: a.visibility,
         source: a.source,
         mapImageUrl: a.mapImageUrl ?? null,
         createdAt: a.createdAt.toISOString(),
@@ -284,13 +237,6 @@ export class ActivitiesController {
     const startedAt = new Date(dto.startedAt);
     this.validateStartedAt(startedAt, 'Invalid startedAt');
 
-    let visibility = dto.visibility ?? 'public';
-    if (!['public', 'followers', 'only_me'].includes(visibility)) visibility = 'public';
-
-    // Account privacy overrides activity visibility.
-    const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });
-    if (p?.isPrivate && visibility === 'public') visibility = 'followers';
-
     const activity = await this.prisma.activity.create({
       data: {
         userId: user.userId,
@@ -300,7 +246,6 @@ export class ActivitiesController {
         startedAt,
         durationSeconds: dto.durationSeconds,
         distanceMeters: dto.distanceMeters,
-        visibility,
         source: 'manual',
       },
     });
@@ -502,59 +447,16 @@ export class ActivitiesController {
         startedAt: true,
         durationSeconds: true,
         distanceMeters: true,
-        visibility: true,
         source: true,
         createdAt: true,
         updatedAt: true,
-        // Potentially large fields.
         routePolyline: wantRoute,
         mapImageUrl: wantRoute,
       },
     });
     if (!activity) throw new NotFoundException('Activity not found');
 
-    if (activity.visibility === 'public') {
-      // Account privacy overrides activity visibility.
-      const viewerId = (req as any)?.user?.userId as string | undefined;
-      if (activity.userId !== viewerId) {
-        const p = await this.prisma.profile.findUnique({ where: { userId: activity.userId }, select: { isPrivate: true } });
-        if (p?.isPrivate) {
-          if (!viewerId) throw new NotFoundException('Activity not found');
-          const follow = await this.prisma.follow.findUnique({
-            where: {
-              followerId_followingId: {
-                followerId: viewerId,
-                followingId: activity.userId,
-              },
-            },
-            select: { followerId: true },
-          });
-          if (!follow) throw new NotFoundException('Activity not found');
-        }
-      }
-
-      return { activity };
-    }
-
-    const viewerId = (req as any)?.user?.userId as string | undefined;
-    if (!viewerId) throw new NotFoundException('Activity not found');
-
-    if (viewerId === activity.userId) return { activity };
-
-    if (activity.visibility === 'followers') {
-      const follow = await this.prisma.follow.findUnique({
-        where: {
-          followerId_followingId: {
-            followerId: viewerId,
-            followingId: activity.userId,
-          },
-        },
-      });
-
-      if (follow) return { activity };
-    }
-
-    throw new NotFoundException('Activity not found');
+    return { activity };
   }
 
   @Delete(':id([0-9a-fA-F-]{36})')
@@ -569,7 +471,6 @@ export class ActivitiesController {
       select: { storageBucket: true, storagePath: true },
     });
 
-    // Best-effort delete from Supabase Storage.
     try {
       const service = getSupabaseAdminClient();
       const byBucket = new Map<string, string[]>();
@@ -583,11 +484,9 @@ export class ActivitiesController {
       }
 
       for (const [bucket, paths] of byBucket.entries()) {
-        // eslint-disable-next-line no-await-in-loop
         await service.storage.from(bucket).remove(paths).catch(() => {});
       }
     } catch {
-      // ignore
     }
 
     await this.prisma.activity.delete({ where: { id } });
@@ -611,12 +510,10 @@ export class ActivitiesController {
     });
     if (!media || media.activityId !== activityId || media.userId !== user.userId) throw new NotFoundException('Media not found');
 
-    // Best-effort delete storage object first.
     try {
       const service = getSupabaseAdminClient();
       await service.storage.from(media.storageBucket).remove([media.storagePath]).catch(() => {});
     } catch {
-      // ignore
     }
 
     await this.prisma.activityMedia.delete({ where: { id: mediaId } });
@@ -702,7 +599,6 @@ export class ActivitiesController {
     const { error: uploadError } = uploadRes;
     if (uploadError) throw new BadRequestException(uploadError.message);
 
-    // Invoke Edge Function if configured.
     const functionName = this.config.get<string>('SUPABASE_IMPORT_GPX_FUNCTION') ?? 'import-gpx';
     const accessToken = (req as any)?.supabaseAuth?.accessToken as string | undefined;
     if (!accessToken) throw new BadRequestException('Missing access token');
@@ -710,11 +606,7 @@ export class ActivitiesController {
     const sport = typeof body?.sport === 'string' ? body.sport : undefined;
     const title = typeof body?.title === 'string' ? String(body.title).trim() : '';
     const description = typeof body?.description === 'string' ? body.description : undefined;
-    const visibility = typeof body?.visibility === 'string' ? body.visibility : undefined;
-
-    const allowedVisibility = new Set(['public', 'followers', 'only_me']);
     const allowedSport = new Set(['run', 'walk', 'ride']);
-    if (visibility && !allowedVisibility.has(visibility)) throw new BadRequestException('Invalid visibility');
     if (sport && !allowedSport.has(sport)) throw new BadRequestException('Invalid sport');
     if (!title) throw new BadRequestException('Title is required');
 
@@ -725,8 +617,6 @@ export class ActivitiesController {
         sport,
         title,
         description,
-        visibility,
-        // Pass user JWT in the body because custom headers may be dropped.
         userJwt: accessToken,
       },
     });
@@ -744,10 +634,6 @@ export class ActivitiesController {
     const startedAt = new Date(parsed.startedAt);
     this.validateStartedAt(startedAt, 'Invalid startedAt from parser');
 
-    let finalVisibility = visibility ?? 'public';
-    const p = await this.prisma.profile.findUnique({ where: { userId: user.userId }, select: { isPrivate: true } });
-    if (p?.isPrivate && finalVisibility === 'public') finalVisibility = 'followers';
-
     const activity = await this.prisma.activity.create({
       data: {
         userId: user.userId,
@@ -757,7 +643,6 @@ export class ActivitiesController {
         startedAt,
         durationSeconds: parsed.durationSeconds,
         distanceMeters: parsed.distanceMeters,
-        visibility: finalVisibility,
         source: 'gpx',
         routePolyline: parsed.polyline ?? null,
       },
