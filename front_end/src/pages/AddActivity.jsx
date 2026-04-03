@@ -146,6 +146,7 @@ export default function AddActivity() {
     }))
   }, [photos])
 
+  //change mode in url 
   const setMode = (next) => {
     params.set('mode', next)
     setParams(params)
@@ -168,6 +169,7 @@ export default function AddActivity() {
     setPhotos((prev) => prev.filter((f) => f.name !== name))
   }
 
+  //handles drag and drop of photos 
   const handleDrop = (e) => {
     e.preventDefault()
     setIsDragging(false)
@@ -177,6 +179,7 @@ export default function AddActivity() {
     }
   }
 
+  //activates drag ui state
   const handleDragOver = (e) => {
     e.preventDefault()
     setIsDragging(true)
@@ -186,6 +189,7 @@ export default function AddActivity() {
     setIsDragging(false)
   }
 
+ //validate inputs and submit the activity to the backend
   const submitManual = async () => {
     if (!String(title || '').trim()) throw new Error('Title is required')
     const dur = toSeconds(hours, minutes, seconds)
@@ -225,6 +229,7 @@ export default function AddActivity() {
     navigate(`/activities/${activityId}`)
   }
 
+  //Main form submit handler
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
     if (gpxFile.size > 20 * 1024 * 1024) throw new Error('GPX must be <= 20MB')
@@ -513,6 +518,8 @@ export default function AddActivity() {
             {/* Right Column - Sidebar */}
             <div className="form-sidebar">
               {/* Photos Card */}
+
+              {/* Visibility Card */}
               <section className="sidebar-card">
                 <div className="sidebar-header">
                   <label className="sidebar-label">Photos</label>

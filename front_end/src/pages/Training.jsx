@@ -11,6 +11,8 @@ import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/form
 import '../styles/Training.css'
 
 function formatWhen(iso) {
+
+      //fetch filtered activities and stats
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return '-'

@@ -79,6 +79,8 @@ export default function Home() {
     async function run() {
       setLoading(true)
       setError('')
+
+      //fetches all data
       try {
         // Fast path: fetch basic profile for immediate UI.
         const meBasic = await backendGet('/api/me').catch(() => null)
@@ -128,6 +130,7 @@ export default function Home() {
     return Math.max(0, Math.min(100, Math.round((d / g) * 100)))
   }, [goals])
 
+//update likes/cpmments
   const onSocialUpdate = (activityId, patch) => {
     setFeed((prev) =>
       (prev || []).map((it) => {
@@ -155,6 +158,7 @@ export default function Home() {
     setSocialTab('comments')
   }
 
+//get the selected activity for the social modal
   const socialItem = useMemo(() => {
     if (!socialId) return null
     return (feed || []).find((it) => it?.type === 'activity' && it?.id === socialId) || null

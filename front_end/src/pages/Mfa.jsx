@@ -34,6 +34,10 @@ export default function Mfa() {
     async function run() {
       setLoading(true)
       setError('')
+
+      //check if user is logged in if not go to login page
+
+    //call sb to verify the code 
       try {
         const { data: s } = await supabase.auth.getSession()
         if (!s.session) {
@@ -41,6 +45,7 @@ export default function Mfa() {
           return
         }
 
+        // check if user passed 2fa already
         const { data: aalRes, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         if (aalErr) throw aalErr
         if (aalRes?.currentLevel === 'aal2') {
@@ -98,6 +103,8 @@ export default function Mfa() {
       setError(msg)
       setCode('')
       // If the challenge expired/was consumed, refresh it so the user can retry.
+
+      // if the challenge expired/was consumed refresh it so the user can retry
       const lower = msg.toLowerCase()
       if (lower.includes('expired') || lower.includes('challenge') || lower.includes('not found')) {
         try {

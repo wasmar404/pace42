@@ -14,6 +14,8 @@ function fmtTime(iso) {
   const t = Date.parse(iso)
   if (!Number.isFinite(t)) return ''
   return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+        // ignore
 }
 
 export default function ChatThread() {
@@ -48,6 +50,7 @@ export default function ChatThread() {
     setScrollTick((x) => x + 1)
   }
 
+  // Fallback polling — skips while a send is in-flight to avoid stomping optimistic messages
   useEffect(() => {
     const el = threadRef.current
     if (!el) return

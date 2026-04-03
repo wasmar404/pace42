@@ -15,6 +15,8 @@ const RouteMap = lazy(() => import('../components/RouteMap'))
 function formatSport(sport) {
   if (!sport) return 'Activity'
   return sport.charAt(0).toUpperCase() + sport.slice(1)
+
+      // ignore
 }
 
 // Sport emoji accent for the decorative background glyph
@@ -42,6 +44,8 @@ export default function ActivityDetails() {
     async function run() {
       setLoading(true)
       setError('')
+
+    //load acctivity from localstorage
       try {
         const res = await getActivity(id, { includeRoute: true })
         if (cancelled) return

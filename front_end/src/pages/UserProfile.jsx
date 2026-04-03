@@ -46,6 +46,8 @@ const SPORT_ICONS = {
   swim: '🏊',
   hike: '🥾',
   yoga: '🧘',
+
+      // ignore
 }
 
 function hash32(str) {
@@ -82,6 +84,8 @@ function pickHero(photos, seedStr) {
 
 
 function formatWhen(iso) {
+
+    //load data from localstorage
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return '-'
@@ -113,6 +117,8 @@ export default function UserProfile() {
   const [followTab, setFollowTab] = useState('followers')
 
   useEffect(() => {
+
+    //fetch data from backend
     let cancelled = false
     async function run() {
       setError('')
@@ -189,6 +195,7 @@ export default function UserProfile() {
     }
   }
 
+ //store recent activities
   const activities = data?.recentActivities || []
 
 

@@ -34,6 +34,8 @@ function hash32(str) {
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i)
     h = Math.imul(h, 16777619)
+
+      // ignore
   }
   return h >>> 0
 }
@@ -63,6 +65,8 @@ function pickHero(photos, seedStr) {
 
 
 function formatWhen(iso) {
+
+    //loads prf data from localstorage
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return '-'
@@ -154,6 +158,7 @@ export default function Profile() {
     return name || p?.username || 'Athlete'
   }, [me])
 
+  //take last 3 acttivities to display
   const recent = activities.slice(0, 3)
 
   const followUser = useMemo(() => {

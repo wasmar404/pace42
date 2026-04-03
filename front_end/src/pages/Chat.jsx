@@ -23,6 +23,7 @@ export default function Chat() {
   const watchedRef = useRef([])
   const debounceRef = useRef(null)
 
+  //rm dup convo
   const itemsUniq = useMemo(() => {
     const seen = new Set()
     const out = []
@@ -35,6 +36,7 @@ export default function Chat() {
     return out
   }, [items])
 
+  //extract user ids from convo
   const conversationOtherIds = useMemo(() => {
     const s = new Set()
     for (const c of itemsUniq) {
@@ -68,6 +70,8 @@ export default function Chat() {
   }
 
   useEffect(() => {
+
+    //loads mutual friends
     let cancelled = false
     async function run() {
       setError('')
@@ -90,6 +94,8 @@ export default function Chat() {
   }, [])
 
   useEffect(() => {
+
+    //wait after typing then search 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       const query = String(q || '').trim()
@@ -127,6 +133,8 @@ export default function Chat() {
   }
 
   useEffect(() => {
+
+    //connects cha to socket
     let s
     let cancelled = false
     void (async () => {
