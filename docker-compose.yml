@@ -356,6 +356,7 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:5173}
       CHOKIDAR_USEPOLLING: "true"
+      PRISMA_DB_PUSH: ${PRISMA_DB_PUSH:-1}
 
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
       DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
