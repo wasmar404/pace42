@@ -124,75 +124,55 @@ export default function ChatThread() {
     }
   }, [id])
 
+  // Effect 1: socket message listeners — depends only on id, no race with convo loading
   useEffect(() => {
     let s
     let cancelled = false
+
+    const onConnect = () => setRt('connected')
+    const onDisconnect = () => setRt('disconnected')
+    const onConnectError = () => setRt('disconnected')
+
+    const onMessageNew = (payload) => {
+      const m = payload?.message
+      if (!m || m.conversationId !== id) return
+      const clientId = payload?.clientId || null
+
+      flushSync(() => {
+        setMessages((prev) => {
+          const next = clientId ? prev.filter((x) => x?.clientId !== clientId) : prev
+          if (m?.id) {
+            if (seenRef.current.has(m.id)) return next
+            seenRef.current.add(m.id)
+          }
+          return [...next, m]
+        })
+      })
+
+      void refreshConvo().catch(() => {})
+      requestScrollToBottom('auto')
+    }
+
+    const onMessageError = (payload) => {
+      if (payload?.conversationId !== id) return
+      const clientId = payload?.clientId || null
+      if (clientId) {
+        setMessages((prev) => prev.filter((x) => x?.clientId !== clientId))
+      }
+      setError(payload?.error || 'Failed to send')
+    }
+
     void (async () => {
       try {
         s = await getChatSocket()
+        if (cancelled) return
         setRt(s.connected ? 'connected' : 'connecting')
-
-        const watch = () => {
-          if (other?.id) s.emit('presence:watch', { userIds: [other.id] })
-        }
-
-        s.on('connect', () => {
-          setRt('connected')
-          watch()
-        })
-        s.on('disconnect', () => setRt('disconnected'))
-        s.on('connect_error', () => setRt('disconnected'))
-
-        const onPresence = (p) => {
-          const oid = other?.id
-          if (!oid) return
-          if (p?.userId !== oid) return
-          setPresence({ online: p?.online === true, lastSeenAt: p?.lastSeenAt || null })
-        }
-        const onPresenceState = (payload) => {
-          const oid = other?.id
-          if (!oid) return
-          const items = payload?.items
-          if (!Array.isArray(items)) return
-          const it = items.find((x) => x?.userId === oid)
-          if (!it) return
-          setPresence({ online: it?.online === true, lastSeenAt: it?.lastSeenAt || null })
-        }
-
-        s.on('presence:update', onPresence)
-        s.on('presence:state', onPresenceState)
-        watch()
-
+        s.on('connect', onConnect)
+        s.on('disconnect', onDisconnect)
+        s.on('connect_error', onConnectError)
+        s.on('message:new', onMessageNew)
+        s.on('message:error', onMessageError)
         s.emit('conversation:join', { conversationId: id })
-
-        s.on('message:new', (payload) => {
-          const m = payload?.message
-          if (!m || m.conversationId !== id) return
-          const clientId = payload?.clientId || null
-
-          flushSync(() => {
-            setMessages((prev) => {
-              const next = clientId ? prev.filter((x) => x?.clientId !== clientId) : prev
-              if (m?.id) {
-                if (seenRef.current.has(m.id)) return next
-                seenRef.current.add(m.id)
-              }
-              return [...next, m]
-            })
-          })
-
-          void refreshConvo().catch(() => {})
-          requestScrollToBottom('auto')
-        })
-
-        s.on('message:error', (payload) => {
-          if (payload?.conversationId !== id) return
-          const clientId = payload?.clientId || null
-          if (clientId) {
-            setMessages((prev) => prev.filter((x) => x?.clientId !== clientId))
-          }
-          setError(payload?.error || 'Failed to send')
-        })
       } catch {
         setRt('disconnected')
       }
@@ -201,16 +181,56 @@ export default function ChatThread() {
     return () => {
       cancelled = true
       try {
-        s?.off('message:new')
-        s?.off('message:error')
-        s?.off('presence:update')
-        s?.off('presence:state')
-        s?.off('connect')
-        s?.off('disconnect')
-        s?.off('connect_error')
-      } catch {
-      }
-      if (cancelled) {}
+        s?.off('connect', onConnect)
+        s?.off('disconnect', onDisconnect)
+        s?.off('connect_error', onConnectError)
+        s?.off('message:new', onMessageNew)
+        s?.off('message:error', onMessageError)
+      } catch { }
+    }
+  }, [id])
+
+  // Effect 2: presence watching — runs separately so message listeners aren't disrupted when convo loads
+  useEffect(() => {
+    let s
+    let cancelled = false
+
+    const onPresence = (p) => {
+      const oid = other?.id
+      if (!oid || p?.userId !== oid) return
+      setPresence({ online: p?.online === true, lastSeenAt: p?.lastSeenAt || null })
+    }
+    const onPresenceState = (payload) => {
+      const oid = other?.id
+      if (!oid) return
+      const items = payload?.items
+      if (!Array.isArray(items)) return
+      const it = items.find((x) => x?.userId === oid)
+      if (!it) return
+      setPresence({ online: it?.online === true, lastSeenAt: it?.lastSeenAt || null })
+    }
+    const onConnect = () => {
+      if (other?.id) s?.emit('presence:watch', { userIds: [other.id] })
+    }
+
+    void (async () => {
+      try {
+        s = await getChatSocket()
+        if (cancelled) return
+        s.on('presence:update', onPresence)
+        s.on('presence:state', onPresenceState)
+        s.on('connect', onConnect)
+        if (other?.id) s.emit('presence:watch', { userIds: [other.id] })
+      } catch { }
+    })()
+
+    return () => {
+      cancelled = true
+      try {
+        s?.off('presence:update', onPresence)
+        s?.off('presence:state', onPresenceState)
+        s?.off('connect', onConnect)
+      } catch { }
     }
   }, [id, other?.id])
 

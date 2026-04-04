@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -19,8 +20,35 @@ import ApiDocs from "./pages/ApiDocs";
 import Training from "./pages/Training";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import { supabase } from "./supabaseClient";
+import { getChatSocket, disconnectChatSocket } from "./chat/socket";
 
 function App() {
+  useEffect(() => {
+    let connected = false
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && !connected) {
+        connected = true
+        void getChatSocket().catch(() => {})
+      } else if (!session && connected) {
+        connected = false
+        disconnectChatSocket()
+      }
+    })
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session && !connected) {
+        connected = true
+        void getChatSocket().catch(() => {})
+      }
+    }).catch(() => {})
+
+    return () => {
+      sub?.subscription?.unsubscribe()
+    }
+  }, [])
+
   return (
     <Router>
       <Routes>

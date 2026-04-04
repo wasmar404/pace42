@@ -27,13 +27,12 @@ export default function NavBar() {
   useEffect(() => {
     let cancelled = false
 
-    // Set a stable seed as early as possible from the auth session.
-    void supabase.auth.getSession().then(({ data }) => {
-      const id = data?.session?.user?.id
-      if (!id || cancelled) return
-      setAvatarSeed(id)
-      writeAvatarSeed(id)
-    }).catch(() => {})
+    // Set a stable seed from localStorage (sync, no network call needed).
+    const cached = readSupabaseSessionUserSync()
+    if (cached?.id) {
+      setAvatarSeed(cached.id)
+      writeAvatarSeed(cached.id)
+    }
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const id = session?.user?.id
@@ -43,7 +42,10 @@ export default function NavBar() {
       writeAvatarSeed(id)
     })
 
+    // Only hit the backend if we don't already have a cached avatar URL.
     async function loadMe() {
+      const cachedUrl = readAvatarUrl()
+      if (cachedUrl) return
       try {
         const res = await backendGet('/api/me')
         if (cancelled) return

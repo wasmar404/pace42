@@ -1,28 +1,376 @@
 services:
+  # -------------------------
+  # Supabase (self-hosted)
+  # -------------------------
+  db:
+    image: supabase/postgres:15.8.1.085
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+    command: [
+      "postgres",
+      "-c",
+      "config_file=/etc/postgresql/postgresql.conf",
+      "-c",
+      "log_min_messages=fatal"
+    ]
+    ports:
+      - "54322:5432"
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+      - supabase_db_config:/etc/postgresql-custom
+
+  db-init:
+    build:
+      context: ./supabase/db-init
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: supabase_admin
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDB: ${POSTGRES_DB:-postgres}
+      JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+
+  analytics:
+    image: supabase/logflare:1.31.2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:4000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: supabase_admin
+      DB_DATABASE: _supabase
+      DB_HOSTNAME: db
+      DB_PORT: 5432
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_SCHEMA: _analytics
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN:-logflare_public_token}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN:-logflare_private_token}
+      LOGFLARE_SINGLE_TENANT: true
+      LOGFLARE_SUPABASE_MODE: true
+      POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/_supabase
+      POSTGRES_BACKEND_SCHEMA: _analytics
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
+
+  meta:
+    image: supabase/postgres-meta:v0.95.2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      CRYPTO_KEY: ${PG_META_CRYPTO_KEY:-pace42_pg_meta_crypto_key_change_me}
+
+  rest:
+    image: postgrest/postgrest:v14.6
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public}
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    command: ["postgrest"]
+
+  auth:
+    image: supabase/gotrue:v2.186.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${SUPABASE_PUBLIC_URL:-http://10.11.4.6:54321}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+
+      GOTRUE_SITE_URL: ${SITE_URL:-http://10.11.4.6:5173}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-http://localhost:5173,http://127.0.0.1:5173,http://10.11.4.6:5173}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-false}
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: ${DOUBLE_CONFIRM_CHANGES:-true}
+      GOTRUE_SMTP_MAX_FREQUENCY: ${SMTP_MAX_FREQUENCY:-0s}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-465}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Pace 42}
+
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${SUPABASE_PUBLIC_URL:-http://10.11.4.6:54321}/auth/v1/callback
+
+      GOTRUE_MFA_MAX_ENROLLED_FACTORS: ${MFA_MAX_ENROLLED_FACTORS:-10}
+      GOTRUE_MFA_TOTP_ENROLL_ENABLED: ${MFA_TOTP_ENROLL_ENABLED:-true}
+      GOTRUE_MFA_TOTP_VERIFY_ENABLED: ${MFA_TOTP_VERIFY_ENABLED:-true}
+      GOTRUE_MFA_PHONE_ENROLL_ENABLED: ${MFA_PHONE_ENROLL_ENABLED:-false}
+      GOTRUE_MFA_PHONE_VERIFY_ENABLED: ${MFA_PHONE_VERIFY_ENABLED:-false}
+
+  realtime:
+    container_name: realtime-dev.supabase-realtime
+    image: supabase/realtime:v2.76.5
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-postgres}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-pace42_realtime_secret_key_base_change_me}
+      METRICS_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+
+  imgproxy:
+    image: darthsim/imgproxy:v3.30.1
+    restart: unless-stopped
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_AUTO_WEBP: ${IMGPROXY_AUTO_WEBP:-true}
+      IMGPROXY_MAX_SRC_RESOLUTION: 16.8
+    volumes:
+      - supabase_storage:/var/lib/storage
+
+  storage:
+    image: supabase/storage-api:v1.44.2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      rest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://10.11.4.6:54321}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:-stub}
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: ${STORAGE_TENANT_ID:-stub}
+      REGION: ${REGION:-local}
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    volumes:
+      - supabase_storage:/var/lib/storage
+
+  buckets-init:
+    build:
+      context: ./supabase/db-init
+    restart: on-failure
+    depends_on:
+      storage:
+        condition: service_healthy
+    entrypoint: ["/buckets-init.sh"]
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: supabase_admin
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDB: ${POSTGRES_DB:-postgres}
+      SUPABASE_AVATARS_BUCKET: ${SUPABASE_AVATARS_BUCKET:-test}
+      SUPABASE_ACTIVITY_MEDIA_BUCKET: ${SUPABASE_ACTIVITY_MEDIA_BUCKET:-activity-media}
+      SUPABASE_GPX_BUCKET: ${SUPABASE_GPX_BUCKET:-gpx}
+
+  functions:
+    image: supabase/edge-runtime:v1.71.2
+    restart: unless-stopped
+    depends_on:
+      kong:
+        condition: service_healthy
+    environment:
+      JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://10.11.4.6:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      VERIFY_JWT: ${FUNCTIONS_VERIFY_JWT:-false}
+    volumes:
+      - ./supabase/volumes/functions:/home/deno/functions:ro
+      - supabase_deno_cache:/root/.cache/deno
+    command: ["start", "--main-service", "/home/deno/functions/main"]
+
+  studio:
+    image: supabase/studio:2026.03.16-sha-5528817
+    restart: unless-stopped
+    depends_on:
+      analytics:
+        condition: service_healthy
+    environment:
+      HOSTNAME: "::"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY:-pace42_pg_meta_crypto_key_change_me}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-Pace42}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT:-pace42-local}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://10.11.4.6:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      AUTH_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN:-logflare_public_token}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN:-logflare_private_token}
+      LOGFLARE_URL: http://analytics:4000
+      NEXT_PUBLIC_ENABLE_LOGS: true
+      NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
+      SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
+      EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
+    volumes:
+      - ./supabase/volumes/functions:/app/edge-functions:ro
+      - ./supabase/volumes/snippets:/app/snippets
+    ports:
+      - "54323:3000"
+
+  kong:
+    build:
+      context: ./supabase/kong-build
+    restart: unless-stopped
+    depends_on:
+      studio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "54321:8000"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function
+      KONG_PROXY_ACCESS_LOG: /dev/stdout combined
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-admin}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-admin}
+
+  # -------------------------
+  # pace42 app
+  # -------------------------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      kong:
+        condition: service_healthy
     environment:
       PORT: ${PORT:-3004}
       NODE_ENV: ${NODE_ENV:-development}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://10.11.4.6:5173}
       CHOKIDAR_USEPOLLING: "true"
 
-      DATABASE_URL: ${DATABASE_URL}
-      DIRECT_URL: ${DIRECT_URL}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
 
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://10.11.4.6:54321}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      SUPABASE_HTTP_TIMEOUT_MS: ${SUPABASE_HTTP_TIMEOUT_MS:-60000}
 
       SUPABASE_AVATARS_BUCKET: ${SUPABASE_AVATARS_BUCKET:-test}
       SUPABASE_ACTIVITY_MEDIA_BUCKET: ${SUPABASE_ACTIVITY_MEDIA_BUCKET:-activity-media}
       SUPABASE_GPX_BUCKET: ${SUPABASE_GPX_BUCKET:-gpx}
       SUPABASE_IMPORT_GPX_FUNCTION: ${SUPABASE_IMPORT_GPX_FUNCTION:-import-gpx}
-      SUPABASE_HTTP_TIMEOUT_MS: ${SUPABASE_HTTP_TIMEOUT_MS:-60000}
 
       PUBLIC_API_KEY: ${PUBLIC_API_KEY:-dev_public_api_key_change_me}
     ports:
@@ -40,9 +388,9 @@ services:
       - backend
     environment:
       CHOKIDAR_USEPOLLING: "true"
-      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3004}
-      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://10.11.4.6:3004}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://10.11.4.6:54321}
+      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY}}
     ports:
       - "5173:5173"
     volumes:
@@ -50,5 +398,9 @@ services:
       - frontend_node_modules:/app/node_modules
 
 volumes:
+  supabase_db_data:
+  supabase_db_config:
+  supabase_storage:
+  supabase_deno_cache:
   backend_node_modules:
   frontend_node_modules:

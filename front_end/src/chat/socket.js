@@ -8,12 +8,12 @@ const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 let socket = null
 
 export async function getChatSocket() {
-  let token = ''
-  try {
-    const { data } = await supabase.auth.getSession()
-    token = data.session?.access_token || ''
-  } catch {
-    token = readSupabaseAccessTokenSync()
+  let token = readSupabaseAccessTokenSync()
+  if (!token) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      token = data.session?.access_token || ''
+    } catch { }
   }
   if (!token) throw new Error('Not authenticated')
 

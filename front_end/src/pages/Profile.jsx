@@ -109,13 +109,6 @@ export default function Profile() {
       setError('')
       setLoading(true)
       try {
-        // Fast path: fetch minimal profile first to render the card immediately.
-        const basic = await backendGet('/api/me').catch(() => null)
-        if (!cancelled && basic) {
-          setMe({ user: basic?.user, profile: basic?.profile })
-        }
-
-        // Full summary for counts, recent photos, and recent activities.
         const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setMe({ user: res?.user, profile: res?.profile })

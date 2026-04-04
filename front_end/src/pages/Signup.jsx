@@ -26,8 +26,7 @@ export default function Signup() {
                 email,
                 password,
                 options: {
-                    // If email confirmations are enabled, Supabase will send a link.
-                    emailRedirectTo: `${window.location.origin}/login`,
+                    emailRedirectTo: `${window.location.origin}/auth/callback?method=email&mode=signup&next=/personal-info`,
                 },
             });
             if (signUpError) throw signUpError;

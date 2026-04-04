@@ -39,24 +39,6 @@ export class MeController {
   private async ensureProfile(userId: string) {
     const profile = await this.prisma.profile.findUnique({ where: { userId } });
     if (profile) {
-
-      // Backfill: if avatarUrl was never set, generate the default avatar once.
-      if (!profile.avatarUrl) {
-        const nextUrl = await this.trySetDefaultAvatar({ userId: profile.userId }).catch(() => null);
-        if (nextUrl) {
-          const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
-          return refreshed ?? profile;
-        }
-      }
-
-      if (profile.avatarUrl && String(profile.avatarUrl).includes('/default.svg')) {
-        const migrated = await this.tryMigrateLegacyDefaultAvatar({ userId: profile.userId }).catch(() => null);
-        if (migrated) {
-          const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
-          return refreshed ?? profile;
-        }
-      }
-
       return profile;
     }
 
@@ -64,16 +46,13 @@ export class MeController {
     const username = `athlete_${suffix}`;
 
     const created = await this.prisma.profile.create({
-      data: {
-        userId,
-        username,
-      },
+      data: { userId, username },
     });
 
-    const nextUrl = await this.trySetDefaultAvatar({ userId });
-    if (!nextUrl) return created;
-    const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
-    return refreshed ?? created;
+    // Fire avatar upload in background — don't block the response.
+    void this.trySetDefaultAvatar({ userId }).catch(() => {});
+
+    return created;
   }
 
   private avatarBucket() {
@@ -206,7 +185,7 @@ export class MeController {
 
     const [recentActivities, last4WeeksCount, totalActivities, recentPhotos, followersCount, followingCount] =
       await Promise.all([
-        this.getActivities(user.userId, { take: 2 }),
+        this.getActivities(user.userId, { take: 3 }),
         this.countActivities(user.userId, since4w),
         this.countActivities(user.userId),
 

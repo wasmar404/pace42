@@ -6,7 +6,6 @@ import {
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
-import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getHomeFeed, getRecommendedUsers } from '../api/home'
@@ -57,16 +56,11 @@ export default function Home() {
   }, [meId, seedFallback])
 
   useEffect(() => {
-    let cancelled = false
-    void supabase.auth.getSession().then(({ data }) => {
-      const id = data?.session?.user?.id
-      if (!id || cancelled) return
-      setSeedFallback(id)
-      writeAvatarSeed(id)
-    }).catch(() => {})
-
-    return () => {
-      cancelled = true
+    // Sync read from localStorage — no network call needed.
+    const cached = readSupabaseSessionUserSync()
+    if (cached?.id) {
+      setSeedFallback(cached.id)
+      writeAvatarSeed(cached.id)
     }
   }, [])
 

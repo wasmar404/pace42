@@ -134,45 +134,46 @@ export default function Chat() {
 
   useEffect(() => {
 
-    //connects cha to socket
+    //connects chat to socket
     let s
     let cancelled = false
+
+    const emitWatch = () => {
+      const ids = watchedRef.current || []
+      if (ids.length) s?.emit('presence:watch', { userIds: ids })
+    }
+    const onPresence = (p) => {
+      const id = p?.userId
+      if (!id) return
+      setPresence((prev) => ({
+        ...(prev || {}),
+        [id]: { online: p?.online === true, lastSeenAt: p?.lastSeenAt || null },
+      }))
+    }
+    const onPresenceState = (payload) => {
+      const items = payload?.items || []
+      if (!Array.isArray(items)) return
+      setPresence((prev) => {
+        const next = { ...(prev || {}) }
+        for (const it of items) {
+          if (!it?.userId) continue
+          next[it.userId] = { online: it?.online === true, lastSeenAt: it?.lastSeenAt || null }
+        }
+        return next
+      })
+    }
+    const onMessageNew = () => {
+      void refresh().catch(() => {})
+    }
+
     void (async () => {
       try {
         s = await getChatSocket()
-        const emitWatch = () => {
-          const ids = watchedRef.current || []
-          if (ids.length) s.emit('presence:watch', { userIds: ids })
-        }
-        const onPresence = (p) => {
-          const id = p?.userId
-          if (!id) return
-          setPresence((prev) => ({
-            ...(prev || {}),
-            [id]: { online: p?.online === true, lastSeenAt: p?.lastSeenAt || null },
-          }))
-        }
-
-        const onPresenceState = (payload) => {
-          const items = payload?.items || []
-          if (!Array.isArray(items)) return
-          setPresence((prev) => {
-            const next = { ...(prev || {}) }
-            for (const it of items) {
-              if (!it?.userId) continue
-              next[it.userId] = { online: it?.online === true, lastSeenAt: it?.lastSeenAt || null }
-            }
-            return next
-          })
-        }
-
+        if (cancelled) return
         s.on('presence:update', onPresence)
         s.on('presence:state', onPresenceState)
         s.on('connect', emitWatch)
-        s.on('message:new', () => {
-          void refresh().catch(() => {})
-        })
-
+        s.on('message:new', onMessageNew)
         s.emit('presence:watch', { userIds: [] })
       } catch {
       }
@@ -181,13 +182,12 @@ export default function Chat() {
     return () => {
       cancelled = true
       try {
-        s?.off('message:new')
-        s?.off('presence:update')
-        s?.off('presence:state')
-        s?.off('connect')
+        s?.off('message:new', onMessageNew)
+        s?.off('presence:update', onPresence)
+        s?.off('presence:state', onPresenceState)
+        s?.off('connect', emitWatch)
       } catch {
       }
-      if (cancelled) {}
     }
   }, [])
 
