@@ -8,11 +8,13 @@ export default function Signup() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
     const [loading, setLoading] = useState(false);
 
     const onSignup = async (e) => {
         e.preventDefault();
         setError("");
+        setNotice("");
         setLoading(true);
         try {
             if (String(password || '').length < 8) {
@@ -23,6 +25,10 @@ export default function Signup() {
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    // If email confirmations are enabled, Supabase will send a link.
+                    emailRedirectTo: `${window.location.origin}/login`,
+                },
             });
             if (signUpError) throw signUpError;
 
@@ -31,19 +37,15 @@ export default function Signup() {
                 return
             }
 
-            // If email confirmations are enabled (or user is still unconfirmed),
-            // signUp may not return a session. Try to sign in immediately.
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            })
-            if (signInError) throw signInError
-
-            navigate("/personal-info", { replace: true });
+            // Don't attempt a password login here. If confirmations are enabled,
+            // the token request will fail and spam the console.
+            setNotice('Account created. If Supabase requires email confirmation, check your inbox then log in.')
         } catch (err) {
             const msg = err?.message || "Signup failed"
             if (String(msg).toLowerCase().includes('email not confirmed')) {
                 setError('Email not confirmed in Supabase. Delete/confirm the user in Supabase Auth users, then sign up again.')
+            } else if (String(msg).toLowerCase().includes('user already registered') || String(msg).toLowerCase().includes('already registered')) {
+                setError('Account already exists. Please log in instead.')
             } else {
                 setError(msg)
             }
@@ -120,6 +122,7 @@ export default function Signup() {
                         autoComplete="new-password"
                     />
                     {error ? <p className="terms dark-text">{error}</p> : null}
+                    {notice ? <p className="terms dark-text">{notice}</p> : null}
                     <button className="sign-button full" type="submit" disabled={loading}>
                         {loading ? "Signing up..." : "Sign Up"}
                     </button>

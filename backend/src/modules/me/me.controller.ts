@@ -40,14 +40,23 @@ export class MeController {
     const profile = await this.prisma.profile.findUnique({ where: { userId } });
     if (profile) {
 
-       // Backfill: if avatarUrl was never set, generate the default avatar once.
-       if (!profile.avatarUrl) {
-         await this.trySetDefaultAvatar({ userId: profile.userId }).catch(() => {});
-       }
+      // Backfill: if avatarUrl was never set, generate the default avatar once.
+      if (!profile.avatarUrl) {
+        const nextUrl = await this.trySetDefaultAvatar({ userId: profile.userId }).catch(() => null);
+        if (nextUrl) {
+          const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
+          return refreshed ?? profile;
+        }
+      }
 
       if (profile.avatarUrl && String(profile.avatarUrl).includes('/default.svg')) {
-        await this.tryMigrateLegacyDefaultAvatar({ userId: profile.userId }).catch(() => {});
+        const migrated = await this.tryMigrateLegacyDefaultAvatar({ userId: profile.userId }).catch(() => null);
+        if (migrated) {
+          const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
+          return refreshed ?? profile;
+        }
       }
+
       return profile;
     }
 
@@ -92,14 +101,26 @@ export class MeController {
         contentType: 'image/svg+xml',
         upsert: true,
       });
-      if (uploadError) return null;
+      if (uploadError) {
+        // eslint-disable-next-line no-console
+        console.warn('[avatar] upload failed', {
+          bucket,
+          objectPath,
+          message: (uploadError as any)?.message,
+        });
+        return null;
+      }
 
       const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
       const avatarUrl = toPublicUrl(publicData.publicUrl);
 
       await this.prisma.profile.update({ where: { userId: input.userId }, data: { avatarUrl } });
       return avatarUrl;
-    } catch {
+    } catch (e: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[avatar] exception while setting default', {
+        message: e?.message,
+      });
       return null;
     }
   }
