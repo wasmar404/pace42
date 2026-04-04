@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { readSupabaseAccessTokenSync } from './utils/avatarCache'
+import { readSupabaseAccessTokenForStorageKeySync, readSupabaseAccessTokenSync } from './utils/avatarCache'
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 
@@ -32,7 +32,8 @@ async function authHeader() {
     const { data } = await supabase.auth.getSession()
     token = data.session?.access_token || ''
   } catch {
-    token = readSupabaseAccessTokenSync()
+    const key = supabase?.auth?.storageKey
+    token = key ? readSupabaseAccessTokenForStorageKeySync(key) : readSupabaseAccessTokenSync()
   }
   if (!token) throw new Error('Not authenticated')
   return { Authorization: `Bearer ${token}` }
@@ -44,7 +45,8 @@ async function optionalAuthHeader() {
     const { data } = await supabase.auth.getSession()
     token = data.session?.access_token || ''
   } catch {
-    token = readSupabaseAccessTokenSync()
+    const key = supabase?.auth?.storageKey
+    token = key ? readSupabaseAccessTokenForStorageKeySync(key) : readSupabaseAccessTokenSync()
   }
   return token ? { Authorization: `Bearer ${token}` } : {}
 }

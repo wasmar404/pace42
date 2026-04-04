@@ -1,19 +1,27 @@
 import { io } from 'socket.io-client'
 
 import { supabase } from '../supabaseClient'
-import { readSupabaseAccessTokenSync } from '../utils/avatarCache'
+import { readSupabaseAccessTokenForStorageKeySync, readSupabaseAccessTokenSync } from '../utils/avatarCache'
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 
 let socket = null
+let lastToken = ''
+
+function readTokenFast() {
+  const key = supabase?.auth?.storageKey
+  const t = key ? readSupabaseAccessTokenForStorageKeySync(key) : readSupabaseAccessTokenSync()
+  return t && String(t).trim() ? String(t).trim() : ''
+}
 
 export async function getChatSocket() {
-  let token = readSupabaseAccessTokenSync()
-  if (!token) {
-    try {
-      const { data } = await supabase.auth.getSession()
-      token = data.session?.access_token || ''
-    } catch { }
+  let token = ''
+  // Prefer Supabase session (fresh token); fall back to localStorage only if auth APIs are flaky.
+  try {
+    const { data } = await supabase.auth.getSession()
+    token = data.session?.access_token || ''
+  } catch {
+    token = readTokenFast()
   }
   if (!token) throw new Error('Not authenticated')
 
@@ -25,11 +33,29 @@ export async function getChatSocket() {
       reconnectionDelay: 400,
       reconnectionDelayMax: 3000,
     })
+    // Keep auth fresh for reconnect attempts (auth is only sent on handshake).
+    try {
+      socket.io.on('reconnect_attempt', () => {
+        const t = readTokenFast()
+        if (!t) return
+        socket.auth = { token: t }
+        lastToken = t
+      })
+    } catch {
+    }
+    lastToken = token
     return socket
   }
 
   try {
+    // Socket.io only sends `auth` during the connect handshake.
+    // If the token changes (login as another user, token refresh), force a reconnect.
+    const tokenChanged = token && token !== lastToken
     socket.auth = { token }
+    lastToken = token
+    if (tokenChanged && socket.connected) {
+      socket.disconnect()
+    }
     if (!socket.connected) socket.connect()
   } catch {
   }

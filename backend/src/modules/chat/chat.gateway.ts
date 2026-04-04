@@ -7,6 +7,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Server, Socket } from 'socket.io';
 
@@ -31,6 +32,8 @@ type Presence = {
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+
+  private readonly logger = new Logger(ChatGateway.name);
 
   constructor(
     private readonly config: ConfigService,
@@ -120,7 +123,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await client.join(`u:${userId}`);
       client.emit('ready', { userId });
       this.setOnline(userId, client.id);
-    } catch {
+    } catch (e) {
       client.disconnect(true);
     }
   }
@@ -185,8 +188,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const res = await this.chat.sendMessage(userId, conversationId, text, clientId);
       const payload = { message: res.message, clientId: res.clientId ?? null };
+
+      // Emit redundantly: direct socket + per-user room + tracked socket id.
+      // This keeps delivery reliable across reconnects and room join timing.
+      client.emit('message:new', payload);
       this.server.to(`u:${userId}`).emit('message:new', payload);
+
+      // Also emit to the conversation room for any open thread views.
+      this.server.to(`c:${conversationId}`).emit('message:new', payload);
+
       this.server.to(`u:${res.otherUserId}`).emit('message:new', payload);
+      const otherSocketId = this.onlineSocketByUser.get(res.otherUserId);
+      if (otherSocketId) this.server.to(otherSocketId).emit('message:new', payload);
+
       return payload;
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to send';

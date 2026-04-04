@@ -14,8 +14,6 @@ function fmtTime(iso) {
   const t = Date.parse(iso)
   if (!Number.isFinite(t)) return ''
   return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-
-        // ignore
 }
 
 export default function ChatThread() {
@@ -50,7 +48,6 @@ export default function ChatThread() {
     setScrollTick((x) => x + 1)
   }
 
-  // Fallback polling — skips while a send is in-flight to avoid stomping optimistic messages
   useEffect(() => {
     const el = threadRef.current
     if (!el) return
@@ -105,6 +102,7 @@ export default function ChatThread() {
     async function run() {
       setError('')
       setLoading(true)
+      seenRef.current.clear()
       try {
         await refreshConvo()
         const res = await getMessages(id, { limit: 80 })
@@ -129,7 +127,13 @@ export default function ChatThread() {
     let s
     let cancelled = false
 
-    const onConnect = () => setRt('connected')
+    const onConnect = () => {
+      setRt('connected')
+      try {
+        s?.emit('conversation:join', { conversationId: id })
+      } catch {
+      }
+    }
     const onDisconnect = () => setRt('disconnected')
     const onConnectError = () => setRt('disconnected')
 
@@ -142,8 +146,8 @@ export default function ChatThread() {
         setMessages((prev) => {
           const next = clientId ? prev.filter((x) => x?.clientId !== clientId) : prev
           if (m?.id) {
-            if (seenRef.current.has(m.id)) return next
-            seenRef.current.add(m.id)
+            const alreadyExists = next.some((msg) => msg?.id === m.id)
+            if (alreadyExists) return next
           }
           return [...next, m]
         })
@@ -167,11 +171,20 @@ export default function ChatThread() {
         s = await getChatSocket()
         if (cancelled) return
         setRt(s.connected ? 'connected' : 'connecting')
+
+        // Remove old listeners to prevent stale closures with old 'id' values
+        s.removeAllListeners('connect')
+        s.removeAllListeners('disconnect')
+        s.removeAllListeners('connect_error')
+        s.removeAllListeners('message:new')
+        s.removeAllListeners('message:error')
+
         s.on('connect', onConnect)
         s.on('disconnect', onDisconnect)
         s.on('connect_error', onConnectError)
         s.on('message:new', onMessageNew)
         s.on('message:error', onMessageError)
+
         s.emit('conversation:join', { conversationId: id })
       } catch {
         setRt('disconnected')
@@ -180,13 +193,7 @@ export default function ChatThread() {
 
     return () => {
       cancelled = true
-      try {
-        s?.off('connect', onConnect)
-        s?.off('disconnect', onDisconnect)
-        s?.off('connect_error', onConnectError)
-        s?.off('message:new', onMessageNew)
-        s?.off('message:error', onMessageError)
-      } catch { }
+      // Cleanup is handled by removeAllListeners in the next effect run
     }
   }, [id])
 
@@ -266,11 +273,34 @@ export default function ChatThread() {
       requestScrollToBottom('auto')
 
       const s = await getChatSocket()
-      // Fire-and-forget. Server will broadcast `message:new` (and `message:error` on failure).
-      s.emit('message:send', { conversationId: id, text: t, clientId })
+      // Emit via sockets. If we get an ACK, we replace the optimistic message immediately.
+      // If the ACK is missed, the server will still broadcast `message:new` to reconcile.
+      let resp = null
+      try {
+        resp = await new Promise((resolve, reject) => {
+          s.timeout(8000).emit('message:send', { conversationId: id, text: t, clientId }, (err, r) => {
+            if (err) return reject(err)
+            resolve(r)
+          })
+        })
+      } catch {
+        resp = null
+      }
+
+      const m = resp?.message
+      if (resp?.error) throw new Error(resp.error)
+      if (m) {
+        flushSync(() => {
+          setMessages((prev) => {
+            const next = prev.filter((x) => x?.clientId !== clientId)
+            const alreadyExists = next.some((msg) => msg?.id === m.id)
+            if (alreadyExists) return next
+            return [...next, m]
+          })
+        })
+      }
       void refreshConvo().catch(() => {})
     } catch (e) {
-      setMessages((prev) => prev.filter((x) => x?.clientId !== clientId))
       setError(e?.message || 'Failed to send')
     } finally {
       setSending(false)
@@ -317,6 +347,7 @@ export default function ChatThread() {
           <div className={hasAlert ? 'thread-alerts on' : 'thread-alerts'} aria-live="polite">
             {loading ? <div className="chat-banner">Loading...</div> : null}
             {error ? <div className="chat-banner err">{error}</div> : null}
+            {rt !== 'connected' ? <div className="chat-banner">Realtime: {rt}</div> : null}
           </div>
 
           <section className="thread" aria-label="Messages" ref={threadRef}>

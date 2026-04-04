@@ -26,6 +26,23 @@ export function readSupabaseSessionUserSync() {
   return null
 }
 
+export function readSupabaseSessionUserForStorageKeySync(storageKey) {
+  try {
+    const k = String(storageKey || '').trim()
+    if (!k) return null
+    const raw = localStorage.getItem(k)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const u = parsed?.user
+    const id = typeof u?.id === 'string' ? u.id : ''
+    if (!id) return null
+    const email = typeof u?.email === 'string' ? u.email : null
+    return { id, email }
+  } catch {
+    return null
+  }
+}
+
 export function readSupabaseAccessTokenSync() {
   try {
     for (let i = 0; i < localStorage.length; i++) {
@@ -43,6 +60,20 @@ export function readSupabaseAccessTokenSync() {
     // ignore
   }
   return ''
+}
+
+export function readSupabaseAccessTokenForStorageKeySync(storageKey) {
+  try {
+    const k = String(storageKey || '').trim()
+    if (!k) return ''
+    const raw = localStorage.getItem(k)
+    if (!raw) return ''
+    const parsed = JSON.parse(raw)
+    const token = typeof parsed?.access_token === 'string' ? parsed.access_token : ''
+    return token && String(token).trim() ? String(token).trim() : ''
+  } catch {
+    return ''
+  }
 }
 
 export function readAvatarSeed(fallback = 'athlete') {
