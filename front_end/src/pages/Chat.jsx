@@ -36,7 +36,6 @@ export default function Chat() {
     return out
   }, [items])
 
-  //extract user ids from convo
   const conversationOtherIds = useMemo(() => {
     const s = new Set()
     for (const c of itemsUniq) {
@@ -95,7 +94,6 @@ export default function Chat() {
 
   useEffect(() => {
 
-    //wait after typing then search 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       const query = String(q || '').trim()
@@ -134,7 +132,6 @@ export default function Chat() {
 
   useEffect(() => {
 
-    //connects chat to socket
     let s
     let cancelled = false
 

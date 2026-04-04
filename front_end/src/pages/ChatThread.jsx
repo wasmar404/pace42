@@ -172,7 +172,6 @@ export default function ChatThread() {
         if (cancelled) return
         setRt(s.connected ? 'connected' : 'connecting')
 
-        // Remove old listeners to prevent stale closures with old 'id' values
         s.removeAllListeners('connect')
         s.removeAllListeners('disconnect')
         s.removeAllListeners('connect_error')
@@ -193,11 +192,9 @@ export default function ChatThread() {
 
     return () => {
       cancelled = true
-      // Cleanup is handled by removeAllListeners in the next effect run
     }
   }, [id])
 
-  // Effect 2: presence watching — runs separately so message listeners aren't disrupted when convo loads
   useEffect(() => {
     let s
     let cancelled = false
@@ -273,8 +270,6 @@ export default function ChatThread() {
       requestScrollToBottom('auto')
 
       const s = await getChatSocket()
-      // Emit via sockets. If we get an ACK, we replace the optimistic message immediately.
-      // If the ACK is missed, the server will still broadcast `message:new` to reconcile.
       let resp = null
       try {
         resp = await new Promise((resolve, reject) => {

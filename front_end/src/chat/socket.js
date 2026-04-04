@@ -16,7 +16,6 @@ function readTokenFast() {
 
 export async function getChatSocket() {
   let token = ''
-  // Prefer Supabase session (fresh token); fall back to localStorage only if auth APIs are flaky.
   try {
     const { data } = await supabase.auth.getSession()
     token = data.session?.access_token || ''
@@ -33,7 +32,6 @@ export async function getChatSocket() {
       reconnectionDelay: 400,
       reconnectionDelayMax: 3000,
     })
-    // Keep auth fresh for reconnect attempts (auth is only sent on handshake).
     try {
       socket.io.on('reconnect_attempt', () => {
         const t = readTokenFast()
@@ -48,8 +46,6 @@ export async function getChatSocket() {
   }
 
   try {
-    // Socket.io only sends `auth` during the connect handshake.
-    // If the token changes (login as another user, token refresh), force a reconnect.
     const tokenChanged = token && token !== lastToken
     socket.auth = { token }
     lastToken = token
