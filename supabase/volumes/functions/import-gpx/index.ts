@@ -1,11 +1,9 @@
 // Supabase Edge Function: import-gpx
-// - Reads a GPX file from Storage
+// - Reads a GPX file from Storage via direct REST calls (no SDK dependency)
 // - Extracts points, computes distance + duration
 // - Returns parsed stats + polyline
 //
 // DB writes are intentionally NOT done here so the backend can use the ORM.
-
-import { createClient } from 'npm:@supabase/supabase-js@2'
 
 type ImportBody = {
   gpxBucket: string
@@ -83,24 +81,35 @@ Deno.serve(async (req) => {
       })
     }
 
-    // In server/edge environments, always pass the JWT explicitly.
-    const authed = createClient(supabaseUrl, anonKey)
-    const { data: userData, error: userErr } = await authed.auth.getUser(token)
-    if (userErr || !userData.user) {
+    // Verify the user JWT via Supabase Auth REST API (no SDK needed)
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': anonKey,
+      },
+    })
+    if (!userRes.ok) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'content-type': 'application/json' },
       })
     }
 
-    const service = createClient(supabaseUrl, serviceRoleKey)
-
-    const { data: fileData, error: dlErr } = await service.storage.from(body.gpxBucket).download(body.gpxPath)
-    if (dlErr || !fileData) {
-      return new Response(JSON.stringify({ error: dlErr?.message || 'Download failed' }), { status: 400 })
+    // Download the GPX file from Storage via REST API using service role key
+    const encodedPath = body.gpxPath.split('/').map(encodeURIComponent).join('/')
+    const storageUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(body.gpxBucket)}/${encodedPath}`
+    const fileRes = await fetch(storageUrl, {
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+      },
+    })
+    if (!fileRes.ok) {
+      const msg = await fileRes.text().catch(() => 'Download failed')
+      return new Response(JSON.stringify({ error: msg }), { status: 400 })
     }
 
-    const xml = await fileData.text()
+    const xml = await fileRes.text()
 
     // Avoid DOMParser dependency; parse trackpoints with a simple regex.
     // This supports typical GPX produced by Strava/Garmin/etc.
@@ -164,7 +173,6 @@ Deno.serve(async (req) => {
       { headers: { 'content-type': 'application/json' } },
     )
   } catch (e) {
-    // Log full error for Supabase logs
     // deno-lint-ignore no-console
     console.error(e)
     const msg = e instanceof Error ? e.message : 'Unknown error'
