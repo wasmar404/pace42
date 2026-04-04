@@ -5,7 +5,7 @@
 //
 // DB writes are intentionally NOT done here so the backend can use the ORM.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 type ImportBody = {
   gpxBucket: string
