@@ -40,6 +40,11 @@ export class MeController {
     const profile = await this.prisma.profile.findUnique({ where: { userId } });
     if (profile) {
 
+       // Backfill: if avatarUrl was never set, generate the default avatar once.
+       if (!profile.avatarUrl) {
+         await this.trySetDefaultAvatar({ userId: profile.userId }).catch(() => {});
+       }
+
       if (profile.avatarUrl && String(profile.avatarUrl).includes('/default.svg')) {
         await this.tryMigrateLegacyDefaultAvatar({ userId: profile.userId }).catch(() => {});
       }
@@ -63,7 +68,7 @@ export class MeController {
   }
 
   private avatarBucket() {
-    return this.config.get<string>('SUPABASE_AVATARS_BUCKET') ?? 'avatars';
+    return this.config.get<string>('SUPABASE_AVATARS_BUCKET') ?? 'test';
   }
 
   private async defaultAvatarSvg(seed: string) {
