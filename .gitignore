@@ -39,12 +39,6 @@ Thumbs.db
 .idea/
 *.swp
 
-# Local env / secrets
-.env
-.env.*
-!.env.example
-backend/.env
-front_end/.env
 
 # Supabase CLI artifacts (if used)
 .bin/

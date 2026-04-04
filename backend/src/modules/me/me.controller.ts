@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 import { PrismaService } from '../../prisma';
@@ -39,11 +39,12 @@ export class MeController {
   private async ensureProfile(userId: string) {
     const profile = await this.prisma.profile.findUnique({ where: { userId } });
     if (profile) {
-      if (profile.avatarUrl) return profile;
-      const nextUrl = await this.trySetDefaultAvatar({ userId: profile.userId, username: profile.username ?? null });
-      if (!nextUrl) return profile;
-      const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
-      return refreshed ?? profile;
+      // Migration: older builds generated a letter-based default avatar. If the user is still
+      // on the default avatar path, replace it once with a Multiavatar image.
+      if (profile.avatarUrl && String(profile.avatarUrl).includes('/default.svg')) {
+        await this.tryMigrateLegacyDefaultAvatar({ userId: profile.userId }).catch(() => {});
+      }
+      return profile;
     }
 
     const suffix = userId.replace(/-/g, '').slice(0, 12);
@@ -56,7 +57,7 @@ export class MeController {
       },
     });
 
-    const nextUrl = await this.trySetDefaultAvatar({ userId, username });
+    const nextUrl = await this.trySetDefaultAvatar({ userId });
     if (!nextUrl) return created;
     const refreshed = await this.prisma.profile.findUnique({ where: { userId } });
     return refreshed ?? created;
@@ -66,52 +67,23 @@ export class MeController {
     return this.config.get<string>('SUPABASE_AVATARS_BUCKET') ?? 'avatars';
   }
 
-  private fallbackDefaultAvatarSvg(seed: string, username?: string | null) {
-    const hex = createHash('sha256').update(seed).digest('hex');
-    const hue = parseInt(hex.slice(0, 4), 16) % 360;
-    const hue2 = (hue + 24) % 360;
-    const bg1 = `hsl(${hue} 72% 45%)`;
-    const bg2 = `hsl(${hue2} 72% 34%)`;
-    const label = (username ?? '').trim();
-    const ch = (label.match(/[a-zA-Z0-9]/)?.[0] ?? 'A').toUpperCase();
-
-    return (
-      `<?xml version="1.0" encoding="UTF-8"?>` +
-      `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">` +
-      `<defs>` +
-      `<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-      `<stop offset="0" stop-color="${bg1}"/>` +
-      `<stop offset="1" stop-color="${bg2}"/>` +
-      `</linearGradient>` +
-      `</defs>` +
-      `<rect width="256" height="256" rx="128" fill="url(#g)"/>` +
-      `<circle cx="128" cy="128" r="118" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>` +
-      `<text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI" font-size="112" font-weight="800" fill="rgba(255,255,255,0.92)">` +
-      `${ch}` +
-      `</text>` +
-      `</svg>`
-    );
-  }
-
-  private async defaultAvatarSvg(seed: string, username?: string | null) {
-    try {
-      const mod: any = await import('@multiavatar/multiavatar/esm');
-      const fn = mod?.default ?? mod?.multiavatar ?? mod;
-      const svg = typeof fn === 'function' ? fn(String(seed), true) : '';
-      if (typeof svg === 'string' && svg.includes('<svg')) return svg;
-    } catch {
-      // ignore
+  private async defaultAvatarSvg(seed: string) {
+    const mod: any = await import('@multiavatar/multiavatar');
+    const fn = mod?.default ?? mod?.multiavatar ?? mod;
+    const svg = typeof fn === 'function' ? fn(String(seed), true) : '';
+    if (typeof svg !== 'string' || !svg.includes('<svg')) {
+      throw new Error('Failed to generate default avatar');
     }
-    return this.fallbackDefaultAvatarSvg(seed, username);
+    return svg;
   }
 
-  private async trySetDefaultAvatar(input: { userId: string; username?: string | null }) {
+  private async trySetDefaultAvatar(input: { userId: string }) {
     try {
       if (!this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')) return null;
       const service = this.supabaseAdminClient();
       const bucket = this.avatarBucket();
       const objectPath = `${input.userId}/default.svg`;
-      const svg = await this.defaultAvatarSvg(input.userId, input.username);
+      const svg = await this.defaultAvatarSvg(input.userId);
       const { error: uploadError } = await service.storage.from(bucket).upload(objectPath, Buffer.from(svg), {
         contentType: 'image/svg+xml',
         upsert: true,
@@ -126,6 +98,35 @@ export class MeController {
     } catch {
       return null;
     }
+  }
+
+  private async tryMigrateLegacyDefaultAvatar(input: { userId: string }) {
+    if (!this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')) return null;
+
+    const service = this.supabaseAdminClient();
+    const bucket = this.avatarBucket();
+    const objectPath = `${input.userId}/default.svg`;
+
+    const existing = await service.storage.from(bucket).download(objectPath);
+    const blob: any = existing?.data;
+    if (!blob || typeof blob.text !== 'function') return null;
+    const txt = await blob.text();
+    // Our legacy default had a big <text> initial. Multiavatar output does not.
+    const looksLegacy = typeof txt === 'string' && txt.includes('<text') && txt.includes('font-size="112"');
+    if (!looksLegacy) return null;
+
+    const svg = await this.defaultAvatarSvg(input.userId);
+    const { error: uploadError } = await service.storage.from(bucket).upload(objectPath, Buffer.from(svg), {
+      contentType: 'image/svg+xml',
+      upsert: true,
+    });
+    if (uploadError) return null;
+
+    // URL stays the same, but refresh it in DB for consistency.
+    const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
+    const avatarUrl = toPublicUrl(publicData.publicUrl);
+    await this.prisma.profile.update({ where: { userId: input.userId }, data: { avatarUrl } });
+    return avatarUrl;
   }
 
   private getActivities(userId: string, opts: { take?: number; select?: object } = {}) {
