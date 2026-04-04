@@ -5,7 +5,6 @@ if [ ! -d node_modules ]; then
   echo "[backend] installing dependencies (node_modules missing)"
   npm ci
 else
-  # Common corruption symptom: iconv-lite missing its encodings folder.
   if [ ! -f node_modules/iconv-lite/encodings/index.js ]; then
     echo "[backend] reinstalling dependencies (iconv-lite encodings missing)"
     rm -rf node_modules
@@ -32,8 +31,8 @@ esac
 echo "[backend] prisma generate"
 npx prisma generate
 
-if [ -n "${DATABASE_URL:-}" ]; then
-  echo "[backend] prisma db push"
+if [ "${PRISMA_DB_PUSH:-0}" = "1" ]; then
+  echo "[backend] prisma db push (PRISMA_DB_PUSH=1)"
   npx prisma db push
 fi
 

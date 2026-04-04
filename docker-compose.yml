@@ -1,7 +1,4 @@
 services:
-  # -------------------------
-  # pace42 app
-  # -------------------------
   backend:
     build:
       context: ./backend
@@ -13,24 +10,20 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
       CHOKIDAR_USEPOLLING: "true"
 
-      # Online Supabase Database
       DATABASE_URL: ${DATABASE_URL}
       DIRECT_URL: ${DIRECT_URL}
 
-      # Online Supabase Configuration
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
 
-      # Supabase Storage Buckets
       SUPABASE_AVATARS_BUCKET: ${SUPABASE_AVATARS_BUCKET:-test}
       SUPABASE_ACTIVITY_MEDIA_BUCKET: ${SUPABASE_ACTIVITY_MEDIA_BUCKET:-activity-media}
       SUPABASE_GPX_BUCKET: ${SUPABASE_GPX_BUCKET:-gpx}
       SUPABASE_IMPORT_GPX_FUNCTION: ${SUPABASE_IMPORT_GPX_FUNCTION:-import-gpx}
       SUPABASE_HTTP_TIMEOUT_MS: ${SUPABASE_HTTP_TIMEOUT_MS:-60000}
 
-      # API Configuration
       PUBLIC_API_KEY: ${PUBLIC_API_KEY:-dev_public_api_key_change_me}
     ports:
       - "3004:3004"

@@ -7,6 +7,18 @@
     linear-gradient(180deg, #fffaf2 0%, #f7f2e9 55%, #fffaf2 100%);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 :root[data-theme="dark"] .training-page {
   background:
     radial-gradient(800px 420px at 12% 16%, rgba(252, 76, 2, 0.20), transparent 55%),

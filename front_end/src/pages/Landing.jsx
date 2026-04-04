@@ -8,7 +8,7 @@ export default function Landing() {
                 {/* Left Background Image */}
                 <div className="left-panel">
                     <img 
-                        src="/src/assets/cyclists.jpg" 
+                        src="/assets/cyclists.jpg" 
                         alt="Cyclists" 
                         className="bg-image"
                     />
@@ -16,7 +16,7 @@ export default function Landing() {
 
                 {/* Center Card */}
                 <div className="center-card">
-                    <img src="/src/assets/logo.png" alt="Pace42 Logo" className="logo" />
+                    <img src="/assets/logo.png" alt="Pace42 Logo" className="logo" />
                     <p className="tagline">
                         Track your progress and cheer each other on. Join Pace42 for free.
                     </p>
@@ -36,7 +36,7 @@ export default function Landing() {
                 {/* Right Background Image */}
                 <div className="right-panel">
                     <img 
-                        src="/src/assets/runners.jpg" 
+                        src="/assets/runners.jpg" 
                         alt="Runners" 
                         className="bg-image"
                     />

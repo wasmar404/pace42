@@ -99,7 +99,7 @@ export default function PersonalInfo() {
         <div className="personal-info-page">
             <div className="bg-overlay">
                 <img
-                    src="/src/assets/runners.jpg"
+                    src="/assets/runners.jpg"
                     alt="Runners"
                     className="bg-image"
                 />
@@ -154,6 +154,8 @@ export default function PersonalInfo() {
                         <p className="avatar-label">Uploading: {uploadPct}%</p>
                     ) : null}
                     <input
+                        id="profile-photo"
+                        name="profilePhoto"
                         type="file"
                         accept="image/*"
                         ref={fileInputRef}
@@ -163,8 +165,10 @@ export default function PersonalInfo() {
                 </div>
 
                 <form className="personal-info-form" onSubmit={handleSubmit}>
-                    <label className="input-label">First Name</label>
+                    <label className="input-label" htmlFor="firstName">First Name</label>
                     <input
+                        id="firstName"
+                        name="firstName"
                         type="text"
                         placeholder="Enter your first name"
                         className="form-input"
@@ -173,9 +177,12 @@ export default function PersonalInfo() {
                             setFirstName(e.target.value);
                             if (error) setError("");
                         }}
+                        autoComplete="given-name"
                     />
-                    <label className="input-label">Last Name</label>
+                    <label className="input-label" htmlFor="lastName">Last Name</label>
                     <input
+                        id="lastName"
+                        name="lastName"
                         type="text"
                         placeholder="Enter your last name"
                         className="form-input"
@@ -184,9 +191,12 @@ export default function PersonalInfo() {
                             setLastName(e.target.value);
                             if (error) setError("");
                         }}
+                        autoComplete="family-name"
                     />
-                    <label className="input-label">Date of Birth</label>
+                    <label className="input-label" htmlFor="dateOfBirth">Date of Birth</label>
                     <input
+                        id="dateOfBirth"
+                        name="dateOfBirth"
                         type="date"
                         className="form-input"
                         value={dateOfBirth}
@@ -194,9 +204,12 @@ export default function PersonalInfo() {
                             setDateOfBirth(e.target.value);
                             if (error) setError("");
                         }}
+                        autoComplete="bday"
                     />
-                    <label className="input-label">Gender</label>
+                    <label className="input-label" htmlFor="gender">Gender</label>
                     <select
+                        id="gender"
+                        name="gender"
                         value={gender}
                         onChange={(e) => {
                             setGender(e.target.value);
@@ -210,8 +223,10 @@ export default function PersonalInfo() {
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                     </select>
-                    <label className="input-label">Bio</label>
+                    <label className="input-label" htmlFor="bio">Bio</label>
                     <textarea
+                        id="bio"
+                        name="bio"
                         placeholder="Tell us about yourself"
                         className="form-input"
                         value={bio}

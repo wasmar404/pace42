@@ -6,7 +6,7 @@ import Pill from '../components/ui/Pill'
 import TimeText from '../components/ui/TimeText'
 import { getActivity } from '../api/activities'
 import { deleteActivity } from '../api/activities'
-import { useUnitsValue } from '../preferences'
+// units removed (km only)
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/ActivityDetails.css'
 
@@ -25,15 +25,12 @@ function sportAccent(sport) {
   const s = sport.toLowerCase()
   if (s === 'run' || s === 'running') return 'RUN'
   if (s === 'ride' || s === 'cycling' || s === 'bike') return 'RIDE'
-  if (s === 'swim' || s === 'swimming') return 'SWIM'
-  if (s === 'hike' || s === 'hiking') return 'HIKE'
   if (s === 'walk' || s === 'walking') return 'WALK'
   return formatSport(sport).toUpperCase().slice(0, 4)
 }
 
 export default function ActivityDetails() {
   const { id } = useParams()
-  const units = useUnitsValue()
   const [activity, setActivity] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -64,8 +61,8 @@ export default function ActivityDetails() {
 
   const title = useMemo(() => {
     if (!activity) return 'Activity'
-    return activity.title || `${formatSport(activity.sport)} · ${formatDistance(activity.distanceMeters, units)}`
-  }, [activity, units])
+    return activity.title || `${formatSport(activity.sport)} · ${formatDistance(activity.distanceMeters)}`
+  }, [activity])
 
   return (
     <div className="activity-page">
@@ -147,7 +144,7 @@ export default function ActivityDetails() {
                 <div className="stat-grid">
                   <div className="stat">
                     <div className="stat-k">Distance</div>
-                    <div className="stat-v">{formatDistance(activity.distanceMeters, units)}</div>
+                    <div className="stat-v">{formatDistance(activity.distanceMeters)}</div>
                   </div>
                   <div className="stat">
                     <div className="stat-k">Duration</div>
@@ -156,7 +153,7 @@ export default function ActivityDetails() {
                   <div className="stat">
                     <div className="stat-k">Pace / Speed</div>
                     <div className="stat-v">
-                      {formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}
+                      {formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds)}
                     </div>
                   </div>
                 </div>

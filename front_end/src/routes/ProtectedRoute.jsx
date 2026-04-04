@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { supabase } from '../supabaseClient'
+import { readSupabaseAccessTokenSync } from '../utils/avatarCache'
 
 export default function ProtectedRoute({ children }) {
   const location = useLocation()
@@ -28,19 +29,27 @@ export default function ProtectedRoute({ children }) {
     }
 
     async function run() {
-      const { data } = await supabase.auth.getSession()
-      if (cancelled) return
-      setHasSession(Boolean(data.session))
-
-      if (data.session) {
-        const require = await computeMfaRequirement()
+      try {
+        const { data } = await supabase.auth.getSession()
         if (cancelled) return
-        setNeedsMfa(Boolean(require))
-      } else {
-        setNeedsMfa(false)
-      }
+        setHasSession(Boolean(data.session))
 
-      setLoading(false)
+        if (data.session) {
+          const require = await computeMfaRequirement()
+          if (cancelled) return
+          setNeedsMfa(Boolean(require))
+        } else {
+          setNeedsMfa(false)
+        }
+      } catch {
+        // If Supabase auth endpoints are temporarily unreachable, fall back to
+        // the persisted token (lets the app keep working).
+        const token = readSupabaseAccessTokenSync()
+        setHasSession(Boolean(token))
+        setNeedsMfa(false)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
     void run()

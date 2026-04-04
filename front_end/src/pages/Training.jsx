@@ -6,7 +6,6 @@ import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
 import { listMyActivities } from '../api/activities'
 import { backendGet } from '../backendApi'
-import { useUnitsValue } from '../preferences'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/Training.css'
 
@@ -35,16 +34,13 @@ function clampNum(n, min, max) {
   return String(Math.max(min, Math.min(max, x)))
 }
 
-function metersFromUnits(value, units) {
+function metersFromKm(value) {
   const raw = String(value ?? '').trim()
   if (!raw) return ''
   const x = Number(raw)
   if (!Number.isFinite(x) || x <= 0) return ''
-  const meters = units === 'mi' ? x * 1609.344 : x * 1000
-  return Math.round(meters)
+  return Math.round(x * 1000)
 }
-
-function unitsLabel(units) { return units === 'mi' ? 'mi' : 'km' }
 
 function sourceLabel(s) {
   if (s === 'gpx') return 'GPX'
@@ -57,7 +53,6 @@ function sportLabel(s) {
   if (x === 'run') return 'Run'
   if (x === 'walk') return 'Walk'
   if (x === 'ride' || x === 'cycle') return 'Ride'
-  if (x === 'hike') return 'Hike'
   return x || 'Workout'
 }
 
@@ -69,9 +64,6 @@ const FILTER_DEFS = [
       { value: 'run', label: 'Run' },
       { value: 'walk', label: 'Walk' },
       { value: 'cycle', label: 'Ride' },
-      { value: 'swim', label: 'Swim' },
-      { value: 'hike', label: 'Hike' },
-      { value: 'yoga', label: 'Yoga' },
     ],
   },
   { key: 'from',    label: 'Date from',    icon: CalendarDays, type: 'date'   },
@@ -84,15 +76,14 @@ const FILTER_DEFS = [
     options: [{ value: 'any', label: 'Any' }, { value: 'manual', label: 'Manual' }, { value: 'gpx', label: 'GPX' }] },
 ]
 
-function filterSublabel(key, units) {
-  if (key === 'minDist' || key === 'maxDist') return unitsLabel(units)
+function filterSublabel(key) {
+  if (key === 'minDist' || key === 'maxDist') return 'km'
   if (key === 'minDur'  || key === 'maxDur')  return 'min'
   return null
 }
 
 export default function Training() {
   const navigate = useNavigate()
-  const units = useUnitsValue()
 
   const [me, setMe] = useState(null)
 
@@ -177,8 +168,8 @@ export default function Training() {
     const sportV = activeKeys.includes('sport') ? (vals.sport || 'any') : 'any'
     const fromV = activeKeys.includes('from') ? vals.from : ''
     const toV = activeKeys.includes('to') ? vals.to : ''
-    const minDistanceMeters  = activeKeys.includes('minDist') ? metersFromUnits(vals.minDist, units) : ''
-    const maxDistanceMeters  = activeKeys.includes('maxDist') ? metersFromUnits(vals.maxDist, units) : ''
+    const minDistanceMeters  = activeKeys.includes('minDist') ? metersFromKm(vals.minDist) : ''
+    const maxDistanceMeters  = activeKeys.includes('maxDist') ? metersFromKm(vals.maxDist) : ''
     const minDurRaw = activeKeys.includes('minDur') ? String(vals.minDur ?? '').trim() : ''
     const maxDurRaw = activeKeys.includes('maxDur') ? String(vals.maxDur ?? '').trim() : ''
     const minDurNum = minDurRaw ? Number(minDurRaw) : NaN
@@ -203,7 +194,7 @@ export default function Training() {
       page,
       take: perPage,
     }
-  }, [trimmed, vals, units, activeKeys, sort, page, perPage])
+  }, [trimmed, vals, activeKeys, sort, page, perPage])
 
   useEffect(() => {
     const run = async (tok) => {
@@ -237,12 +228,12 @@ export default function Training() {
   }, [params, trimmed.length])
 
   const recent        = items[0] || null
-  const distLabel     = unitsLabel(units)
-  const totalDistance = formatDistance(stats?.distanceMeters || 0, units)
+  const distLabel     = 'km'
+  const totalDistance = formatDistance(stats?.distanceMeters || 0)
   const totalTime     = formatDuration(stats?.durationSeconds || 0)
   const avgDistance   = stats?.total
-    ? formatDistance(Math.round((stats.distanceMeters || 0) / stats.total), units)
-    : formatDistance(0, units)
+    ? formatDistance(Math.round((stats.distanceMeters || 0) / stats.total))
+    : formatDistance(0)
 
   const availableToAdd = FILTER_DEFS.filter((d) => !activeKeys.includes(d.key))
 
@@ -254,7 +245,7 @@ export default function Training() {
 
   useEffect(() => {
     setPage(1)
-  }, [trimmed, vals, activeKeys, units, sort, perPage])
+  }, [trimmed, vals, activeKeys, sort, perPage])
 
   useEffect(() => {
     setPage((p) => Math.min(Math.max(1, p), pageCount))
@@ -292,6 +283,8 @@ export default function Training() {
             <div className="search">
               <Search size={16} />
               <input
+                id="training-search"
+                name="q"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by title, notes, or sport…"
@@ -303,10 +296,11 @@ export default function Training() {
               ) : null}
             </div>
 
-            <div className="tf-sort" aria-label="Sort">
-              <SlidersHorizontal size={15} />
-              <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                <option value="startedAt_desc">Newest</option>
+              <div className="tf-sort">
+               <label htmlFor="training-sort" className="sr-only">Sort</label>
+               <SlidersHorizontal size={15} />
+               <select id="training-sort" name="sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+                 <option value="startedAt_desc">Newest</option>
                 <option value="startedAt_asc">Oldest</option>
                 <option value="distance_desc">Distance (high)</option>
                 <option value="distance_asc">Distance (low)</option>
@@ -317,9 +311,10 @@ export default function Training() {
               </select>
             </div>
 
-            <div className="tf-take" aria-label="Items per page">
+            <div className="tf-take">
+              <label htmlFor="training-take" className="sr-only">Items per page</label>
               <List size={15} />
-              <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value) || 10)}>
+              <select id="training-take" name="take" value={perPage} onChange={(e) => setPerPage(Number(e.target.value) || 10)}>
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
@@ -356,8 +351,8 @@ export default function Training() {
                       >
                         <d.icon size={14} />
                         {d.label}
-                        {filterSublabel(d.key, units) ? (
-                          <span className="tf-picker-sub">{filterSublabel(d.key, units)}</span>
+                        {filterSublabel(d.key) ? (
+                          <span className="tf-picker-sub">{filterSublabel(d.key)}</span>
                         ) : null}
                       </button>
                     ))
@@ -373,7 +368,7 @@ export default function Training() {
               {activeKeys.map((key) => {
                 const def = FILTER_DEFS.find((d) => d.key === key)
                 if (!def) return null
-                const sub = filterSublabel(key, units)
+                const sub = filterSublabel(key)
                 return (
                   <div key={key} className="tf-chip">
                     <def.icon size={13} className="tf-chip-icon" />
@@ -382,6 +377,8 @@ export default function Training() {
                     {def.type === 'select' ? (
                       <select
                         className="tf-chip-select"
+                        id={`training-filter-${key}`}
+                        name={`filter_${key}`}
                         value={vals[key]}
                         onChange={(e) => setVal(key, e.target.value)}
                       >
@@ -392,6 +389,8 @@ export default function Training() {
                     ) : (
                       <input
                         className="tf-chip-input"
+                        id={`training-filter-${key}`}
+                        name={`filter_${key}`}
                         type={def.type === 'date' ? 'date' : 'text'}
                         inputMode={def.type === 'number' ? 'decimal' : undefined}
                         value={vals[key]}
@@ -485,7 +484,7 @@ export default function Training() {
                       <div className="workout-metrics">
                         <div className="metric">
                           <Route size={14} />
-                          <span>{formatDistance(activity.distanceMeters, units)}</span>
+                          <span>{formatDistance(activity.distanceMeters)}</span>
                         </div>
                         <div className="metric">
                           <Clock size={14} />
@@ -493,7 +492,7 @@ export default function Training() {
                         </div>
                         <div className="metric">
                           <TrendingUp size={14} />
-                          <span>{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}</span>
+                          <span>{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds)}</span>
                         </div>
                       </div>
                     </div>

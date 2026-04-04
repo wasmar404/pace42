@@ -37,8 +37,7 @@ export async function verifySupabaseAccessToken(params: {
     | null;
   const alg = decodedHeader?.header?.alg;
 
-  // Preferred fast path: verify using JWKS (typically RS256) to avoid any call
-  // to Supabase Auth per request (only occasional JWKS refresh).
+
   if (alg && alg.startsWith('RS')) {
     try {
       const client = getJwksClient(supabaseUrl);
@@ -65,12 +64,10 @@ export async function verifySupabaseAccessToken(params: {
       const email = typeof payload?.email === 'string' ? payload.email : undefined;
       return { userId, email };
     } catch {
-      // fall through to other strategies
     }
   }
 
-  // Fast path: verify locally using the legacy shared secret (HS256).
-  // Only works if your project is still using HS tokens.
+  
   if (supabaseJwtSecret) {
     try {
       const payload = jwt.verify(token, supabaseJwtSecret, { algorithms: ['HS256'] }) as JwtPayload;
@@ -79,11 +76,9 @@ export async function verifySupabaseAccessToken(params: {
       const email = typeof payload?.email === 'string' ? payload.email : undefined;
       return { userId, email };
     } catch {
-      // fall through to Supabase Auth lookup
     }
   }
 
-  // Compatibility path: last resort (slow). Still works even if token alg changes.
   const anon = createClient(supabaseUrl, supabaseAnonKey);
   const { data, error } = await anon.auth.getUser(token);
   if (error || !data.user) throw new Error('Invalid token');

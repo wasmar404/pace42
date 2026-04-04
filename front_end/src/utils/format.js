@@ -1,21 +1,16 @@
-import { getUnits } from '../preferences'
-
-const MI_PER_M = 1 / 1609.344
 const KM_PER_M = 1 / 1000
 
-export function distanceInUnits(meters, units = getUnits()) {
+export function distanceInUnits(meters) {
   const n = Number(meters)
   if (!Number.isFinite(n)) return 0
-  const u = units === 'mi' ? 'mi' : 'km'
-  return u === 'mi' ? n * MI_PER_M : n * KM_PER_M
+  return n * KM_PER_M
 }
 
-export function formatDistance(meters, units = getUnits()) {
-  const v = distanceInUnits(meters, units)
-  const u = units === 'mi' ? 'mi' : 'km'
-  if (!Number.isFinite(v) || v <= 0) return `0.00 ${u}`
+export function formatDistance(meters) {
+  const v = distanceInUnits(meters)
+  if (!Number.isFinite(v) || v <= 0) return '0.00 km'
   const digits = v < 10 ? 2 : 1
-  return `${v.toFixed(digits)} ${u}`
+  return `${v.toFixed(digits)} km`
 }
 
 export function formatDuration(seconds) {
@@ -30,30 +25,27 @@ export function formatDuration(seconds) {
   return `${ss}s`
 }
 
-export function formatPace(distanceMeters, durationSeconds, units = getUnits()) {
+export function formatPace(distanceMeters, durationSeconds) {
   const dist = Number(distanceMeters)
   const dur = Number(durationSeconds)
-  const u = units === 'mi' ? 'mi' : 'km'
   if (!Number.isFinite(dist) || !Number.isFinite(dur) || dist <= 0 || dur <= 0) return '-'
-  const perUnit = dur / distanceInUnits(dist, u)
+  const perUnit = dur / distanceInUnits(dist)
   const mm = Math.floor(perUnit / 60)
   const ss = Math.round(perUnit % 60)
-  return `${mm}:${String(ss).padStart(2, '0')} /${u}`
+  return `${mm}:${String(ss).padStart(2, '0')} /km`
 }
 
-export function formatSpeed(distanceMeters, durationSeconds, units = getUnits()) {
+export function formatSpeed(distanceMeters, durationSeconds) {
   const dist = Number(distanceMeters)
   const dur = Number(durationSeconds)
-  const u = units === 'mi' ? 'mi' : 'km'
   if (!Number.isFinite(dist) || !Number.isFinite(dur) || dist <= 0 || dur <= 0) return '-'
   const hours = dur / 3600
-  const v = distanceInUnits(dist, u) / hours
-  const suffix = u === 'mi' ? 'mph' : 'km/h'
-  return `${v.toFixed(1)} ${suffix}`
+  const v = distanceInUnits(dist) / hours
+  return `${v.toFixed(1)} km/h`
 }
 
-export function formatPaceOrSpeed(sport, distanceMeters, durationSeconds, units = getUnits()) {
+export function formatPaceOrSpeed(sport, distanceMeters, durationSeconds) {
   const s = String(sport || '').toLowerCase()
-  if (s === 'ride' || s === 'cycle') return formatSpeed(distanceMeters, durationSeconds, units)
-  return formatPace(distanceMeters, durationSeconds, units)
+  if (s === 'ride' || s === 'cycle') return formatSpeed(distanceMeters, durationSeconds)
+  return formatPace(distanceMeters, durationSeconds)
 }

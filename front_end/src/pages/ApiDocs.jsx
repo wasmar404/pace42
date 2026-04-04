@@ -90,7 +90,7 @@ curl -H "x-api-key: $PACE42_API_KEY" -H "content-type: application/json" \
 
           <div className="api-docs-endpoint">
             <div className="m"><span className="verb get">GET</span> <code>/api/public/users?q=jo&amp;take=20</code></div>
-            <div className="d">Search users by username/first/last (requires 2+ characters).</div>
+            <div className="d">Search users by username/first/last.</div>
           </div>
 
           <div className="api-docs-endpoint">

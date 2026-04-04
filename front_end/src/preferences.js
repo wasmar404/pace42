@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 
-const UNITS_KEY = 'pace42.units'
 const THEME_KEY = 'pace42.theme'
 const EVENT_NAME = 'pace42:preferences'
 
@@ -16,23 +15,11 @@ function safeStorageSet(key, value) {
   try {
     localStorage.setItem(key, value)
   } catch {
-    // ignore
   }
   try {
     window.dispatchEvent(new Event(EVENT_NAME))
   } catch {
-    // ignore
   }
-}
-
-export function getUnits() {
-  const v = String(safeStorageGet(UNITS_KEY) || '').toLowerCase()
-  return v === 'mi' ? 'mi' : 'km'
-}
-
-export function setUnits(units) {
-  const u = String(units || '').toLowerCase() === 'mi' ? 'mi' : 'km'
-  safeStorageSet(UNITS_KEY, u)
 }
 
 export function getTheme() {
@@ -45,7 +32,6 @@ export function applyTheme(theme) {
   try {
     document.documentElement.dataset.theme = t
   } catch {
-    // ignore
   }
 }
 
@@ -71,10 +57,6 @@ function usePreferenceValue(getter) {
   }, [getter])
 
   return value
-}
-
-export function useUnitsValue() {
-  return usePreferenceValue(getUnits)
 }
 
 export function useThemeValue() {

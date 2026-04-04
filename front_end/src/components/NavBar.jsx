@@ -7,7 +7,8 @@ import { backendGet } from '../backendApi'
 import Avatar from './Avatar'
 import { readAvatarSeed, readAvatarUrl, readSupabaseSessionUserSync, writeAvatarSeed, writeAvatarUrl } from '../utils/avatarCache'
 import '../styles/NavBar.css'
-import logo from '../assets/logo-removebg-preview.png'
+
+const logo = '/assets/logo-removebg-preview.png'
 
 export default function NavBar() {
   const navigate = useNavigate()

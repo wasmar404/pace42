@@ -17,17 +17,13 @@ import { backendGet } from '../backendApi'
 import Avatar from '../components/Avatar'
 import FollowModal from '../components/profile/FollowModal'
 import { readAvatarSeed, readAvatarUrl, readSupabaseSessionUserSync } from '../utils/avatarCache'
-import { useUnitsValue } from '../preferences'
+// units removed (km only)
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
 import '../styles/Profile.css'
-import runners from '../assets/runners.jpg'
-import cyclists from '../assets/cyclists.jpg'
-import runners2 from '../assets/runners.jpg'
-
 const RouteMap = lazy(() => import('../components/RouteMap'))
 
-const DEFAULT_HERO = [runners, cyclists, runners2]
+const DEFAULT_HERO = ['/assets/runners.jpg', '/assets/cyclists.jpg', '/assets/runners.jpg']
 
 function hash32(str) {
   let h = 2166136261
@@ -82,14 +78,10 @@ const SPORT_ICONS = {
   run: '🏃',
   walk: '🚶',
   cycle: '🚴',
-  swim: '🏊',
-  hike: '🥾',
-  yoga: '🧘',
 }
 
 export default function Profile() {
   const navigate = useNavigate()
-  const units = useUnitsValue()
   const [me, setMe] = useState(() => {
     const u = readSupabaseSessionUserSync()
     if (!u?.id) return null
@@ -293,7 +285,7 @@ export default function Profile() {
                   <span className="stat-label">Following</span>
                 </div>
                 <div className="stat-box highlight">
-                  <span className="stat-value">{formatDistance(stats.totalDistance, units)}</span>
+                  <span className="stat-value">{formatDistance(stats.totalDistance)}</span>
                   <span className="stat-label">Km Total</span>
                 </div>
               </div>
@@ -388,7 +380,7 @@ export default function Profile() {
                             <div className="workout-metrics">
                               <div className="metric">
                                 <Route size={14} />
-                                  <span>{formatDistance(activity.distanceMeters, units)}</span>
+                                  <span>{formatDistance(activity.distanceMeters)}</span>
                               </div>
                               <div className="metric">
                                 <Clock size={14} />
@@ -396,7 +388,7 @@ export default function Profile() {
                               </div>
                               <div className="metric">
                                 <TrendingUp size={14} />
-                                  <span>{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds, units)}</span>
+                                  <span>{formatPaceOrSpeed(activity.sport, activity.distanceMeters, activity.durationSeconds)}</span>
                               </div>
                             </div>
                           </div>

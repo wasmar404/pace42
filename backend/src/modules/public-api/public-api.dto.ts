@@ -37,7 +37,7 @@ export class PublicDeleteDto {
 
 export class PublicCreateActivityDto {
   @IsString()
-  @IsIn(['run', 'walk', 'cycle', 'swim', 'hike', 'yoga'])
+  @IsIn(['run', 'walk', 'cycle'])
   sport!: string;
 
   @IsOptional()
@@ -70,7 +70,7 @@ export class PublicCreateActivityDto {
 export class PublicUpdateActivityDto {
   @IsOptional()
   @IsString()
-  @IsIn(['run', 'walk', 'cycle', 'swim', 'hike', 'yoga'])
+  @IsIn(['run', 'walk', 'cycle'])
   sport?: string;
 
   @IsOptional()

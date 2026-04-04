@@ -12,7 +12,7 @@ import { sportLabel } from '../../utils/sport'
 
 const RouteMap = lazy(() => import('../RouteMap'))
 
-export default function ActivityCard({ item, meId, units, onOpenSocial, onSocialUpdate }) {
+export default function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate }) {
   const a = item?.activity
   const athlete = item?.athlete
   const mine = athlete?.id && meId && athlete.id === meId
@@ -84,7 +84,7 @@ export default function ActivityCard({ item, meId, units, onOpenSocial, onSocial
         <div className="stats">
           <div className="stat">
             <div className="k">Distance</div>
-            <div className="v">{formatDistance(a?.distanceMeters, units)}</div>
+            <div className="v">{formatDistance(a?.distanceMeters)}</div>
           </div>
           <div className="stat">
             <div className="k">Time</div>
@@ -92,7 +92,7 @@ export default function ActivityCard({ item, meId, units, onOpenSocial, onSocial
           </div>
           <div className="stat">
             <div className="k">Pace/Speed</div>
-            <div className="v">{formatPaceOrSpeed(a?.sport, a?.distanceMeters, a?.durationSeconds, units)}</div>
+            <div className="v">{formatPaceOrSpeed(a?.sport, a?.distanceMeters, a?.durationSeconds)}</div>
           </div>
         </div>
 

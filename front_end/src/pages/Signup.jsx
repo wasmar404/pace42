@@ -1,5 +1,4 @@
 import "../styles/Signup.css";
-import googleIcon from "../assets/google.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
@@ -72,7 +71,7 @@ export default function Signup() {
         <div className="Signup">
             <div className="bg-overlay">
                 <img 
-                    src="/src/assets/runners.jpg" 
+                    src="/assets/runners.jpg" 
                     alt="Runners" 
                     className="bg-image"
                 />
@@ -87,7 +86,7 @@ export default function Signup() {
                 </p>
                 <div className="social-buttons">
                     <button className="social-btn google" type="button" onClick={onGoogle}>
-                        <img className="icon" src={googleIcon} alt="" aria-hidden="true" />
+                        <img className="icon" src="/assets/google.png" alt="" aria-hidden="true" />
                         <span>Sign Up With Google</span>
                     </button>
                 </div>
@@ -97,22 +96,28 @@ export default function Signup() {
                 </div>
 
                 <form className="email-form" onSubmit={onSignup}>
-                    <label className="input-label">Email</label>
+                    <label className="input-label" htmlFor="signup-email">Email</label>
                     <input 
+                        id="signup-email"
+                        name="email"
                         type="email" 
                         placeholder="Enter Email" 
                         className="email-input"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="email"
                     />
-                    <label className="password-input">Password</label>
+                    <label className="password-input" htmlFor="signup-password">Password</label>
                     <input
-                        type="Password"
+                        id="signup-password"
+                        name="password"
+                        type="password"
                         placeholder="Enter your password"
                         className="pass-in"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         minLength={8}
+                        autoComplete="new-password"
                     />
                     {error ? <p className="terms dark-text">{error}</p> : null}
                     <button className="sign-button full" type="submit" disabled={loading}>

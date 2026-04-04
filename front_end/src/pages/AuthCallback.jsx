@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { backendJson } from '../backendApi'
-import logBg from '../assets/log-bg.jpg'
+
+const logBg = '/assets/log-bg.jpg'
 
 export default function AuthCallback() {
   const navigate = useNavigate()

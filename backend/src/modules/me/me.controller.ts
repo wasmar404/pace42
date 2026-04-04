@@ -39,8 +39,7 @@ export class MeController {
   private async ensureProfile(userId: string) {
     const profile = await this.prisma.profile.findUnique({ where: { userId } });
     if (profile) {
-      // Migration: older builds generated a letter-based default avatar. If the user is still
-      // on the default avatar path, replace it once with a Multiavatar image.
+
       if (profile.avatarUrl && String(profile.avatarUrl).includes('/default.svg')) {
         await this.tryMigrateLegacyDefaultAvatar({ userId: profile.userId }).catch(() => {});
       }
@@ -111,7 +110,6 @@ export class MeController {
     const blob: any = existing?.data;
     if (!blob || typeof blob.text !== 'function') return null;
     const txt = await blob.text();
-    // Our legacy default had a big <text> initial. Multiavatar output does not.
     const looksLegacy = typeof txt === 'string' && txt.includes('<text') && txt.includes('font-size="112"');
     if (!looksLegacy) return null;
 
@@ -122,7 +120,6 @@ export class MeController {
     });
     if (uploadError) return null;
 
-    // URL stays the same, but refresh it in DB for consistency.
     const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
     const avatarUrl = toPublicUrl(publicData.publicUrl);
     await this.prisma.profile.update({ where: { userId: input.userId }, data: { avatarUrl } });
@@ -240,13 +237,6 @@ export class MeController {
       ? new Date(dto.onboardingCompletedAt)
       : (!existing?.onboardingCompletedAt && hasPersonalPayload ? new Date() : undefined);
 
-    const weeklyGoalDistanceMeters =
-      typeof dto.weeklyGoalDistanceMeters === 'number'
-        ? dto.weeklyGoalDistanceMeters > 0
-          ? Math.round(dto.weeklyGoalDistanceMeters)
-          : null
-        : undefined;
-
     const profile = await this.prisma.profile.update({
       where: { userId: user.userId },
       data: {
@@ -256,7 +246,6 @@ export class MeController {
         gender: dto.gender,
         bio: dto.bio,
         ...(onboardingCompletedAt ? { onboardingCompletedAt } : {}),
-        ...(weeklyGoalDistanceMeters !== undefined ? { weeklyGoalDistanceMeters } : {}),
       },
     });
 

@@ -5,7 +5,6 @@ export const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!,
 );
 
-/** Replace the internal Supabase URL with the browser-accessible public URL. */
 export function toPublicUrl(internalUrl: string): string {
   const internal = process.env.SUPABASE_URL;
   const pub = process.env.SUPABASE_PUBLIC_URL;

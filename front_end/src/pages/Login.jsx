@@ -1,5 +1,4 @@
 import "../styles/Login.css";
-import googleIcon from "../assets/google.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
@@ -81,7 +80,7 @@ export default function Login() {
         <div className="login-page">
             <div className="bg-overlay">
                 <img 
-                    src="/src/assets/runners.jpg" 
+                    src="/assets/runners.jpg" 
                     alt="Runners" 
                     className="bg-image"
                 />
@@ -93,7 +92,7 @@ export default function Login() {
 
                 <div className="social-buttons">
                     <button className="social-btn google" type="button" onClick={onGoogle}>
-                        <img className="icon" src={googleIcon} alt="" aria-hidden="true" />
+                        <img className="icon" src="/assets/google.png" alt="" aria-hidden="true" />
                         <span>Continue with Google</span>
                     </button>
                 </div>
@@ -103,22 +102,28 @@ export default function Login() {
                 </div>
 
                 <form className="login-form" onSubmit={onLogin}>
-                    <label className="input-label">Email</label>
+                    <label className="input-label" htmlFor="login-email">Email</label>
                     <input
-                    type = "email"
+                    id="login-email"
+                    name="email"
+                    type="email"
                     placeholder="Enter your email"
                     className="form-input"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
                     />
-                    <label className="input-label">Password</label>
+                    <label className="input-label" htmlFor="login-password">Password</label>
                     <input
-                    type="password"
-                    placeholder="Enter your password"
-                    className="form-input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    />
+                     id="login-password"
+                     name="password"
+                     type="password"
+                     placeholder="Enter your password"
+                     className="form-input"
+                     value={password}
+                     onChange={(e) => setPassword(e.target.value)}
+                     autoComplete="current-password"
+                     />
                     {error ? <p className="signup-text">{error}</p> : null}
                     <button type="submit" className="sign-button full" disabled={loading}>
                         {loading ? "Logging in..." : "Log In"}

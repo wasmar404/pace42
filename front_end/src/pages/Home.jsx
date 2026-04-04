@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Target,
   Users,
 } from 'lucide-react'
 
@@ -10,9 +9,8 @@ import Avatar from '../components/Avatar'
 import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
-import { getGoals, getHomeFeed, getRecommendedUsers } from '../api/home'
-import { useUnitsValue } from '../preferences'
-import { formatDistance } from '../utils/format'
+import { getHomeFeed, getRecommendedUsers } from '../api/home'
+// units removed (km only)
 import { readAvatarSeed, readSupabaseSessionUserSync, writeAvatarSeed } from '../utils/avatarCache'
 
 import ActivityCard from '../components/home/ActivityCard'
@@ -25,7 +23,6 @@ import Widget from '../components/home/Widget'
 import '../styles/Home.css'
 
 export default function Home() {
-  const units = useUnitsValue()
   const [me, setMe] = useState(() => {
     const u = readSupabaseSessionUserSync()
     if (!u?.id) return null
@@ -41,7 +38,6 @@ export default function Home() {
   const [feed, setFeed] = useState([])
   const [feedSource, setFeedSource] = useState('')
   const [recUsers, setRecUsers] = useState([])
-  const [goals, setGoals] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -86,16 +82,14 @@ export default function Home() {
         const meBasic = await backendGet('/api/me').catch(() => null)
         if (!cancelled && meBasic) setMe(meBasic)
 
-        const [feedRes, recRes, goalsRes] = await Promise.all([
+        const [feedRes, recRes] = await Promise.all([
           getHomeFeed(20),
           getRecommendedUsers(6),
-          getGoals(7),
         ])
         if (cancelled) return
         setFeed((feedRes?.items || []).filter((it) => it?.type !== 'announcement'))
         setFeedSource(feedRes?.source || '')
         setRecUsers(recRes?.items || [])
-        setGoals(goalsRes)
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load feed')
@@ -122,13 +116,6 @@ export default function Home() {
       cancelled = true
     }
   }, [])
-
-  const goalPct = useMemo(() => {
-    const d = Number(goals?.distanceMeters || 0)
-    const g = Number(goals?.goalDistanceMeters || 0)
-    if (!g) return 0
-    return Math.max(0, Math.min(100, Math.round((d / g) * 100)))
-  }, [goals])
 
 //update likes/cpmments
   const onSocialUpdate = (activityId, patch) => {
@@ -195,7 +182,7 @@ export default function Home() {
             {!loading ? (
               <div className="feed-list">
                 {feed.map((it) => (
-                  <ActivityCard key={it.id} item={it} meId={meId} units={units} onOpenSocial={onOpenSocial} onSocialUpdate={onSocialUpdate} />
+                  <ActivityCard key={it.id} item={it} meId={meId} onOpenSocial={onOpenSocial} onSocialUpdate={onSocialUpdate} />
                 ))}
 
                 {!feed.length ? <FeedEmpty /> : null}
@@ -204,26 +191,6 @@ export default function Home() {
           </section>
 
           <aside className="side side-right" aria-label="Dashboard widgets">
-
-            {goals?.goalDistanceMeters ? (
-              <Widget icon={<Target size={16} />} title="Goals">
-                <div className="goal">
-                  <div className="g-top">
-                    <div>
-                      <div className="k">Last {goals?.windowDays || 7} days</div>
-                      <div className="v">
-                        {formatDistance(goals?.distanceMeters || 0, units)} / {formatDistance(goals?.goalDistanceMeters || 0, units)}
-                      </div>
-                    </div>
-                    <div className="pct">{goalPct}%</div>
-                  </div>
-                  <div className="bar" aria-hidden="true">
-                    <div className="fill" style={{ width: `${goalPct}%` }} />
-                  </div>
-                </div>
-              </Widget>
-            ) : null}
-
             <Widget icon={<Users size={16} />} title="Recommended Athletes">
               {!recUsers.length ? (
                 <div className="muted">You’re all caught up.</div>

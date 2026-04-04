@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { readSupabaseAccessTokenSync } from './utils/avatarCache'
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
 
@@ -26,15 +27,25 @@ async function fetchJson(url, options, timeoutMs) {
 }
 
 async function authHeader() {
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
+  let token = ''
+  try {
+    const { data } = await supabase.auth.getSession()
+    token = data.session?.access_token || ''
+  } catch {
+    token = readSupabaseAccessTokenSync()
+  }
   if (!token) throw new Error('Not authenticated')
   return { Authorization: `Bearer ${token}` }
 }
 
 async function optionalAuthHeader() {
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
+  let token = ''
+  try {
+    const { data } = await supabase.auth.getSession()
+    token = data.session?.access_token || ''
+  } catch {
+    token = readSupabaseAccessTokenSync()
+  }
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

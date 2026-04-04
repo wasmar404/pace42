@@ -4,17 +4,6 @@ import "../styles/Legal.css";
 export default function PrivacyPolicy() {
     const navigate = useNavigate();
 
-    const toc = [
-        { id: "collect", label: "Information We Collect" },
-        { id: "use", label: "How We Use Data" },
-        { id: "sharing", label: "Information Sharing" },
-        { id: "security", label: "Storage & Security" },
-        { id: "third-parties", label: "Third-Party Services" },
-        { id: "rights", label: "Your Rights" },
-        { id: "cookies", label: "Cookies" },
-        { id: "contact", label: "Contact" },
-    ]
-
     return (
         <div className="legal-page">
             <div className="legal-shell">
@@ -29,35 +18,7 @@ export default function PrivacyPolicy() {
                     </nav>
                 </header>
 
-                <section className="legal-hero" aria-label="Privacy Policy header">
-                    <div className="legal-k">Pace42 Legal</div>
-                    <h1>Privacy Policy</h1>
-                    <p className="legal-lede">
-                        This explains what we collect, why we collect it, and the controls you have.
-                    </p>
-                    <div className="legal-meta">
-                        <span className="pill">Last updated: March 29, 2026</span>
-                        <span className="pill">Applies to: Pace42 app</span>
-                    </div>
-                </section>
-
-                <div className="legal-grid">
-                    <aside className="legal-toc" aria-label="On this page">
-                        <div className="toc-head">On this page</div>
-                        <div className="toc-list">
-                            {toc.map((t) => (
-                                <a key={t.id} href={`#${t.id}`} className="toc-link">
-                                    {t.label}
-                                </a>
-                            ))}
-                        </div>
-                        <div className="toc-foot">
-                            <Link to="/signup" className="toc-cta">Create account</Link>
-                            <Link to="/" className="toc-alt">Back to landing</Link>
-                        </div>
-                    </aside>
-
-                    <article className="legal-doc">
+                <article className="legal-doc legal-doc-center">
                         <section id="collect">
                             <h2>1. Information We Collect</h2>
                     <p>We collect information you provide when you:</p>
@@ -136,8 +97,7 @@ export default function PrivacyPolicy() {
                             <h2>8. Contact Us</h2>
                     <p>If you have questions about this Privacy Policy, please contact us through the app or at the email provided during registration.</p>
                         </section>
-                    </article>
-                </div>
+                </article>
             </div>
         </div>
     );

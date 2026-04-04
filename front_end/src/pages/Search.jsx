@@ -105,6 +105,9 @@ export default function SearchPage() {
             <Search className="search-icon" size={20} />
             <input
               ref={inputRef}
+              id="athlete-search"
+              name="q"
+              type="search"
               className="search-input"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -132,7 +135,7 @@ export default function SearchPage() {
             ) : trimmed.length >= 2 ? (
               <span className="status-results">{results.length} athlete{results.length !== 1 ? 's' : ''} found</span>
             ) : (
-              <span className="status-hint">Type 2+ characters to search (press / to focus)</span>
+              <span className="status-hint">Start typing to search </span>
             )}
           </div>
         </div>

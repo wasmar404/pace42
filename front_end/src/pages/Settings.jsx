@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, KeyRound, Lock, Mail, SlidersHorizontal, Upload, UserCircle } from 'lucide-react'
+import { AlertTriangle, KeyRound, Lock, Upload, UserCircle } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
 import { readAvatarSeed, writeAvatarSeed, writeAvatarUrl } from '../utils/avatarCache'
-import SegmentedControl from '../components/ui/SegmentedControl'
 import { backendGet, backendJson, backendUploadWithProgress } from '../backendApi'
 import { supabase } from '../supabaseClient'
-import { setUnits, useUnitsValue } from '../preferences'
 import '../styles/Settings.css'
 
 function safeBool(v) {
@@ -34,13 +32,8 @@ export default function Settings() {
   const [busy, setBusy] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
 
-  const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-
-  const unitsPref = useUnitsValue()
-  const [units, setUnitsState] = useState(unitsPref)
-  const [weeklyGoal, setWeeklyGoal] = useState('')
 
   const [deleteConfirm, setDeleteConfirm] = useState('')
 
@@ -60,15 +53,6 @@ export default function Settings() {
         const res = await backendGet('/api/me/summary')
         if (cancelled) return
         setMe(res)
-        setNewEmail(res?.user?.email || '')
-
-        const goalMeters = Number(res?.profile?.weeklyGoalDistanceMeters || 0)
-        if (goalMeters > 0) {
-          const v = unitsPref === 'mi' ? goalMeters / 1609.344 : goalMeters / 1000
-          setWeeklyGoal(String(Math.round(v * 10) / 10))
-        } else {
-          setWeeklyGoal('')
-        }
 
         // MFA state
         try {
@@ -221,54 +205,7 @@ export default function Settings() {
   }
 
 
-  useEffect(() => {
-    setUnitsState(unitsPref)
-  }, [unitsPref])
-
-  const toWeeklyGoalMeters = (txt) => {
-    const x = Number(String(txt || '').trim())
-    if (!Number.isFinite(x) || x <= 0) return 0
-    const meters = units === 'mi' ? x * 1609.344 : x * 1000
-    return Math.round(meters)
-  }
-
-  const onSaveWeeklyGoal = async () => {
-    setNotice('')
-    setError('')
-    setBusy(true)
-    try {
-      const meters = toWeeklyGoalMeters(weeklyGoal)
-      const res = await backendJson('PUT', '/api/me', { weeklyGoalDistanceMeters: meters || 0 })
-      setMe((prev) => ({ ...(prev || {}), profile: res?.profile || prev?.profile }))
-      setNotice(meters ? 'Weekly goal updated.' : 'Weekly goal cleared.')
-    } catch (e) {
-      setError(e?.message || 'Failed to update weekly goal')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onChangeEmail = async (e) => {
-    e.preventDefault()
-    setNotice('')
-    setError('')
-    const email = (newEmail || '').trim()
-    if (!email.includes('@')) {
-      setError('Enter a valid email address.')
-      return
-    }
-
-    setBusy(true)
-    try {
-      const { error: err } = await supabase.auth.updateUser({ email })
-      if (err) throw err
-      setNotice('Email updated successfully.')
-    } catch (e2) {
-      setError(e2?.message || 'Failed to update email')
-    } finally {
-      setBusy(false)
-    }
-  }
+  // weekly goal removed
 
   const onChangePassword = async (e) => {
     e.preventDefault()
@@ -358,10 +295,8 @@ export default function Settings() {
 
             <div className="settings-nav-links">
               <a href="#profile">Profile</a>
-                <a href="#email">Email</a>
               <a href="#password">Password</a>
               <a href="#twofa">2FA</a>
-              <a href="#prefs">Preferences</a>
               <a href="#api">API</a>
               <a href="#danger">Danger Zone</a>
             </div>
@@ -389,7 +324,7 @@ export default function Settings() {
                     <Upload size={16} />
                     Change
                   </button>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={onUploadAvatar} style={{ display: 'none' }} />
+                  <input ref={fileRef} id="settings-avatar" name="avatar" type="file" accept="image/*" onChange={onUploadAvatar} style={{ display: 'none' }} />
                 </div>
               </div>
               {busy && uploadPct > 0 ? (
@@ -397,46 +332,43 @@ export default function Settings() {
               ) : null}
             </section>
 
-            <section className="settings-card" id="email" style={{ '--i': 1 }}>
-              <div className="settings-card-title">
-                <Mail size={18} />
-                <h2>Email</h2>
-              </div>
-
-              <form onSubmit={onChangeEmail} className="settings-form">
-                <label>
-                  New email
-                  <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} type="email" autoComplete="email" />
-                </label>
-                <button className="settings-btn primary" type="submit" disabled={busy || loading}>
-                  Update email
-                </button>
-                <div className="settings-row-help">You may need to confirm the change via email.</div>
-              </form>
-            </section>
-
-            <section className="settings-card" id="password" style={{ '--i': 3 }}>
+            <section className="settings-card" id="password" style={{ '--i': 1 }}>
               <div className="settings-card-title">
                 <Lock size={18} />
                 <h2>Password</h2>
               </div>
 
               <form onSubmit={onChangePassword} className="settings-form">
-                <label>
+                <label htmlFor="settings-new-password">
                   New password
-                  <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" autoComplete="new-password" />
                 </label>
-                <label>
+                <input
+                  id="settings-new-password"
+                  name="newPassword"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  type="password"
+                  autoComplete="new-password"
+                />
+
+                <label htmlFor="settings-confirm-password">
                   Confirm password
-                  <input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" />
                 </label>
+                <input
+                  id="settings-confirm-password"
+                  name="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  type="password"
+                  autoComplete="new-password"
+                />
                 <button className="settings-btn primary" type="submit" disabled={busy || loading}>
                   Update password
                 </button>
               </form>
             </section>
 
-            <section className="settings-card" id="twofa" style={{ '--i': 4 }}>
+            <section className="settings-card" id="twofa" style={{ '--i': 2 }}>
               <div className="settings-card-title">
                 <Lock size={18} />
                 <h2>Two-factor authentication</h2>
@@ -495,6 +427,8 @@ export default function Settings() {
 
                     <div className="mfa-verify">
                       <input
+                        id="settings-mfa-code"
+                        name="mfaCode"
                         value={mfaCode}
                         onChange={(e) => setMfaCode(e.target.value)}
                         placeholder="123 456"
@@ -517,58 +451,7 @@ export default function Settings() {
               ) : null}
             </section>
 
-            <section className="settings-card" id="prefs" style={{ '--i': 5 }}>
-              <div className="settings-card-title">
-                <SlidersHorizontal size={18} />
-                <h2>Preferences</h2>
-              </div>
-
-              <div className="settings-row">
-                <div className="settings-row-main">
-                  <div className="settings-row-label">Units</div>
-                  <div className="settings-row-help">Choose how distances are displayed.</div>
-                </div>
-                <div className="settings-row-actions">
-                  <SegmentedControl
-                    value={units}
-                    ariaLabel="Units"
-                    options={[
-                      { value: 'km', label: 'km' },
-                      { value: 'mi', label: 'mi' },
-                    ]}
-                    onChange={(v) => {
-                      const next = v === 'mi' ? 'mi' : 'km'
-                      setUnitsState(next)
-                      setUnits(next)
-                    }}
-                    disabled={busy || loading}
-                  />
-                </div>
-              </div>
-
-              <div className="settings-row">
-                <div className="settings-row-main">
-                  <div className="settings-row-label">Weekly distance goal</div>
-                  <div className="settings-row-help">Set a weekly target to show the goal widget on Home.</div>
-                </div>
-                <div className="settings-row-actions">
-                  <input
-                    value={weeklyGoal}
-                    onChange={(e) => setWeeklyGoal(e.target.value)}
-                    placeholder={units === 'mi' ? 'e.g. 15' : 'e.g. 25'}
-                    inputMode="decimal"
-                    style={{ width: 140 }}
-                    disabled={busy || loading}
-                  />
-                  <div className="settings-row-help" style={{ margin: 0, whiteSpace: 'nowrap' }}>{units === 'mi' ? 'mi / week' : 'km / week'}</div>
-                  <button className="settings-btn" type="button" onClick={onSaveWeeklyGoal} disabled={busy || loading}>
-                    Save
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section className="settings-card" id="api" style={{ '--i': 6 }}>
+            <section className="settings-card" id="api" style={{ '--i': 3 }}>
               <div className="settings-card-title">
                 <KeyRound size={18} />
                 <h2>API</h2>
@@ -587,7 +470,7 @@ export default function Settings() {
               </div>
             </section>
 
-            <section className="settings-card danger" id="danger" style={{ '--i': 7 }}>
+            <section className="settings-card danger" id="danger" style={{ '--i': 4 }}>
               <div className="settings-card-title">
                 <span className="danger-dot" aria-hidden="true" />
                 <h2>Danger Zone</h2>
@@ -608,10 +491,15 @@ export default function Settings() {
                   <div className="settings-row-label">Delete account</div>
                   <div className="settings-row-help">Permanently deletes your account and all data. This cannot be undone.</div>
                   <div className="settings-delete">
-                    <label>
-                      Type DELETE to confirm
-                      <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="DELETE" />
-                    </label>
+                    <label htmlFor="settings-delete-confirm">Type DELETE to confirm</label>
+                    <input
+                      id="settings-delete-confirm"
+                      name="deleteConfirm"
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value)}
+                      placeholder="DELETE"
+                      autoComplete="off"
+                    />
                   </div>
                 </div>
                 <div className="settings-row-actions">

@@ -4,21 +4,6 @@ import "../styles/Legal.css";
 export default function TermsOfService() {
     const navigate = useNavigate();
 
-    const toc = [
-        { id: "acceptance", label: "Acceptance of Terms" },
-        { id: "service", label: "Service Description" },
-        { id: "accounts", label: "User Accounts" },
-        { id: "conduct", label: "User Conduct" },
-        { id: "ownership", label: "Content Ownership" },
-        { id: "privacy", label: "Privacy" },
-        { id: "availability", label: "Service Availability" },
-        { id: "termination", label: "Account Termination" },
-        { id: "liability", label: "Limitation of Liability" },
-        { id: "changes", label: "Changes to Terms" },
-        { id: "education", label: "Educational Notice" },
-        { id: "contact", label: "Contact" },
-    ]
-
     return (
         <div className="legal-page">
             <div className="legal-shell">
@@ -33,35 +18,7 @@ export default function TermsOfService() {
                     </nav>
                 </header>
 
-                <section className="legal-hero" aria-label="Terms of Service header">
-                    <div className="legal-k">Pace42 Legal</div>
-                    <h1>Terms of Service</h1>
-                    <p className="legal-lede">
-                        These terms cover account rules, acceptable use, and how the service is provided.
-                    </p>
-                    <div className="legal-meta">
-                        <span className="pill">Last updated: March 29, 2026</span>
-                        <span className="pill">Applies to: Pace42 app</span>
-                    </div>
-                </section>
-
-                <div className="legal-grid">
-                    <aside className="legal-toc" aria-label="On this page">
-                        <div className="toc-head">On this page</div>
-                        <div className="toc-list">
-                            {toc.map((t) => (
-                                <a key={t.id} href={`#${t.id}`} className="toc-link">
-                                    {t.label}
-                                </a>
-                            ))}
-                        </div>
-                        <div className="toc-foot">
-                            <Link to="/signup" className="toc-cta">Create account</Link>
-                            <Link to="/" className="toc-alt">Back to landing</Link>
-                        </div>
-                    </aside>
-
-                    <article className="legal-doc">
+                <article className="legal-doc legal-doc-center">
                         <section id="acceptance">
                             <h2>1. Acceptance of Terms</h2>
                     <p>By creating an account and using Pace42, you agree to these Terms of Service. If you do not agree, please do not use the service.</p>
@@ -156,8 +113,7 @@ export default function TermsOfService() {
                             <h2>12. Contact</h2>
                     <p>For questions about these Terms of Service, please contact us through the application or use the contact information provided during registration.</p>
                         </section>
-                    </article>
-                </div>
+                </article>
             </div>
         </div>
     );

@@ -64,12 +64,13 @@ export class ActivitiesController {
   ) {
     const query = String(q || '').trim();
     const sportQ0 = String(sport || '').trim().toLowerCase();
-    const sportQ = sportQ0 === 'ride' ? 'cycle' : sportQ0;
+    let sportQ = sportQ0 === 'ride' ? 'cycle' : sportQ0;
+    if (sportQ === 'any') sportQ = '';
     const src = String(source || 'any').trim().toLowerCase();
     const allowedSource = new Set(['any', 'manual', 'gpx']);
     if (!allowedSource.has(src)) throw new BadRequestException('Invalid source');
 
-    const allowedSports = new Set(['run', 'walk', 'cycle', 'swim', 'hike', 'yoga']);
+    const allowedSports = new Set(['run', 'walk', 'cycle']);
     if (sportQ && !allowedSports.has(sportQ)) throw new BadRequestException('Invalid sport');
 
     const limit = Math.max(1, Math.min(50, Number(take || 20) || 20));
@@ -267,7 +268,6 @@ export class ActivitiesController {
         },
       });
     } catch {
-      // ignore duplicate
     }
 
     const [kudosCount, commentCount] = await Promise.all([

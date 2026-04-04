@@ -43,7 +43,6 @@ export class OptionalSupabaseAuthGuard implements CanActivate {
         accessToken: token,
       } satisfies SupabaseRequestAuth;
     } catch {
-      // optional guard: ignore invalid token
     }
 
     return true;

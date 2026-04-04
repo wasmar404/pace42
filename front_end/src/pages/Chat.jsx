@@ -243,6 +243,9 @@ export default function Chat() {
         <section className="chat-search">
           <div className="chat-search-row">
             <input
+              id="chat-user-search"
+              name="q"
+              type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search users..."
@@ -254,7 +257,7 @@ export default function Chat() {
             </button>
           </div>
 
-          {!q.trim() || q.trim().length < 2 ? <div className="chat-banner">Type 2+ characters to search users.</div> : null}
+          {!q.trim() || q.trim().length < 2 ? <div className="chat-banner">Start typing to search users.</div> : null}
           {usersLoading ? <div className="chat-banner">Searching...</div> : null}
           {usersError ? <div className="chat-banner err">{usersError}</div> : null}
 

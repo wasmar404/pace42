@@ -1,5 +1,4 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsDateString, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateMeDto {
   @IsOptional()
@@ -28,11 +27,4 @@ export class UpdateMeDto {
   @IsOptional()
   @IsDateString()
   onboardingCompletedAt?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(100000000)
-  weeklyGoalDistanceMeters?: number;
 }

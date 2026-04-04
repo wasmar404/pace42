@@ -17,16 +17,13 @@ import {
 
 import NavBar from '../components/NavBar'
 import { createActivity, importGpx, uploadActivityPhoto } from '../api/activities'
-import { getUnits, useUnitsValue } from '../preferences'
-import { distanceInUnits, formatPaceOrSpeed } from '../utils/format'
+import { formatPaceOrSpeed } from '../utils/format'
 import '../styles/AddActivity.css'
 
-function toMeters(value, units) {
+function toMeters(value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return null
-  const u = units === 'mi' ? 'mi' : 'km'
-  const meters = u === 'mi' ? n * 1609.344 : n * 1000
-  return Math.max(1, Math.round(meters))
+  return Math.max(1, Math.round(n * 1000))
 }
 
 function toSeconds(hours, minutes, seconds) {
@@ -71,9 +68,6 @@ export default function AddActivity() {
   const [params, setParams] = useSearchParams()
   const mode = (params.get('mode') || 'manual').toLowerCase()
 
-  const units = useUnitsValue()
-  const prevUnitsRef = useRef(units)
-
   const [sport, setSport] = useState('run')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -82,23 +76,9 @@ export default function AddActivity() {
   const [hours, setHours] = useState('0')
   const [minutes, setMinutes] = useState('30')
   const [seconds, setSeconds] = useState('0')
-  const [distanceKm, setDistanceKm] = useState(() => (getUnits() === 'mi' ? '3.1' : '5'))
+  const [distanceKm, setDistanceKm] = useState('5')
 
-  useEffect(() => {
-    const prev = prevUnitsRef.current
-    if (prev === units) return
-
-    const n = Number(distanceKm)
-    if (Number.isFinite(n) && n > 0) {
-      const meters = toMeters(n, prev)
-      if (meters) {
-        const next = distanceInUnits(meters, units)
-        setDistanceKm(fmtInputNumber(next))
-      }
-    }
-
-    prevUnitsRef.current = units
-  }, [units])
+  // units removed (km only)
 
   const [gpxFile, setGpxFile] = useState(null)
   const [photos, setPhotos] = useState([])
@@ -194,7 +174,7 @@ export default function AddActivity() {
     if (!String(title || '').trim()) throw new Error('Title is required')
     const dur = toSeconds(hours, minutes, seconds)
     if (!dur) throw new Error('Duration must be greater than 0')
-    const meters = toMeters(distanceKm, units)
+    const meters = toMeters(distanceKm)
     if (!meters) throw new Error('Distance must be a number')
     const started = validateStartedAt(startedAt)
 
@@ -328,7 +308,7 @@ export default function AddActivity() {
             <div className="form-main">
               {/* Sport Selection */}
               <section className="form-section">
-                <label className="section-label">Activity Type</label>
+                <div className="section-label">Activity Type</div>
                 <div className="sport-grid">
                   {SPORT_OPTIONS.map((option) => (
                     <button
@@ -354,6 +334,7 @@ export default function AddActivity() {
                   <label htmlFor="title">Title <span className="optional">optional</span></label>
                   <input
                     id="title"
+                    name="title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -366,6 +347,7 @@ export default function AddActivity() {
                   <label htmlFor="description">Description <span className="optional">optional</span></label>
                   <textarea
                     id="description"
+                    name="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="How did it feel? What did you learn? Share your thoughts..."
@@ -378,7 +360,7 @@ export default function AddActivity() {
               {/* Manual Entry Fields */}
               {mode === 'manual' ? (
                 <section className="form-section">
-                  <label className="section-label">Activity Details</label>
+                  <div className="section-label">Activity Details</div>
                   
                   <div className="details-grid">
                     {/* Date Time */}
@@ -389,6 +371,7 @@ export default function AddActivity() {
                       </label>
                       <input
                         id="datetime"
+                        name="startedAt"
                         type="datetime-local"
                         value={startedAt}
                         onChange={(e) => setStartedAt(e.target.value)}
@@ -399,43 +382,55 @@ export default function AddActivity() {
 
                     {/* Duration */}
                     <div className="input-group span-2">
-                      <label>
+                      <label htmlFor="duration-hours">
                         <Clock size={16} />
                         Duration
                       </label>
                       <div className="duration-inputs">
                         <div className="duration-field">
                           <input
+                            id="duration-hours"
+                            name="durationHours"
                             type="number"
                             min={0}
                             max={99}
                             value={hours}
                             onChange={(e) => setHours(e.target.value)}
                             className="text-input"
+                            inputMode="numeric"
+                            aria-label="Duration hours"
                           />
                           <span className="duration-label">hr</span>
                         </div>
                         <span className="duration-separator">:</span>
                         <div className="duration-field">
                           <input
+                            id="duration-minutes"
+                            name="durationMinutes"
                             type="number"
                             min={0}
                             max={59}
                             value={minutes}
                             onChange={(e) => setMinutes(e.target.value)}
                             className="text-input"
+                            inputMode="numeric"
+                            aria-label="Duration minutes"
                           />
                           <span className="duration-label">min</span>
                         </div>
                         <span className="duration-separator">:</span>
                         <div className="duration-field">
                           <input
+                            id="duration-seconds"
+                            name="durationSeconds"
                             type="number"
                             min={0}
                             max={59}
                             value={seconds}
                             onChange={(e) => setSeconds(e.target.value)}
                             className="text-input"
+                            inputMode="numeric"
+                            aria-label="Duration seconds"
                           />
                           <span className="duration-label">sec</span>
                         </div>
@@ -451,6 +446,7 @@ export default function AddActivity() {
                       <div className="distance-input">
                         <input
                           id="distance"
+                          name="distanceKm"
                           type="number"
                           min={0.01}
                           step="0.01"
@@ -458,14 +454,14 @@ export default function AddActivity() {
                           onChange={(e) => setDistanceKm(e.target.value)}
                           className="text-input"
                         />
-                        <span className="distance-unit">{units}</span>
+                        <span className="distance-unit">km</span>
                       </div>
                     </div>
                   </div>
                 </section>
               ) : (
                 <section className="form-section">
-                  <label className="section-label">GPX File</label>
+                  <div className="section-label">GPX File</div>
                   <div 
                     className={`gpx-upload ${gpxFile ? 'has-file' : ''} ${isDragging ? 'dragging' : ''}`}
                     onClick={() => gpxInputRef.current?.click()}
@@ -475,9 +471,12 @@ export default function AddActivity() {
                   >
                     <input
                       ref={gpxInputRef}
+                      id="gpx-file"
+                      name="gpxFile"
                       type="file"
                       accept=".gpx,application/gpx+xml,application/xml,text/xml"
                       onChange={(e) => setGpxFile(e.target.files?.[0] || null)}
+                      aria-label="GPX file"
                       hidden
                     />
                     {gpxFile ? (
@@ -522,7 +521,7 @@ export default function AddActivity() {
               {/* Visibility Card */}
               <section className="sidebar-card">
                 <div className="sidebar-header">
-                  <label className="sidebar-label">Photos</label>
+                  <div className="sidebar-label">Photos</div>
                   <span className="photo-count">{photos.length}/8</span>
                 </div>
                 
@@ -535,10 +534,13 @@ export default function AddActivity() {
                 >
                   <input
                     ref={photoInputRef}
+                    id="activity-photos"
+                    name="photos"
                     type="file"
                     accept="image/*"
                     multiple
                     onChange={onPickPhotos}
+                    aria-label="Activity photos"
                     hidden
                   />
                   <Camera size={24} />
@@ -571,15 +573,15 @@ export default function AddActivity() {
               {/* Quick Stats Preview */}
               {mode === 'manual' && distanceKm && (hours !== '0' || minutes !== '0') && (
                 <section className="sidebar-card stats-preview">
-                  <label className="sidebar-label">Preview</label>
+                  <div className="sidebar-label">Preview</div>
                   <div className="stat-row">
                     <span className="stat-label">Pace/Speed</span>
                     <span className="stat-value">
                       {(() => {
-                        const meters = toMeters(distanceKm, units)
+                        const meters = toMeters(distanceKm)
                         const secs = toSeconds(hours, minutes, seconds)
                         if (!meters || !secs) return '--'
-                        return formatPaceOrSpeed(sport, meters, secs, units)
+                        return formatPaceOrSpeed(sport, meters, secs)
                       })()}
                     </span>
                   </div>
