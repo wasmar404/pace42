@@ -266,13 +266,8 @@ export default function ChatThread() {
       requestScrollToBottom('auto')
 
       const s = await getChatSocket()
-      const ack = await new Promise((resolve, reject) => {
-        s.timeout(8000).emit('message:send', { conversationId: id, text: t, clientId }, (err, resp) => {
-          if (err) return reject(err)
-          resolve(resp)
-        })
-      })
-      if (ack && ack.error) throw new Error(ack.error)
+      // Fire-and-forget. Server will broadcast `message:new` (and `message:error` on failure).
+      s.emit('message:send', { conversationId: id, text: t, clientId })
       void refreshConvo().catch(() => {})
     } catch (e) {
       setMessages((prev) => prev.filter((x) => x?.clientId !== clientId))
