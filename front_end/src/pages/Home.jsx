@@ -9,7 +9,6 @@ import Avatar from '../components/Avatar'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getHomeFeed, getRecommendedUsers } from '../api/home'
-// units removed (km only)
 import { readAvatarSeed, readSupabaseSessionUserSync, writeAvatarSeed } from '../utils/avatarCache'
 
 import ActivityCard from '../components/home/ActivityCard'
@@ -56,7 +55,6 @@ export default function Home() {
   }, [meId, seedFallback])
 
   useEffect(() => {
-    // Sync read from localStorage — no network call needed.
     const cached = readSupabaseSessionUserSync()
     if (cached?.id) {
       setSeedFallback(cached.id)
@@ -74,7 +72,7 @@ export default function Home() {
       try {
         // Fast path: fetch basic profile for immediate UI.
         const meBasic = await backendGet('/api/me').catch(() => null)
-        if (!cancelled && meBasic) setMe(meBasic)
+        if (!cancelled && meBasic) setMe((prev) => ({ ...meBasic, stats: prev?.stats }))
 
         const [feedRes, recRes] = await Promise.all([
           getHomeFeed(20),
