@@ -3,15 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Activity, CalendarDays, ChevronDown, ChevronRight, Clock, Filter, List, Route, Search, SlidersHorizontal, TrendingUp, X, Zap } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
-import Avatar from '../components/Avatar'
 import { listMyActivities } from '../api/activities'
 import { backendGet } from '../backendApi'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/Training.css'
 
 function formatWhen(iso) {
-
-      //fetch filtered activities and stats
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return '-'
@@ -42,17 +39,12 @@ function metersFromKm(value) {
   return Math.round(x * 1000)
 }
 
-function sourceLabel(s) {
-  if (s === 'gpx') return 'GPX'
-  if (s === 'manual') return 'Manual'
-  return 'Any'
-}
-
 function sportLabel(s) {
   const x = String(s || '').toLowerCase()
   if (x === 'run') return 'Run'
   if (x === 'walk') return 'Walk'
   if (x === 'ride' || x === 'cycle') return 'Ride'
+  if (x === 'hike') return 'Hike'
   return x || 'Workout'
 }
 
@@ -75,6 +67,19 @@ const FILTER_DEFS = [
   { key: 'source',  label: 'Source',       icon: Filter,       type: 'select',
     options: [{ value: 'any', label: 'Any' }, { value: 'manual', label: 'Manual' }, { value: 'gpx', label: 'GPX' }] },
 ]
+
+const SORT_OPTIONS = [
+  { value: 'startedAt_desc', label: 'Newest' },
+  { value: 'startedAt_asc', label: 'Oldest' },
+  { value: 'distance_desc', label: 'Distance (high)' },
+  { value: 'distance_asc', label: 'Distance (low)' },
+  { value: 'duration_desc', label: 'Duration (high)' },
+  { value: 'duration_asc', label: 'Duration (low)' },
+  { value: 'createdAt_desc', label: 'Created (new)' },
+  { value: 'createdAt_asc', label: 'Created (old)' },
+]
+
+const TAKE_OPTIONS = [10, 20, 50]
 
 function filterSublabel(key) {
   if (key === 'minDist' || key === 'maxDist') return 'km'
@@ -100,7 +105,13 @@ export default function Training() {
 
   const [q,       setQ]       = useState('')
   const [showPicker, setShowPicker] = useState(false)
+  const [showSortPicker, setShowSortPicker] = useState(false)
+  const [showTakePicker, setShowTakePicker] = useState(false)
+  const [openChipKey, setOpenChipKey] = useState(null)
   const pickerRef = useRef(null)
+  const sortPickerRef = useRef(null)
+  const takePickerRef = useRef(null)
+  const chipPickerRef = useRef(null)
 
   const [items,   setItems]   = useState([])
   const [stats,   setStats]   = useState({ total: 0, distanceMeters: 0, durationSeconds: 0 })
@@ -115,15 +126,16 @@ export default function Training() {
 
   // Close picker on outside click
   useEffect(() => {
-    if (!showPicker) return
+    if (!showPicker && !showSortPicker && !showTakePicker && !openChipKey) return
     const handler = (e) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
-        setShowPicker(false)
-      }
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false)
+      if (sortPickerRef.current && !sortPickerRef.current.contains(e.target)) setShowSortPicker(false)
+      if (takePickerRef.current && !takePickerRef.current.contains(e.target)) setShowTakePicker(false)
+      if (openChipKey && chipPickerRef.current && !chipPickerRef.current.contains(e.target)) setOpenChipKey(null)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showPicker])
+  }, [showPicker, showSortPicker, showTakePicker, openChipKey])
 
   useEffect(() => {
     let cancelled = false
@@ -227,8 +239,6 @@ export default function Training() {
     return () => window.clearTimeout(t)
   }, [params, trimmed.length])
 
-  const recent        = items[0] || null
-  const distLabel     = 'km'
   const totalDistance = formatDistance(stats?.distanceMeters || 0)
   const totalTime     = formatDuration(stats?.durationSeconds || 0)
   const avgDistance   = stats?.total
@@ -236,6 +246,8 @@ export default function Training() {
     : formatDistance(0)
 
   const availableToAdd = FILTER_DEFS.filter((d) => !activeKeys.includes(d.key))
+  const sortLabel = SORT_OPTIONS.find((s) => s.value === sort)?.label || 'Newest'
+  const takeLabel = TAKE_OPTIONS.includes(perPage) ? String(perPage) : '10'
 
   const pageCount = useMemo(() => {
     const total = Number(stats?.total || 0)
@@ -296,29 +308,74 @@ export default function Training() {
               ) : null}
             </div>
 
-              <div className="tf-sort">
-               <label htmlFor="training-sort" className="sr-only">Sort</label>
-               <SlidersHorizontal size={15} />
-               <select id="training-sort" name="sort" value={sort} onChange={(e) => setSort(e.target.value)}>
-                 <option value="startedAt_desc">Newest</option>
-                <option value="startedAt_asc">Oldest</option>
-                <option value="distance_desc">Distance (high)</option>
-                <option value="distance_asc">Distance (low)</option>
-                <option value="duration_desc">Duration (high)</option>
-                <option value="duration_asc">Duration (low)</option>
-                <option value="createdAt_desc">Created (new)</option>
-                <option value="createdAt_asc">Created (old)</option>
-              </select>
+            <div className="tf-sort-wrap" ref={sortPickerRef}>
+              <button
+                type="button"
+                className="tf-sort"
+                aria-label="Sort"
+                onClick={() => setShowSortPicker((v) => !v)}
+                aria-expanded={showSortPicker}
+              >
+                <SlidersHorizontal size={15} />
+                <span>{sortLabel}</span>
+                <ChevronDown size={13} className={`tf-chevron${showSortPicker ? ' open' : ''}`} />
+              </button>
+
+              {showSortPicker && (
+                <div className="tf-picker tf-sort-picker" role="menu" aria-label="Sort options">
+                  <div className="tf-picker-head">Sort by</div>
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className="tf-picker-item"
+                      onClick={() => {
+                        setSort(opt.value)
+                        setShowSortPicker(false)
+                      }}
+                      role="menuitem"
+                    >
+                      {opt.label}
+                      {sort === opt.value ? <span className="tf-picker-sub">Selected</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="tf-take">
-              <label htmlFor="training-take" className="sr-only">Items per page</label>
-              <List size={15} />
-              <select id="training-take" name="take" value={perPage} onChange={(e) => setPerPage(Number(e.target.value) || 10)}>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
+            <div className="tf-take-wrap" ref={takePickerRef}>
+              <button
+                type="button"
+                className="tf-take"
+                aria-label="Items per page"
+                onClick={() => setShowTakePicker((v) => !v)}
+                aria-expanded={showTakePicker}
+              >
+                <List size={15} />
+                <span>{takeLabel}</span>
+                <ChevronDown size={13} className={`tf-chevron${showTakePicker ? ' open' : ''}`} />
+              </button>
+
+              {showTakePicker && (
+                <div className="tf-picker tf-take-picker" role="menu" aria-label="Items per page options">
+                  <div className="tf-picker-head">Items per page</div>
+                  {TAKE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="tf-picker-item"
+                      onClick={() => {
+                        setPerPage(opt)
+                        setShowTakePicker(false)
+                      }}
+                      role="menuitem"
+                    >
+                      {opt}
+                      {perPage === opt ? <span className="tf-picker-sub">Selected</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* filter button + picker */}
@@ -375,22 +432,41 @@ export default function Training() {
                     <span className="tf-chip-label">{def.label}{sub ? ` (${sub})` : ''}</span>
 
                     {def.type === 'select' ? (
-                      <select
-                        className="tf-chip-select"
-                        id={`training-filter-${key}`}
-                        name={`filter_${key}`}
-                        value={vals[key]}
-                        onChange={(e) => setVal(key, e.target.value)}
+                      <div
+                        className="tf-chip-sel-wrap"
+                        ref={openChipKey === key ? chipPickerRef : null}
                       >
-                        {def.options.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
+                        <button
+                          type="button"
+                          className="tf-chip-sel-btn"
+                          onClick={() => setOpenChipKey(openChipKey === key ? null : key)}
+                        >
+                          <span>{def.options.find((o) => o.value === vals[key])?.label || 'Any'}</span>
+                          <ChevronDown size={11} className={`tf-chevron${openChipKey === key ? ' open' : ''}`} />
+                        </button>
+                        {openChipKey === key && (
+                          <div className="tf-picker tf-chip-picker" role="menu">
+                            <div className="tf-picker-head">{def.label}</div>
+                            {def.options.map((o) => (
+                              <button
+                                key={o.value}
+                                type="button"
+                                className={`tf-picker-item${vals[key] === o.value ? ' tf-picker-item--active' : ''}`}
+                                onClick={() => { setVal(key, o.value); setOpenChipKey(null) }}
+                                role="menuitem"
+                              >
+                                {o.label}
+                                {vals[key] === o.value ? <span className="tf-picker-sub tf-picker-sub--active">Selected</span> : null}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <input
-                        className="tf-chip-input"
-                        id={`training-filter-${key}`}
+                        id={`filter-${key}`}
                         name={`filter_${key}`}
+                        className="tf-chip-input"
                         type={def.type === 'date' ? 'date' : 'text'}
                         inputMode={def.type === 'number' ? 'decimal' : undefined}
                         value={vals[key]}

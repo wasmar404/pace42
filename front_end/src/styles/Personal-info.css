@@ -196,3 +196,99 @@
     color: #9ca3af !important; /* muted gray */
     font-weight: 400;
 }
+
+/* ── Gender custom dropdown ── */
+.pi-dropdown-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.pi-dropdown-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid #4b5563;
+    background-color: #ffffff;
+    font-size: 0.875rem;
+    font-family: inherit;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s;
+}
+
+.pi-dropdown-btn--placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+.pi-dropdown-btn:focus {
+    outline: none;
+    border-color: #fc4c02;
+    box-shadow: 0 0 0 3px rgba(252, 76, 2, 0.15);
+}
+
+.pi-dropdown-chevron {
+    font-size: 1.1rem;
+    line-height: 1;
+    color: #6b7280;
+    transition: transform 0.18s;
+    display: inline-block;
+}
+
+.pi-dropdown-chevron.open {
+    transform: rotate(180deg);
+}
+
+.pi-picker {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 200;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(20, 20, 20, 0.97);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.50);
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+}
+
+.pi-picker-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.84);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+}
+
+.pi-picker-item:hover {
+    background: rgba(252, 76, 2, 0.12);
+}
+
+.pi-picker-item--active {
+    background: rgba(252, 76, 2, 0.10);
+    color: rgba(252, 76, 2, 0.95);
+}
+
+.pi-picker-item--active:hover {
+    background: rgba(252, 76, 2, 0.18);
+}
+
+.pi-picker-check {
+    font-size: 0.85rem;
+    color: rgba(252, 76, 2, 0.90);
+}

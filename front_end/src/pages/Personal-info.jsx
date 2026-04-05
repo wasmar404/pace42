@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { backendJson, backendUploadWithProgress } from "../backendApi";
@@ -13,12 +13,30 @@ export default function PersonalInfo() {
     const [lastName, setLastName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
     const [gender, setGender] = useState("");
+    const [genderOpen, setGenderOpen] = useState(false);
+    const genderRef = useRef(null);
     const [bio, setBio] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
     const [uploadPct, setUploadPct] = useState(0);
 
+
+    useEffect(() => {
+        if (!genderOpen) return;
+        const handler = (e) => {
+            if (genderRef.current && !genderRef.current.contains(e.target)) {
+                setGenderOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [genderOpen]);
+
+    const GENDER_OPTIONS = [
+        { value: 'male',   label: 'Male' },
+        { value: 'female', label: 'Female' },
+    ];
 
     const handleSubmit = async (e) => {
     e.preventDefault();
@@ -207,22 +225,40 @@ export default function PersonalInfo() {
                         autoComplete="bday"
                     />
                     <label className="input-label" htmlFor="gender">Gender</label>
-                    <select
-                        id="gender"
-                        name="gender"
-                        value={gender}
-                        onChange={(e) => {
-                            setGender(e.target.value);
-                            if (error) setError("");
-                        }}
-                        className="form-input"
-                    >
-                        <option value="" disabled>
-                            Select your gender
-                        </option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                    </select>
+                    <div className="pi-dropdown-wrap" ref={genderRef}>
+                        <button
+                            type="button"
+                            id="gender"
+                            className={`pi-dropdown-btn${!gender ? ' pi-dropdown-btn--placeholder' : ''}`}
+                            onClick={() => setGenderOpen((v) => !v)}
+                            aria-expanded={genderOpen}
+                            aria-haspopup="listbox"
+                        >
+                            <span>{gender ? GENDER_OPTIONS.find((o) => o.value === gender)?.label : 'Select your gender'}</span>
+                            <span className={`pi-dropdown-chevron${genderOpen ? ' open' : ''}`}>&#8964;</span>
+                        </button>
+                        {genderOpen && (
+                            <div className="pi-picker" role="listbox" aria-label="Gender">
+                                {GENDER_OPTIONS.map((o) => (
+                                    <button
+                                        key={o.value}
+                                        type="button"
+                                        className={`pi-picker-item${gender === o.value ? ' pi-picker-item--active' : ''}`}
+                                        role="option"
+                                        aria-selected={gender === o.value}
+                                        onClick={() => {
+                                            setGender(o.value);
+                                            setGenderOpen(false);
+                                            if (error) setError('');
+                                        }}
+                                    >
+                                        {o.label}
+                                        {gender === o.value && <span className="pi-picker-check">&#10003;</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <label className="input-label" htmlFor="bio">Bio</label>
                     <textarea
                         id="bio"

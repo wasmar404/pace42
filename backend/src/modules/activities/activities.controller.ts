@@ -456,7 +456,14 @@ export class ActivitiesController {
     });
     if (!activity) throw new NotFoundException('Activity not found');
 
-    return { activity };
+    const mediaRows = await this.prisma.activityMedia.findMany({
+      where: { activityId: id, kind: 'photo' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, publicUrl: true },
+    });
+    const photos = mediaRows.filter((m) => m.publicUrl).map((m) => m.publicUrl as string);
+
+    return { activity: { ...activity, photos } };
   }
 
   @Delete(':id([0-9a-fA-F-]{36})')

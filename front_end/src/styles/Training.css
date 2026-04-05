@@ -1126,19 +1126,48 @@
 
 .tf-chip-input[type="date"] { width: 130px; }
 
-.tf-chip-select {
+/* chip custom select */
+.tf-chip-sel-wrap {
+  position: relative;
+}
+
+.tf-chip-sel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border: none;
   background: transparent;
   outline: none;
   font-family: inherit;
   font-size: 13px;
   font-weight: 950;
-  color: rgba(11, 18, 32, 0.86);
+  color: rgba(252, 76, 2, 0.92);
   cursor: pointer;
   padding: 0;
 }
 
-:root[data-theme="dark"] .tf-chip-select { color: rgba(255, 250, 242, 0.86); }
+:root[data-theme="dark"] .tf-chip-sel-btn { color: rgba(252, 76, 2, 0.92); }
+
+.tf-chip-picker {
+  top: calc(100% + 8px);
+  left: 0;
+  right: auto;
+  min-width: 160px;
+}
+
+/* orange highlight on selected item */
+.tf-picker-item--active {
+  background: rgba(252, 76, 2, 0.06);
+  color: rgba(252, 76, 2, 0.92);
+}
+
+.tf-picker-item--active:hover {
+  background: rgba(252, 76, 2, 0.12);
+}
+
+.tf-picker-sub--active {
+  color: rgba(252, 76, 2, 0.80);
+}
 
 .tf-chip-remove {
   display: grid;

@@ -22,6 +22,14 @@ async function main() {
   app.enableCors({
     origin: origins && origins.length ? origins : rawOrigins || true,
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Private-Network'],
+    exposedHeaders: ['Access-Control-Allow-Private-Network'],
+  });
+
+  // Allow Chrome's Private Network Access preflight requests
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    next();
   });
 
   app.setGlobalPrefix('api');

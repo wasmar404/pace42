@@ -304,6 +304,11 @@
   color: var(--color-text-muted);
 }
 
+.required-mark {
+  color: #fc4c02;
+  font-weight: 700;
+}
+
 .optional {
   color: var(--color-text-muted);
   font-weight: 400;

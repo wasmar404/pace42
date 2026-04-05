@@ -78,8 +78,7 @@ export default function ActivityDetails() {
 
           <button
             type="button"
-            className="activity-back"
-            style={{ marginLeft: 'auto', borderColor: 'rgba(180,20,20,0.25)', color: 'rgba(180,20,20,0.95)' }}
+            className="activity-delete"
             disabled={deleting}
             onClick={async () => {
               if (!activity?.id) return
@@ -157,6 +156,21 @@ export default function ActivityDetails() {
                     </div>
                   </div>
                 </div>
+
+                {/* ── photos ── */}
+                {activity?.photos?.length > 0 && (
+                  <div className="activity-photos">
+                    {activity.photos.map((url, i) => (
+                      <img
+                        key={i}
+                        className="activity-photo"
+                        src={url}
+                        alt={`Activity photo ${i + 1}`}
+                        loading="lazy"
+                      />
+                    ))}
+                  </div>
+                )}
 
                 {/* ── map ── */}
                 {activity?.routePolyline ? (

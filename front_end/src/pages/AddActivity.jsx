@@ -331,7 +331,7 @@ export default function AddActivity() {
               {/* Title & Description */}
               <section className="form-section">
                 <div className="input-group">
-                  <label htmlFor="title">Title <span className="optional">optional</span></label>
+                  <label htmlFor="title">Title <span className="required-mark">*</span></label>
                   <input
                     id="title"
                     name="title"

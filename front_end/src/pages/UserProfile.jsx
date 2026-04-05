@@ -18,8 +18,6 @@ import {
   MoreHorizontal,
   Loader2,
   UserPlus,
-  Globe,
-  Lock
 } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
@@ -268,15 +266,10 @@ export default function UserProfile() {
             )}
             
             <div className="profile-badges">
-              {data?.relationship?.isFollowing ? (
+              {data?.relationship?.isFollowing && (
                 <span className="badge badge-following">
                   <Zap size={12} />
                   Following
-                </span>
-              ) : (
-                <span className="badge badge-public">
-                  <Globe size={12} />
-                  Public
                 </span>
               )}
               {stats?.lastActivityAt && (

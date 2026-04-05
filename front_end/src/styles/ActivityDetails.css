@@ -51,6 +51,35 @@
   transform: translateX(-3px);
 }
 
+/* ── delete button ── */
+.activity-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(180, 20, 20, 0.22);
+  background: rgba(180, 20, 20, 0.07);
+  color: rgba(160, 20, 20, 0.90);
+  font-family: var(--p42-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  margin-left: auto;
+}
+.activity-delete:hover:not(:disabled) {
+  background: rgba(180, 20, 20, 0.13);
+  border-color: rgba(180, 20, 20, 0.40);
+  color: rgba(140, 10, 10, 1);
+}
+.activity-delete:disabled {
+  opacity: 0.50;
+  cursor: not-allowed;
+}
+
 /* ── error ── */
 .activity-error {
   margin-bottom: 16px;
@@ -256,6 +285,36 @@
   height: 280px;
   object-fit: cover;
   display: block;
+}
+
+/* ── photos ── */
+.activity-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.activity-photo {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(11, 18, 32, 0.10);
+  box-shadow: 0 8px 24px -6px rgba(11, 18, 32, 0.10);
+  display: block;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.activity-photo:hover {
+  transform: scale(1.01);
+  box-shadow: 0 14px 36px -8px rgba(11, 18, 32, 0.16);
+}
+
+/* single photo spans full width */
+.activity-photos:has(.activity-photo:only-child) .activity-photo {
+  grid-column: 1 / -1;
+  aspect-ratio: 16 / 7;
 }
 
 /* ── description ── */
