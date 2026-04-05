@@ -67,14 +67,12 @@ export default function AuthCallback() {
         return
       }
 
-      // Wait briefly for the session to persist.
+      // Wait briefly for the session to persist
       let session = null
       for (let i = 0; i < 12; i++) {
-        // eslint-disable-next-line no-await-in-loop
         const { data } = await supabase.auth.getSession()
         session = data?.session || null
         if (session) break
-        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 120))
       }
 

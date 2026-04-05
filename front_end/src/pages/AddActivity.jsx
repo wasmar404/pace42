@@ -78,7 +78,6 @@ export default function AddActivity() {
   const [seconds, setSeconds] = useState('0')
   const [distanceKm, setDistanceKm] = useState('5')
 
-  // units removed (km only)
 
   const [gpxFile, setGpxFile] = useState(null)
   const [photos, setPhotos] = useState([])

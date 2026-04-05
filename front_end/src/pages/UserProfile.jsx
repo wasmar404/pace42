@@ -84,7 +84,6 @@ function formatWhen(iso) {
   }
 }
 
-// format helpers live in ../utils/format
 
 function displayName(profile, user) {
   const first = (profile?.firstName || '').trim()

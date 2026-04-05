@@ -35,7 +35,7 @@ export default function Mfa() {
       setLoading(true)
       setError('')
 
-      //check if user is logged in if not go to login page
+
 
     //call sb to verify the code 
       try {
@@ -102,8 +102,6 @@ export default function Mfa() {
       const msg = String(e2?.message || 'Invalid code')
       setError(msg)
       setCode('')
-      // If the challenge expired/was consumed, refresh it so the user can retry.
-
       // if the challenge expired/was consumed refresh it so the user can retry
       const lower = msg.toLowerCase()
       if (lower.includes('expired') || lower.includes('challenge') || lower.includes('not found')) {
