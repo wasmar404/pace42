@@ -1,12 +1,11 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import NavBar from '../components/NavBar'
 import Pill from '../components/ui/Pill'
 import TimeText from '../components/ui/TimeText'
-import { getActivity } from '../api/activities'
-import { deleteActivity } from '../api/activities'
-// units removed (km only)
+import SocialModal from '../components/home/SocialModal'
+import { getActivity, deleteActivity, giveKudos, removeKudos } from '../api/activities'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 import '../styles/ActivityDetails.css'
 
@@ -32,21 +31,26 @@ function sportAccent(sport) {
 export default function ActivityDetails() {
   const { id } = useParams()
   const [activity, setActivity] = useState(null)
+  const [athlete, setAthlete] = useState(null)
+  const [social, setSocial] = useState({ kudosCount: 0, commentCount: 0, viewerHasKudo: false })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [kudosBusy, setKudosBusy] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalTab, setModalTab] = useState('comments')
 
   useEffect(() => {
     let cancelled = false
     async function run() {
       setLoading(true)
       setError('')
-
-    //load acctivity from localstorage
       try {
         const res = await getActivity(id, { includeRoute: true })
         if (cancelled) return
         setActivity(res.activity)
+        if (res.social) setSocial(res.social)
+        if (res.athlete) setAthlete(res.athlete)
       } catch (e) {
         if (cancelled) return
         setError(e?.message || 'Failed to load activity')
@@ -58,6 +62,28 @@ export default function ActivityDetails() {
     void run()
     return () => { cancelled = true }
   }, [id])
+
+  const onKudos = async () => {
+    if (kudosBusy) return
+    setKudosBusy(true)
+    try {
+      if (social.viewerHasKudo) {
+        await removeKudos(id)
+        setSocial(s => ({ ...s, kudosCount: Math.max(0, s.kudosCount - 1), viewerHasKudo: false }))
+      } else {
+        await giveKudos(id)
+        setSocial(s => ({ ...s, kudosCount: s.kudosCount + 1, viewerHasKudo: true }))
+      }
+    } catch { /* ignore */ } finally {
+      setKudosBusy(false)
+    }
+  }
+
+  const onSocialUpdate = useCallback((_, counts) => {
+    setSocial(s => ({ ...s, ...counts }))
+  }, [])
+
+  const openModal = (tab) => { setModalTab(tab); setModalOpen(true) }
 
   const title = useMemo(() => {
     if (!activity) return 'Activity'
@@ -200,9 +226,40 @@ export default function ActivityDetails() {
             ) : null}
 
           </div>
+
+          {activity ? (
+            <div className="activity-social-bar">
+              <button
+                className={`activity-social-btn kudos${social.viewerHasKudo ? ' active' : ''}`}
+                type="button"
+                onClick={onKudos}
+                disabled={kudosBusy}
+              >
+                <span className="social-icon">👊</span>
+                <span>{social.kudosCount} Kudos</span>
+              </button>
+              <button
+                className="activity-social-btn"
+                type="button"
+                onClick={() => openModal('comments')}
+              >
+                <span className="social-icon">💬</span>
+                <span>{social.commentCount} Comments</span>
+              </button>
+            </div>
+          ) : null}
         </div>
 
       </div>
+
+      <SocialModal
+        open={modalOpen}
+        item={{ activity, athlete, social }}
+        tab={modalTab}
+        onTab={setModalTab}
+        onClose={() => setModalOpen(false)}
+        onSocialUpdate={onSocialUpdate}
+      />
     </div>
   )
 }

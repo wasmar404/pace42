@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { RewriteStorageUrlInterceptor } from './common/rewrite-storage-url.interceptor';
 
 async function main() {
   const app = await NestFactory.create(AppModule);
@@ -34,6 +35,7 @@ async function main() {
 
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new RewriteStorageUrlInterceptor());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

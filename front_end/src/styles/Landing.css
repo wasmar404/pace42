@@ -1,10 +1,8 @@
-/* Reset */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
-
 
 .Landing {
     min-height: 100vh;
@@ -12,7 +10,6 @@
     width: 100%;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
-
 
 .left-panel,
 .right-panel {
@@ -45,7 +42,6 @@
     object-position: top;
 }
 
-
 .center-card {
     flex: 1;
     display: flex;
@@ -64,15 +60,12 @@
     }
 }
 
-
-
 .logo {
     width: 250px;
     height: auto;
     margin-bottom: 1rem;
     text-align: center;
 }
-
 
 .Landing .tagline {
     font-size: 1rem;
@@ -86,7 +79,6 @@
     display: block;
     background-color: transparent;
 }
-
 
 .Buttons {
     display: flex;
@@ -123,7 +115,6 @@
     color: #ffffff;
 }
 
-
 .terms {
     font-size: 0.625rem;
     text-align: center;
@@ -140,7 +131,6 @@
 .terms a:hover {
     color: #1e293b;
 }
-
 
 .landing-footer {
     width: 100%;

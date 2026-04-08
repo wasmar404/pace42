@@ -1,4 +1,3 @@
-/* Pace42 theme (scoped to navbar CSS file) */
 :root {
   --p42-paper: #fffaf2;
   --p42-ink: #0b1220;
@@ -53,7 +52,6 @@ body {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 250, 242, 0.90);
 }
-
 
 .nav {
   position: sticky;
@@ -178,7 +176,6 @@ body {
   position: relative;
 }
 
-
 .nav-chat-btn {
   position: relative;
 }
@@ -267,7 +264,7 @@ body {
 
 .nav-avatar-wrap {
   position: relative;
-  /* Keep hover active when moving into the dropdown (bridge the small gap). */
+  
   padding-bottom: 12px;
   margin-bottom: -12px;
 }
@@ -354,7 +351,7 @@ body {
     gap: 8px;
   }
 
-  /* Keep icons visible on small screens */
+  
   .nav-ghost {
     display: none;
   }

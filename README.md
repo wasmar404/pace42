@@ -438,14 +438,14 @@ profiles ──< activities ──< activity_media
 - Designed the PostgreSQL database schema (9 tables) with Prisma ORM.
 - Implemented Supabase JWT authentication with custom guards and middleware.
 - Built the auth policy enforcement system preventing duplicate accounts and cross-method login conflicts.
-- Developed RESTful API endpoints for activities (CRUD, GPX import), users (search, profiles, follow), home feed, and account management.
+- Developed API endpoints for activities (GPX import), users (search, profiles, follow), home feed, and account management.
 - Implemented the WebSocket chat gateway with Socket.IO (real-time messaging, online presence).
 - Built the public API module with 6 endpoints, shared-key authentication, and rate limiting.
 - Set up Supabase Storage integration for file uploads (photos, avatars).
 - Configured Docker containerization for the backend (Node 20 Alpine).
 - Collaborated with raldanda on API contracts and frontend–backend integration.
 
-**Challenges faced:** Verifying Supabase JWTs at the NestJS level required fetching the JWKS endpoint and rotating keys correctly — using `jwks-rsa` with `jsonwebtoken` solved this but needed careful error handling for expired/invalid tokens. Implementing rate limiting for the public API while keeping it stateless (no Redis) was handled with an in-memory sliding window per key+IP, which required testing under concurrent load. GPX parsing edge cases (malformed files, missing elevation, multiple tracks) needed defensive handling to avoid crashing the import endpoint.
+**Challenges faced:**  Implementing rate limiting for the public API while keeping it stateless (no Redis) was handled with an in-memory sliding window per key+IP, which required testing under concurrent load. 
 
 ---
 

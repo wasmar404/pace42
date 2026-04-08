@@ -1,7 +1,7 @@
 import NavBar from '../components/NavBar'
 import '../styles/ApiDocs.css'
 
-const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
+const BASE = import.meta.env.VITE_BACKEND_URL || 'https://localhost:3443'
 
 export default function ApiDocs() {
   const authBlock = `x-api-key: <PUBLIC_API_KEY>\n# or\nauthorization: Bearer <PUBLIC_API_KEY>`

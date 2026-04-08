@@ -456,14 +456,34 @@ export class ActivitiesController {
     });
     if (!activity) throw new NotFoundException('Activity not found');
 
-    const mediaRows = await this.prisma.activityMedia.findMany({
-      where: { activityId: id, kind: 'photo' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, publicUrl: true },
-    });
+    const viewerId = (req as any).user?.userId as string | undefined;
+
+    const [mediaRows, kudosCount, commentCount, viewerKudo, profile] = await Promise.all([
+      this.prisma.activityMedia.findMany({
+        where: { activityId: id, kind: 'photo' },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, publicUrl: true },
+      }),
+      this.prisma.activityKudo.count({ where: { activityId: id } }),
+      this.prisma.activityComment.count({ where: { activityId: id } }),
+      viewerId ? this.prisma.activityKudo.findUnique({ where: { activityId_userId: { activityId: id, userId: viewerId } } }) : null,
+      this.prisma.profile.findUnique({
+        where: { userId: activity.userId },
+        select: { userId: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+      }),
+    ]);
+
     const photos = mediaRows.filter((m) => m.publicUrl).map((m) => m.publicUrl as string);
 
-    return { activity: { ...activity, photos } };
+    const athleteName = profile
+      ? `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || (profile.username ? `@${profile.username}` : 'Athlete')
+      : 'Athlete';
+
+    return {
+      activity: { ...activity, photos },
+      social: { kudosCount, commentCount, viewerHasKudo: !!viewerKudo },
+      athlete: { ...profile, name: athleteName },
+    };
   }
 
   @Delete(':id([0-9a-fA-F-]{36})')

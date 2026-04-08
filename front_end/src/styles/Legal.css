@@ -217,7 +217,6 @@
   align-items: start;
 }
 
-/* If a legal page uses only the document card, center it. */
 .legal-shell > .legal-doc.legal-doc-center {
   margin-top: 14px;
 }

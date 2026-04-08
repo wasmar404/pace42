@@ -95,10 +95,25 @@ export function writeAvatarSeed(seed) {
   }
 }
 
+function normalizeStorageUrl(url) {
+  const base = import.meta.env.VITE_SUPABASE_URL
+  if (!base || !url.includes('/storage/v1/')) return url
+  try {
+    const parsed = new URL(url)
+    const baseParsed = new URL(base)
+    parsed.protocol = baseParsed.protocol
+    parsed.hostname = baseParsed.hostname
+    parsed.port = baseParsed.port
+    return parsed.toString()
+  } catch {
+    return url
+  }
+}
+
 export function readAvatarUrl() {
   try {
     const v = localStorage.getItem(URL_KEY)
-    return v && String(v).trim() ? String(v).trim() : ''
+    return v && String(v).trim() ? normalizeStorageUrl(String(v).trim()) : ''
   } catch {
     return ''
   }

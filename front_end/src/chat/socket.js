@@ -3,7 +3,7 @@ import { io } from 'socket.io-client'
 import { supabase } from '../supabaseClient'
 import { readSupabaseAccessTokenForStorageKeySync, readSupabaseAccessTokenSync } from '../utils/avatarCache'
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://localhost:3443'
 
 let socket = null
 let lastToken = ''

@@ -1,5 +1,3 @@
-/* Settings: "Control Room" aesthetic (scoped by class names) */
-
 .settings-page {
   min-height: 100vh;
   background:
@@ -90,7 +88,6 @@
   z-index: 1;
 }
 
-/* Toast (replaces top-of-page banners) */
 .settings-toast {
   position: fixed;
   right: 16px;
@@ -448,7 +445,6 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
-/* MFA panel */
 .mfa-panel {
   display: grid;
   grid-template-columns: 220px 1fr;

@@ -45,7 +45,6 @@
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.40);
 }
 
-/* subtle "track paper" texture */
 .home::before {
   content: "";
   position: fixed;
@@ -335,7 +334,6 @@
   font-size: 12px;
 }
 
-/* Social modal (comments.png style) */
 .social-backdrop {
   position: fixed;
   inset: 0;
@@ -697,7 +695,6 @@
   cursor: not-allowed;
 }
 
-/* Announcement */
 .feed-card.ann {
   background:
     radial-gradient(620px 280px at 12% 0%, rgba(252, 76, 2, 0.18), transparent 55%),
@@ -746,7 +743,6 @@
   line-height: 1.6;
 }
 
-/* Sidebar */
 .side {
   position: sticky;
   top: 12px;
@@ -778,7 +774,6 @@
   overflow: hidden;
 }
 
-/* Athlete summary (reference: image.png) */
 .w-ath {
   background:
     radial-gradient(820px 360px at 50% 0%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.60)),
