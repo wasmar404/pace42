@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, KeyRound, Lock, Upload, UserCircle } from 'lucide-react'
+import { AlertTriangle, FileText, KeyRound, Lock, Upload, UserCircle } from 'lucide-react'
 
 import NavBar from '../components/NavBar'
 import Avatar from '../components/Avatar'
-import { readAvatarSeed, writeAvatarSeed, writeAvatarUrl } from '../utils/avatarCache'
 import { backendGet, backendJson, backendUploadWithProgress } from '../backendApi'
 import { supabase } from '../supabaseClient'
 import '../styles/Settings.css'
@@ -161,7 +160,7 @@ export default function Settings() {
   }
 
   const avatarSeed = useMemo(() => {
-    return me?.user?.id || readAvatarSeed('athlete')
+    return me?.user?.id || 'athlete'
   }, [me])
 
   const onPickAvatar = () => fileRef.current?.click()
@@ -187,11 +186,9 @@ export default function Settings() {
         onProgress: (p) => setUploadPct(Math.round(p * 100)),
       })
 
-      // Refresh cached profile (so NavBar updates instantly)
+      // Refresh profile
       const next = await backendGet('/api/me')
       setMe(next)
-      writeAvatarSeed(next?.user?.id || '')
-      writeAvatarUrl(next?.profile?.avatarUrl || '')
 
       setNotice('Profile picture updated.')
       return res
@@ -298,6 +295,7 @@ export default function Settings() {
               <a href="#password">Password</a>
               <a href="#twofa">2FA</a>
               <a href="#api">API</a>
+              <a href="#legal">Legal</a>
               <a href="#danger">Danger Zone</a>
             </div>
 
@@ -470,7 +468,38 @@ export default function Settings() {
               </div>
             </section>
 
-            <section className="settings-card danger" id="danger" style={{ '--i': 4 }}>
+            <section className="settings-card" id="legal" style={{ '--i': 4 }}>
+              <div className="settings-card-title">
+                <FileText size={18} />
+                <h2>Legal</h2>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Privacy policy</div>
+                  <div className="settings-row-help">How we handle and store your data.</div>
+                </div>
+                <div className="settings-row-actions">
+                  <button className="settings-btn" type="button" onClick={() => navigate('/privacy')} disabled={busy || loading}>
+                    Open
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="settings-row-main">
+                  <div className="settings-row-label">Terms of service</div>
+                  <div className="settings-row-help">Rules for using Pace42.</div>
+                </div>
+                <div className="settings-row-actions">
+                  <button className="settings-btn" type="button" onClick={() => navigate('/terms')} disabled={busy || loading}>
+                    Open
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="settings-card danger" id="danger" style={{ '--i': 5 }}>
               <div className="settings-card-title">
                 <span className="danger-dot" aria-hidden="true" />
                 <h2>Danger Zone</h2>

@@ -272,7 +272,6 @@ services:
       VERIFY_JWT: ${FUNCTIONS_VERIFY_JWT:-false}
     volumes:
       - ./supabase/volumes/functions:/home/deno/functions:ro
-      - supabase_deno_cache:/root/.cache/deno
     command: ["start", "--main-service", "/home/deno/functions/main"]
 
   studio:
@@ -411,6 +410,5 @@ volumes:
   supabase_db_data:
   supabase_db_config:
   supabase_storage:
-  supabase_deno_cache:
   backend_node_modules:
   frontend_node_modules:

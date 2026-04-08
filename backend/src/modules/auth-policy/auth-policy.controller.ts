@@ -110,9 +110,8 @@ export class AuthPolicyController {
     const oauthSignedUp = meta.oauthSignedUp === true;
     const oauthProvider = String(meta.oauthProvider ?? '').toLowerCase();
 
-   
     if (mode === 'signup') {
-      const tooOldForSignup = ageMs > 60 * 60 * 1000; // 60 minutes
+      const tooOldForSignup = ageMs > 60 * 60 * 1000;
       const alreadySignedUpWithThisMethod = oauthSignedUp && (!oauthProvider || oauthProvider === method);
       if (alreadySignedUpWithThisMethod || tooOldForSignup) {
         throw new ForbiddenException('Account already exists. Please log in instead of signing up again.');

@@ -87,7 +87,6 @@ export class ChatService {
           lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
           lastMessageText: c.lastMessageText ?? null,
           lastSenderId: c.lastSenderId ?? null,
-          unreadCount: 0,
           otherUser: {
             id: otherId,
             username: p?.username ?? null,

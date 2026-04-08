@@ -11,7 +11,6 @@ type ImportBody = {
   sport?: string
   title?: string
   description?: string
-  visibility?: string
   userJwt?: string
 }
 
@@ -157,7 +156,6 @@ Deno.serve(async (req) => {
 
     const distanceMeters = Math.max(1, Math.round(dist))
     const sport = body.sport ?? 'run'
-    const visibility = body.visibility ?? 'public'
 
     const polyline = polylineEncode(sampled)
 
@@ -168,7 +166,6 @@ Deno.serve(async (req) => {
         distanceMeters,
         polyline,
         sport,
-        visibility,
       }),
       { headers: { 'content-type': 'application/json' } },
     )

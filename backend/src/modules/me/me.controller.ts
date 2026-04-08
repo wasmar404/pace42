@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Query, Logger } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -31,6 +31,8 @@ const ACTIVITY_LIST_SELECT = {
 @Controller('me')
 @UseGuards(SupabaseAuthGuard)
 export class MeController {
+  private readonly logger = new Logger(MeController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -49,7 +51,6 @@ export class MeController {
       data: { userId, username },
     });
 
-    // Fire avatar upload in background — don't block the response.
     void this.trySetDefaultAvatar({ userId }).catch(() => {});
 
     return created;
@@ -81,8 +82,8 @@ export class MeController {
         upsert: true,
       });
       if (uploadError) {
-        // eslint-disable-next-line no-console
-        console.warn('[avatar] upload failed', {
+        this.logger.warn({
+          event: 'avatar_upload_failed',
           bucket,
           objectPath,
           message: (uploadError as any)?.message,
@@ -96,39 +97,12 @@ export class MeController {
       await this.prisma.profile.update({ where: { userId: input.userId }, data: { avatarUrl } });
       return avatarUrl;
     } catch (e: any) {
-      // eslint-disable-next-line no-console
-      console.warn('[avatar] exception while setting default', {
+      this.logger.warn({
+        event: 'avatar_set_default_exception',
         message: e?.message,
       });
       return null;
     }
-  }
-
-  private async tryMigrateLegacyDefaultAvatar(input: { userId: string }) {
-    if (!this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')) return null;
-
-    const service = this.supabaseAdminClient();
-    const bucket = this.avatarBucket();
-    const objectPath = `${input.userId}/default.svg`;
-
-    const existing = await service.storage.from(bucket).download(objectPath);
-    const blob: any = existing?.data;
-    if (!blob || typeof blob.text !== 'function') return null;
-    const txt = await blob.text();
-    const looksLegacy = typeof txt === 'string' && txt.includes('<text') && txt.includes('font-size="112"');
-    if (!looksLegacy) return null;
-
-    const svg = await this.defaultAvatarSvg(input.userId);
-    const { error: uploadError } = await service.storage.from(bucket).upload(objectPath, Buffer.from(svg), {
-      contentType: 'image/svg+xml',
-      upsert: true,
-    });
-    if (uploadError) return null;
-
-    const { data: publicData } = service.storage.from(bucket).getPublicUrl(objectPath);
-    const avatarUrl = toPublicUrl(publicData.publicUrl);
-    await this.prisma.profile.update({ where: { userId: input.userId }, data: { avatarUrl } });
-    return avatarUrl;
   }
 
   private getActivities(userId: string, opts: { take?: number; select?: object } = {}) {

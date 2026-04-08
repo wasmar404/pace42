@@ -16,7 +16,8 @@ import NavBar from '../components/NavBar'
 import { backendGet } from '../backendApi'
 import Avatar from '../components/Avatar'
 import FollowModal from '../components/profile/FollowModal'
-import { readAvatarSeed, readAvatarUrl, readSupabaseSessionUserSync } from '../utils/avatarCache'
+import { supabase } from '../supabaseClient'
+import { readSupabaseSessionUserForStorageKeySync, readSupabaseSessionUserSync } from '../utils/avatarCache'
 // units removed (km only)
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
@@ -83,12 +84,12 @@ const SPORT_ICONS = {
 export default function Profile() {
   const navigate = useNavigate()
   const [me, setMe] = useState(() => {
-    const u = readSupabaseSessionUserSync()
+    const key = supabase?.auth?.storageKey
+    const u = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
     if (!u?.id) return null
-    const cachedUrl = readAvatarUrl()
     return {
       user: { id: u.id, email: u.email },
-      profile: cachedUrl ? { avatarUrl: cachedUrl } : null,
+      profile: null,
     }
   })
   const [activities, setActivities] = useState([])
@@ -204,7 +205,7 @@ export default function Profile() {
               <div className="profile-card-content">
                 <div className="profile-avatar-large">
                   {me ? (
-                    <Avatar avatarUrl={me?.profile?.avatarUrl} seed={me?.user?.id || readAvatarSeed('athlete')} alt={displayName} loading="eager" />
+                    <Avatar avatarUrl={me?.profile?.avatarUrl} seed={me?.user?.id || 'athlete'} alt={displayName} loading="eager" />
                   ) : (
                     <div className="avatar-placeholder">
                       <User size={40} />

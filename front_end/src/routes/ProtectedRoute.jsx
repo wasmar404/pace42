@@ -57,7 +57,6 @@ export default function ProtectedRoute({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
       setHasSession(Boolean(session))
-      // Recompute AAL when auth changes
       if (session) {
         void computeMfaRequirement().then((require) => setNeedsMfa(Boolean(require))).catch(() => setNeedsMfa(false))
       } else {
@@ -78,7 +77,6 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
-  // Allow the MFA page itself.
   if (needsMfa && location.pathname !== '/mfa') {
     return <Navigate to={`/mfa?next=${encodeURIComponent(location.pathname)}`} replace />
   }

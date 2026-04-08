@@ -17,8 +17,6 @@ model Profile {
   dateOfBirth           DateTime? @map("date_of_birth") @db.Date
   gender                String?   @db.VarChar(20)
   bio                       String?
-  isPrivate                 Boolean   @default(false) @map("is_private")
-  weeklyGoalDistanceMeters  Int?      @map("weekly_goal_distance_meters")
   onboardingCompletedAt     DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -37,7 +35,6 @@ model Activity {
   durationSeconds Int               @map("duration_seconds")
   distanceMeters  Int               @map("distance_meters")
   source          String
-  visibility      String            @default("public")
   routePolyline   String?           @map("route_polyline")
   mapImageUrl     String?           @map("map_image_url")
   createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)

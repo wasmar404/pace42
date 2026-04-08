@@ -9,7 +9,8 @@ import Avatar from '../components/Avatar'
 import { backendGet } from '../backendApi'
 import { followUser } from '../api/users'
 import { getHomeFeed, getRecommendedUsers } from '../api/home'
-import { readAvatarSeed, readSupabaseSessionUserSync, writeAvatarSeed } from '../utils/avatarCache'
+import { supabase } from '../supabaseClient'
+import { readSupabaseSessionUserForStorageKeySync, readSupabaseSessionUserSync } from '../utils/avatarCache'
 
 import ActivityCard from '../components/home/ActivityCard'
 import AthleteSummaryWidget from '../components/home/AthleteSummaryWidget'
@@ -22,7 +23,8 @@ import '../styles/Home.css'
 
 export default function Home() {
   const [me, setMe] = useState(() => {
-    const u = readSupabaseSessionUserSync()
+    const key = supabase?.auth?.storageKey
+    const u = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
     if (!u?.id) return null
     return {
       user: { id: u.id, email: u.email },
@@ -43,24 +45,13 @@ export default function Home() {
   const [socialId, setSocialId] = useState('')
   const [socialTab, setSocialTab] = useState('comments')
 
-  const [seedFallback, setSeedFallback] = useState(() => {
-    const u = readSupabaseSessionUserSync()
-    return u?.id || readAvatarSeed('athlete')
-  })
-
   const meId = me?.user?.id
 
   const avatarSeed = useMemo(() => {
-    return meId || seedFallback || 'athlete'
-  }, [meId, seedFallback])
-
-  useEffect(() => {
-    const cached = readSupabaseSessionUserSync()
-    if (cached?.id) {
-      setSeedFallback(cached.id)
-      writeAvatarSeed(cached.id)
-    }
-  }, [])
+    const key = supabase?.auth?.storageKey
+    const u = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
+    return meId || u?.id || 'athlete'
+  }, [meId])
 
   useEffect(() => {
     let cancelled = false

@@ -410,7 +410,6 @@ export class ActivitiesController {
       select: { id: true, body: true, createdAt: true },
     });
 
-    // return counts so UI can update
     const [kudosCount, commentCount] = await Promise.all([
       this.prisma.activityKudo.count({ where: { activityId: id } }),
       this.prisma.activityComment.count({ where: { activityId: id } }),

@@ -13,5 +13,5 @@ RUN cp ./docker-entrypoint.sh /usr/local/bin/pace42-entrypoint.sh && chmod +x /u
 
 EXPOSE 3004
 
-ENTRYPOINT ["/usr/local/bin/pace42-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/pace42-entrypoint.sh"]
 CMD ["npm", "run", "start:dev"]

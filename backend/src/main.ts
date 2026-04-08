@@ -27,7 +27,6 @@ async function main() {
     exposedHeaders: ['Access-Control-Allow-Private-Network'],
   });
 
-  // Allow Chrome's Private Network Access preflight requests
   app.use((_req: any, res: any, next: any) => {
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     next();

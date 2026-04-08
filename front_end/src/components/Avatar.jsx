@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-
-import { readAvatarSvg, writeAvatarSvg } from '../utils/avatarCache'
 import multiavatar from '@multiavatar/multiavatar/esm'
-
-const cache = new Map()
 
 function toDataUri(svg) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
@@ -26,13 +22,9 @@ function placeholderDataUri(seed) {
 }
 
 function generateSrc(seedStr) {
-  const cached = cache.get(seedStr) || readAvatarSvg(seedStr)
-  if (cached) return cached
   try {
     const svg = multiavatar(seedStr, true)
     const uri = toDataUri(svg)
-    cache.set(seedStr, uri)
-    writeAvatarSvg(seedStr, uri)
     return uri
   } catch {
     return placeholderDataUri(seedStr)

@@ -5,7 +5,7 @@ import { MessageCircle, Search } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { backendGet } from '../backendApi'
 import Avatar from './Avatar'
-import { readAvatarSeed, readAvatarUrl, readSupabaseSessionUserSync, writeAvatarSeed, writeAvatarUrl } from '../utils/avatarCache'
+import { readSupabaseSessionUserForStorageKeySync, readSupabaseSessionUserSync } from '../utils/avatarCache'
 import '../styles/NavBar.css'
 
 const logo = '/assets/logo-removebg-preview.png'
@@ -13,10 +13,11 @@ const logo = '/assets/logo-removebg-preview.png'
 export default function NavBar() {
   const navigate = useNavigate()
 
-  const [avatarUrl, setAvatarUrl] = useState(() => readAvatarUrl())
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarSeed, setAvatarSeed] = useState(() => {
-    const u = readSupabaseSessionUserSync()
-    return u?.id || readAvatarSeed('athlete')
+    const key = supabase?.auth?.storageKey
+    const u = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
+    return u?.id || 'athlete'
   })
   const [menuOpen, setMenuOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
@@ -27,25 +28,7 @@ export default function NavBar() {
   useEffect(() => {
     let cancelled = false
 
-    // Set a stable seed from localStorage (sync, no network call needed).
-    const cached = readSupabaseSessionUserSync()
-    if (cached?.id) {
-      setAvatarSeed(cached.id)
-      writeAvatarSeed(cached.id)
-    }
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const id = session?.user?.id
-      if (!id) return
-      if (cancelled) return
-      setAvatarSeed(id)
-      writeAvatarSeed(id)
-    })
-
-    // Only hit the backend if we don't already have a cached avatar URL.
     async function loadMe() {
-      const cachedUrl = readAvatarUrl()
-      if (cachedUrl) return
       try {
         const res = await backendGet('/api/me')
         if (cancelled) return
@@ -53,12 +36,34 @@ export default function NavBar() {
         const nextSeed = res?.user?.id || 'athlete'
         setAvatarUrl(nextUrl)
         setAvatarSeed(nextSeed)
-        writeAvatarUrl(nextUrl)
-        writeAvatarSeed(nextSeed)
       } catch {
         // ignore (user might not be logged in yet)
       }
     }
+
+    // Set a stable seed from current session (sync, no network call needed).
+    const key = supabase?.auth?.storageKey
+    const cached = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
+    if (cached?.id) {
+      setAvatarSeed(cached.id)
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+
+      const id = session?.user?.id
+      if (!id) {
+        // Clear any previous user's avatar on logout.
+        setAvatarUrl('')
+        setAvatarSeed('athlete')
+        return
+      }
+
+      // Reset immediately, then re-fetch profile for this user.
+      setAvatarUrl('')
+      setAvatarSeed(id)
+      void loadMe()
+    })
 
     void loadMe()
     return () => {
@@ -85,7 +90,9 @@ export default function NavBar() {
   }, [])
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    await supabase.auth.signOut().catch(() => {})
+    setAvatarUrl('')
+    setAvatarSeed('athlete')
     navigate('/login')
   }
 

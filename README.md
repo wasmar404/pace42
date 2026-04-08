@@ -271,7 +271,6 @@ The database consists of **9 tables** managed through Prisma ORM. All tables use
 | `bio` | `TEXT` | Optional |
 | `date_of_birth` | `DATE` | Optional |
 | `gender` | `VARCHAR` | Optional |
-| `weekly_goal` | `FLOAT` | Distance goal in km |
 | `onboarded` | `BOOLEAN` | Whether onboarding is complete |
 | `created_at` | `TIMESTAMPTZ` | |
 

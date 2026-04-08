@@ -2,14 +2,6 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nes
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-/**
- * Rewrites Supabase storage URLs in every API response so that the host
- * always matches SUPABASE_PUBLIC_URL from the environment.
- *
- * This means the DB can store any host (e.g. localhost:54321) and other
- * machines on the local network will still receive the correct IP.
- * If the IP changes, just update SUPABASE_PUBLIC_URL and restart.
- */
 @Injectable()
 export class RewriteStorageUrlInterceptor implements NestInterceptor {
   private readonly publicOrigin: string | null;
