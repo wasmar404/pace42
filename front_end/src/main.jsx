@@ -4,9 +4,9 @@ import App from './App.jsx'
 
 import './styles/global.css'
 
-import { applyTheme, getTheme } from './preferences'
+import { applyTheme } from './preferences'
 
-applyTheme(getTheme())
+applyTheme('light')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

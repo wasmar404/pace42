@@ -15,11 +15,8 @@ const RouteMap = lazy(() => import('../components/RouteMap'))
 function formatSport(sport) {
   if (!sport) return 'Activity'
   return sport.charAt(0).toUpperCase() + sport.slice(1)
-
-      // ignore
 }
 
-// Sport emoji accent for the decorative background glyph
 function sportAccent(sport) {
   if (!sport) return '◎'
   const s = sport.toLowerCase()
@@ -113,8 +110,6 @@ export default function ActivityDetails() {
       <NavBar />
 
       <div className="activity-wrap">
-
-        {/* ── top nav ── */}
         <div className="activity-top">
           <Link className="activity-back" to="/activities/new">
             New activity
@@ -146,22 +141,17 @@ export default function ActivityDetails() {
 
         {error ? <div className="activity-error">{error}</div> : null}
 
-        {/* ══ HERO HEADER ══ */}
         <div className="activity-hero">
-          {/* big decorative sport word in the background */}
           <div className="activity-hero-accent" aria-hidden="true">
             {sportAccent(activity?.sport)}
           </div>
 
-          {/* sport tag */}
           <div className="activity-sport-tag">
             {formatSport(activity?.sport)}
           </div>
 
-          {/* title */}
           <h1 className="activity-title">{title}</h1>
 
-          {/* meta pills */}
           <div className="activity-meta-row">
             <Pill>
               <TimeText iso={activity?.startedAt} variant="datetime-long" />
@@ -170,10 +160,8 @@ export default function ActivityDetails() {
           </div>
         </div>
 
-        {/* thin ember divider */}
         <div className="activity-divider" />
 
-        {/* ══ BODY CARD ══ */}
         <div className="activity-card">
           <div className="activity-body">
 
@@ -183,7 +171,6 @@ export default function ActivityDetails() {
 
             {activity ? (
               <>
-                {/* ── stats ── */}
                 <div className="stat-grid">
                   <div className="stat">
                     <div className="stat-k">Distance</div>
@@ -201,7 +188,6 @@ export default function ActivityDetails() {
                   </div>
                 </div>
 
-                {/* ── photos ── */}
                 {activity?.photos?.length > 0 && (
                   <div className="activity-photos">
                     {activity.photos.map((url, i) => (
@@ -216,7 +202,6 @@ export default function ActivityDetails() {
                   </div>
                 )}
 
-                {/* ── map ── */}
                 {activity?.routePolyline ? (
                   <div className="activity-map">
                     <Suspense fallback={<div className="activity-empty">Loading map…</div>}>
@@ -234,7 +219,6 @@ export default function ActivityDetails() {
                   </div>
                 ) : null}
 
-                {/* ── description ── */}
                 {activity.description ? (
                   <div className="activity-desc">{activity.description}</div>
                 ) : (

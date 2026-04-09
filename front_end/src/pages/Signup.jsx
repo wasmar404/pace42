@@ -20,8 +20,6 @@ export default function Signup() {
             if (String(password || '').length < 8) {
                 throw new Error('Password must be at least 8 characters')
             }
-
-            //calls sp to create account 
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -35,9 +33,6 @@ export default function Signup() {
                 navigate("/personal-info", { replace: true });
                 return
             }
-
-            // Don't attempt a password login here. If confirmations are enabled,
-            // the token request will fail and spam the console.
             setNotice('Account created. If Supabase requires email confirmation, check your inbox then log in.')
         } catch (err) {
             const msg = err?.message || "Signup failed"

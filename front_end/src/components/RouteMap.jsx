@@ -4,13 +4,11 @@ import 'leaflet/dist/leaflet.css'
 
 const TILESETS = {
   clean: {
-    // CARTO Positron (light, minimal)
     url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
     subdomains: 'abcd',
     route: '#fc4c02',
   },
   ink: {
-    // CARTO Dark Matter (dark, high contrast)
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     subdomains: 'abcd',
     route: '#ff6b2c',
@@ -94,8 +92,6 @@ export default function RouteMap({ polyline, height = 220, variant = 'clean' }) 
         overflow: 'hidden',
         border: '1px solid rgba(11, 18, 32, 0.14)',
         background: 'rgba(255,255,255,0.55)',
-        // Leaflet panes use z-index up to ~1000. If the map isn't in its own
-        // stacking context, it can bleed above overlays/modals.
         position: 'relative',
         zIndex: 0,
         isolation: 'isolate',
@@ -116,7 +112,6 @@ export default function RouteMap({ polyline, height = 220, variant = 'clean' }) 
         <TileLayer url={tile.url} subdomains={tile.subdomains} />
         {points.length ? (
           <>
-            {/* Shadow stroke for better contrast on all tiles */}
             <Polyline
               positions={points}
               pathOptions={{ color: 'rgba(11, 18, 32, 0.70)', weight: 7, opacity: 0.28, lineCap: 'round', lineJoin: 'round' }}

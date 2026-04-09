@@ -18,6 +18,7 @@ export class SearchController {
 
     const users = await this.prisma.profile.findMany({
       where: {
+        ...(viewerId ? { userId: { not: viewerId } } : {}),
         OR: [
           { username: { contains: query, mode: 'insensitive' } },
           { firstName: { contains: query, mode: 'insensitive' } },

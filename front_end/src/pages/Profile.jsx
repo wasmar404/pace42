@@ -18,7 +18,6 @@ import Avatar from '../components/Avatar'
 import FollowModal from '../components/profile/FollowModal'
 import { supabase } from '../supabaseClient'
 import { readSupabaseSessionUserForStorageKeySync, readSupabaseSessionUserSync } from '../utils/avatarCache'
-// units removed (km only)
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
 import '../styles/Profile.css'
@@ -31,8 +30,6 @@ function hash32(str) {
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i)
     h = Math.imul(h, 16777619)
-
-      // ignore
   }
   return h >>> 0
 }
@@ -62,8 +59,6 @@ function pickHero(photos, seedStr) {
 
 
 function formatWhen(iso) {
-
-    //loads prf data from localstorage
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return '-'
@@ -72,8 +67,6 @@ function formatWhen(iso) {
     return '-'
   }
 }
-
-// format helpers live in ../utils/format
 
 const SPORT_ICONS = {
   run: '🏃',
@@ -144,7 +137,6 @@ export default function Profile() {
     return name || p?.username || 'Athlete'
   }, [me])
 
-  //take last 3 acttivities to display
   const recent = activities.slice(0, 3)
 
   const followUser = useMemo(() => {
@@ -180,17 +172,13 @@ export default function Profile() {
             </div>
           </div>
         )}
-
-        {/* Hero Section with Bento Grid */}
         <section className="profile-hero">
           <div className="hero-bento">
-            {/* Main Large Image */}
             <div className="bento-item bento-main">
               <img src={hero[0]} alt="Activity" />
               <div className="bento-overlay" />
             </div>
             
-            {/* Stacked Small Images */}
             <div className="bento-item bento-stack">
               <div className="stack-img">
                 <img src={hero[1]} alt="Activity" />
@@ -199,8 +187,6 @@ export default function Profile() {
                 <img src={hero[2]} alt="Activity" />
               </div>
             </div>
-
-            {/* Profile Info Card */}
             <div className="bento-item bento-profile">
               <div className="profile-card-content">
                 <div className="profile-avatar-large">
@@ -224,8 +210,6 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-
-            {/* Quick Stats Card */}
             <div className="bento-item bento-stats">
               <div className="stat-grid">
                 <div className="stat-box">
@@ -286,12 +270,8 @@ export default function Profile() {
             </div>
           </div>
         </section>
-
-        {/* Main Content Grid */}
         <div className="profile-content">
-          {/* Left Column */}
           <div className="content-main">
-            {/* About Section */}
             <section className="content-card about-card">
               <div className="card-header">
                 <div className="header-icon">
@@ -317,8 +297,6 @@ export default function Profile() {
                 )}
               </div>
             </section>
-
-            {/* Recent Workouts */}
             <section className="content-card workouts-card">
               <div className="card-header">
                 <div className="header-icon">
@@ -428,8 +406,6 @@ export default function Profile() {
               </div>
             </section>
           </div>
-
-          {/* Right Sidebar */}
           <aside className="content-sidebar">
             <div className="sidebar-card">
               <div style={{ fontWeight: 800, marginBottom: 8 }}>Quick Links</div>

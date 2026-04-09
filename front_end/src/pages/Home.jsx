@@ -58,10 +58,7 @@ export default function Home() {
     async function run() {
       setLoading(true)
       setError('')
-
-      //fetches all data
       try {
-        // Fast path: fetch basic profile for immediate UI.
         const meBasic = await backendGet('/api/me').catch(() => null)
         if (!cancelled && meBasic) setMe((prev) => ({ ...meBasic, stats: prev?.stats }))
 
@@ -88,7 +85,6 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false
-    // Background: fetch full summary (counts/photos) without blocking initial paint.
     void backendGet('/api/me/summary')
       .then((res) => {
         if (cancelled) return
@@ -100,7 +96,6 @@ export default function Home() {
     }
   }, [])
 
-//update likes/cpmments
   const onSocialUpdate = (activityId, patch) => {
     setFeed((prev) =>
       (prev || []).map((it) => {
@@ -128,18 +123,17 @@ export default function Home() {
     setSocialTab('comments')
   }
 
-//get the selected activity for the social modal
   const socialItem = useMemo(() => {
     if (!socialId) return null
     return (feed || []).find((it) => it?.type === 'activity' && it?.id === socialId) || null
   }, [socialId, feed])
 
   const onFollowRec = async (id) => {
+    if (!id || (meId && id === meId)) return
     try {
       await followUser(id)
       setRecUsers((prev) => prev.filter((u) => u.id !== id))
     } catch {
-      // ignore
     }
   }
 

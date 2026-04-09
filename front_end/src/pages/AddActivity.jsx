@@ -125,7 +125,6 @@ export default function AddActivity() {
     }))
   }, [photos])
 
-  //change mode in url 
   const setMode = (next) => {
     params.set('mode', next)
     setParams(params)
@@ -148,7 +147,6 @@ export default function AddActivity() {
     setPhotos((prev) => prev.filter((f) => f.name !== name))
   }
 
-  //handles drag and drop of photos 
   const handleDrop = (e) => {
     e.preventDefault()
     setIsDragging(false)
@@ -158,7 +156,6 @@ export default function AddActivity() {
     }
   }
 
-  //activates drag ui state
   const handleDragOver = (e) => {
     e.preventDefault()
     setIsDragging(true)
@@ -168,7 +165,6 @@ export default function AddActivity() {
     setIsDragging(false)
   }
 
- //validate inputs and submit the activity to the backend
   const submitManual = async () => {
     if (!String(title || '').trim()) throw new Error('Title is required')
     const dur = toSeconds(hours, minutes, seconds)
@@ -208,7 +204,6 @@ export default function AddActivity() {
     navigate(`/activities/${activityId}`)
   }
 
-  //Main form submit handler
   const submitGpx = async () => {
     if (!gpxFile) throw new Error('Choose a GPX file')
     if (gpxFile.size > 20 * 1024 * 1024) throw new Error('GPX must be <= 20MB')
@@ -265,7 +260,6 @@ export default function AddActivity() {
       <NavBar />
 
       <main className="add-wrap">
-        {/* Hero Section with Aurora Background */}
         <div className="add-hero">
           <div className="add-hero-content">
             <div className="add-hero-badge">
@@ -276,7 +270,6 @@ export default function AddActivity() {
             <p>Track your progress, celebrate your achievements, share your journey.</p>
           </div>
 
-          {/* Mode Toggle */}
           <div className="mode-toggle-container">
             <div className="mode-toggle">
               <button
@@ -301,11 +294,8 @@ export default function AddActivity() {
         </div>
 
         <form className="add-form" onSubmit={onSubmit}>
-          {/* Main Content Grid */}
           <div className="form-layout">
-            {/* Left Column - Main Details */}
             <div className="form-main">
-              {/* Sport Selection */}
               <section className="form-section">
                 <div className="section-label">Activity Type</div>
                 <div className="sport-grid">
@@ -327,7 +317,6 @@ export default function AddActivity() {
                 </div>
               </section>
 
-              {/* Title & Description */}
               <section className="form-section">
                 <div className="input-group">
                   <label htmlFor="title">Title <span className="required-mark">*</span></label>
@@ -356,13 +345,11 @@ export default function AddActivity() {
                 </div>
               </section>
 
-              {/* Manual Entry Fields */}
               {mode === 'manual' ? (
                 <section className="form-section">
                   <div className="section-label">Activity Details</div>
                   
                   <div className="details-grid">
-                    {/* Date Time */}
                     <div className="input-group span-2">
                       <label htmlFor="datetime">
                         <Calendar size={16} />
@@ -378,8 +365,6 @@ export default function AddActivity() {
                         max={maxStartedAt}
                       />
                     </div>
-
-                    {/* Duration */}
                     <div className="input-group span-2">
                       <label htmlFor="duration-hours">
                         <Clock size={16} />
@@ -435,8 +420,6 @@ export default function AddActivity() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Distance */}
                     <div className="input-group">
                       <label htmlFor="distance">
                         <Route size={16} />
@@ -513,11 +496,7 @@ export default function AddActivity() {
               )}
             </div>
 
-            {/* Right Column - Sidebar */}
             <div className="form-sidebar">
-              {/* Photos Card */}
-
-              {/* Visibility Card */}
               <section className="sidebar-card">
                 <div className="sidebar-header">
                   <div className="sidebar-label">Photos</div>
@@ -569,7 +548,6 @@ export default function AddActivity() {
                 )}
               </section>
 
-              {/* Quick Stats Preview */}
               {mode === 'manual' && distanceKm && (hours !== '0' || minutes !== '0') && (
                 <section className="sidebar-card stats-preview">
                   <div className="sidebar-label">Preview</div>
@@ -595,8 +573,6 @@ export default function AddActivity() {
               )}
             </div>
           </div>
-
-          {/* Error Message */}
           {error && (
             <div className="form-error">
               <div className="error-icon">!</div>
@@ -610,8 +586,6 @@ export default function AddActivity() {
               <span>{uploadNote}</span>
             </div>
           ) : null}
-
-          {/* Footer Actions */}
           <div className="form-footer">
             <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
               Cancel

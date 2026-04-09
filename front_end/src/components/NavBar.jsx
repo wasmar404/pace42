@@ -37,11 +37,9 @@ export default function NavBar() {
         setAvatarUrl(nextUrl)
         setAvatarSeed(nextSeed)
       } catch {
-        // ignore (user might not be logged in yet)
       }
     }
 
-    // Set a stable seed from current session (sync, no network call needed).
     const key = supabase?.auth?.storageKey
     const cached = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
     if (cached?.id) {
@@ -53,13 +51,11 @@ export default function NavBar() {
 
       const id = session?.user?.id
       if (!id) {
-        // Clear any previous user's avatar on logout.
         setAvatarUrl('')
         setAvatarSeed('athlete')
         return
       }
 
-      // Reset immediately, then re-fetch profile for this user.
       setAvatarUrl('')
       setAvatarSeed(id)
       void loadMe()
@@ -97,7 +93,6 @@ export default function NavBar() {
   }
 
   const onAvatarClick = (e) => {
-    // On touch devices, first tap opens the menu; second tap follows the link.
     const isTouch = e?.nativeEvent?.pointerType === 'touch'
     if (!isTouch) return
     if (!avatarMenuOpen) {
@@ -114,7 +109,6 @@ export default function NavBar() {
 
   const onAvatarLeave = () => {
     if (avatarCloseTimerRef.current) clearTimeout(avatarCloseTimerRef.current)
-    // Small delay prevents flicker when crossing tiny gaps.
     avatarCloseTimerRef.current = setTimeout(() => setAvatarMenuOpen(false), 140)
   }
 

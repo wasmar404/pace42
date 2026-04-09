@@ -23,7 +23,6 @@ export default function AuthCallback() {
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search)
-    // mode=login|signup (used to prevent "login" from creating new OAuth accounts)
     const _mode = params.get('mode')
     const _method = params.get('method')
     const next = params.get('next')
@@ -53,7 +52,6 @@ export default function AuthCallback() {
         return
       }
 
-      // For PKCE flows, make sure we exchange the code.
       try {
         const params = new URLSearchParams(location.search)
         const code = params.get('code')
@@ -67,7 +65,6 @@ export default function AuthCallback() {
         return
       }
 
-      // Wait briefly for the session to persist
       let session = null
       for (let i = 0; i < 12; i++) {
         const { data } = await supabase.auth.getSession()
@@ -77,7 +74,6 @@ export default function AuthCallback() {
       }
 
       if (session) {
-        // Enforce auth policies server-side (duplicate emails, mixed providers, OAuth-login gating).
         try {
           await backendJson('POST', '/api/auth/policy/enforce', { mode, method })
         } catch (e) {

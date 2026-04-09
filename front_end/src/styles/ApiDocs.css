@@ -6,14 +6,6 @@
     #f7f4ef;
 }
 
-:root[data-theme="dark"] .api-docs-page {
-  background:
-    radial-gradient(1000px 700px at 14% 0%, rgba(252, 76, 2, 0.18), transparent 60%),
-    radial-gradient(900px 700px at 90% 20%, rgba(16, 185, 129, 0.14), transparent 55%),
-    #0b1220;
-  color: rgba(255, 250, 242, 0.92);
-}
-
 .api-docs-wrap {
   max-width: 980px;
   margin: 0 auto;
@@ -28,12 +20,6 @@
   padding: 18px 18px 16px;
 }
 
-:root[data-theme="dark"] .api-docs-hero {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 34px 120px rgba(0, 0, 0, 0.40);
-}
-
 .api-docs-hero .k {
   font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
   font-weight: 950;
@@ -43,10 +29,6 @@
   color: rgba(11, 18, 32, 0.62);
 }
 
-:root[data-theme="dark"] .api-docs-hero .k {
-  color: rgba(255, 250, 242, 0.70);
-}
-
 .api-docs-hero h1 {
   margin: 10px 0 6px;
   font-size: 44px;
@@ -54,18 +36,10 @@
   color: rgba(11, 18, 32, 0.94);
 }
 
-:root[data-theme="dark"] .api-docs-hero h1 {
-  color: rgba(255, 250, 242, 0.94);
-}
-
 .api-docs-hero p {
   margin: 0;
   color: rgba(11, 18, 32, 0.72);
   font-weight: 850;
-}
-
-:root[data-theme="dark"] .api-docs-hero p {
-  color: rgba(255, 250, 242, 0.76);
 }
 
 .api-docs-pill {
@@ -78,11 +52,6 @@
   border-radius: 999px;
   border: 1px solid rgba(11, 18, 32, 0.12);
   background: rgba(255, 255, 255, 0.70);
-}
-
-:root[data-theme="dark"] .api-docs-pill {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .api-docs-pill .t {
@@ -99,21 +68,12 @@
   color: rgba(11, 18, 32, 0.86);
 }
 
-:root[data-theme="dark"] .api-docs-pill code {
-  color: rgba(255, 250, 242, 0.86);
-}
-
 .api-docs-card {
   margin-top: 12px;
   border-radius: 22px;
   border: 1px solid rgba(11, 18, 32, 0.12);
   background: rgba(255, 255, 255, 0.78);
   padding: 14px 16px;
-}
-
-:root[data-theme="dark"] .api-docs-card {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .api-docs-card h2 {
@@ -128,10 +88,6 @@
   font-weight: 850;
 }
 
-:root[data-theme="dark"] .api-docs-card p {
-  color: rgba(255, 250, 242, 0.76);
-}
-
 .api-docs-card pre {
   margin: 10px 0 0;
   border-radius: 18px;
@@ -139,11 +95,6 @@
   background: rgba(11, 18, 32, 0.06);
   padding: 12px;
   overflow: auto;
-}
-
-:root[data-theme="dark"] .api-docs-card pre {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .api-docs-card code {
@@ -159,11 +110,6 @@
   margin-top: 10px;
 }
 
-:root[data-theme="dark"] .api-docs-endpoint {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .api-docs-endpoint .m {
   display: flex;
   align-items: center;
@@ -175,10 +121,6 @@
   margin-top: 8px;
   color: rgba(11, 18, 32, 0.70);
   font-weight: 850;
-}
-
-:root[data-theme="dark"] .api-docs-endpoint .d {
-  color: rgba(255, 250, 242, 0.74);
 }
 
 .verb {

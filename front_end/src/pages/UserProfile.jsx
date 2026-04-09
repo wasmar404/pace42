@@ -24,7 +24,6 @@ import NavBar from '../components/NavBar'
 import { followUser, getUserSummary, unfollowUser } from '../api/users'
 import Avatar from '../components/Avatar'
 import FollowModal from '../components/profile/FollowModal'
-// units removed (km only)
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
 
 import '../styles/UserProfile.css'
@@ -73,8 +72,6 @@ function pickHero(photos, seedStr) {
 
 
 function formatWhen(iso) {
-
-    //load data from localstorage
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return '-'
@@ -104,8 +101,6 @@ export default function UserProfile() {
   const [followTab, setFollowTab] = useState('followers')
 
   useEffect(() => {
-
-    //fetch data from backend
     let cancelled = false
     async function run() {
       setError('')
@@ -182,7 +177,6 @@ export default function UserProfile() {
     }
   }
 
- //store recent activities
   const activities = data?.recentActivities || []
 
 
@@ -191,15 +185,12 @@ export default function UserProfile() {
       <NavBar />
 
       <main className="profile-container">
-        {/* Back Navigation */}
         <div className="back-nav">
           <Link to="/search" className="back-link">
             <ArrowLeft size={18} />
             <span>Back to search</span>
           </Link>
         </div>
-
-        {/* Error Banner */}
         {error && (
           <div className="profile-error-banner">
             <div className="error-content">
@@ -208,8 +199,6 @@ export default function UserProfile() {
             </div>
           </div>
         )}
-
-        {/* Profile Card */}
         <section className="user-profile-card">
           <div className="profile-card-header">
             <div className="profile-avatar-large">
@@ -280,8 +269,6 @@ export default function UserProfile() {
             </div>
           </div>
         </section>
-
-        {/* Stats Grid */}
         <section className="user-stats-grid">
           <div
             className="stat-box clickable"
@@ -382,8 +369,6 @@ export default function UserProfile() {
           onTab={setFollowTab}
           onClose={() => setFollowOpen(false)}
         />
-
-        {/* Hero Images */}
         <section className="profile-hero">
           <div className="hero-bento">
             <div className="bento-item bento-main">
@@ -400,14 +385,9 @@ export default function UserProfile() {
               </div>
             </div>
           </div>
-
-          {/* Privacy notice removed per UX preference */}
         </section>
-
-        {/* Main Content */}
         <div className="profile-content">
           <div className="content-main">
-            {/* About Section */}
             <section className="content-card about-card">
               <div className="card-header">
                 <div className="header-icon">
@@ -432,8 +412,6 @@ export default function UserProfile() {
                 )}
               </div>
             </section>
-
-            {/* Recent Workouts */}
             <section className="content-card workouts-card">
               <div className="card-header">
                 <div className="header-icon">
@@ -522,10 +500,7 @@ export default function UserProfile() {
               </div>
             </section>
           </div>
-
-          {/* Sidebar */}
           <aside className="content-sidebar">
-            {/* Monthly Progress */}
             <div className="sidebar-card progress-card">
               <div className="sidebar-header">
                 <Target size={20} />
@@ -549,8 +524,6 @@ export default function UserProfile() {
                 </p>
               </div>
             </div>
-
-            {/* Quick Stats */}
             <div className="sidebar-card mini-stats">
               <h3>Performance</h3>
               <div className="mini-stat-list">

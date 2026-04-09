@@ -43,7 +43,6 @@ export default function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate 
         commentCount: typeof res?.commentCount === 'number' ? res.commentCount : commentCount,
       })
     } catch {
-      // revert
       onSocialUpdate(a.id, {
         viewerHasKudo: kudosOn,
         kudosCount,

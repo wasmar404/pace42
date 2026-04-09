@@ -48,7 +48,6 @@ function sportLabel(s) {
   return x || 'Workout'
 }
 
-// All available filter definitions
 const FILTER_DEFS = [
   { key: 'sport',   label: 'Sport',        icon: Activity,     type: 'select',
     options: [
@@ -92,9 +91,7 @@ export default function Training() {
 
   const [me, setMe] = useState(null)
 
-  // Active filter keys chosen by user
   const [activeKeys, setActiveKeys] = useState([])
-  // Filter values
   const [vals, setVals] = useState({
     sport: 'any',
     from: '', to: '', minDist: '', maxDist: '',
@@ -124,7 +121,6 @@ export default function Training() {
   const tokenRef = useRef(0)
   const trimmed  = useMemo(() => String(q || '').trim(), [q])
 
-  // Close picker on outside click
   useEffect(() => {
     if (!showPicker && !showSortPicker && !showTakePicker && !openChipKey) return
     const handler = (e) => {
@@ -161,7 +157,6 @@ export default function Training() {
 
   const removeFilter = (key) => {
     setActiveKeys((prev) => prev.filter((k) => k !== key))
-    // Reset value when removed
     const def = FILTER_DEFS.find((d) => d.key === key)
     setVals((prev) => ({ ...prev, [key]: def?.type === 'select' ? 'any' : '' }))
   }
@@ -278,8 +273,6 @@ export default function Training() {
       <NavBar />
 
       <main className="training-wrap">
-
-        {/* ── HEADER ── */}
         <header className="training-head">
           <div>
             <div className="k">Training</div>
@@ -288,10 +281,8 @@ export default function Training() {
           <Link className="training-new" to="/activities/new">Log activity</Link>
         </header>
 
-        {/* ── SEARCH + FILTER BAR ── */}
         <section className="training-filters" aria-label="Training search and filters">
           <div className="tf-row">
-            {/* search */}
             <div className="search">
               <Search size={16} />
               <input
@@ -378,7 +369,6 @@ export default function Training() {
               )}
             </div>
 
-            {/* filter button + picker */}
             <div className="tf-filter-wrap" ref={pickerRef}>
               <button
                 type="button"
@@ -419,7 +409,6 @@ export default function Training() {
             </div>
           </div>
 
-          {/* active filter chips */}
           {activeKeys.length > 0 && (
             <div className="tf-chips">
               {activeKeys.map((key) => {
@@ -501,7 +490,6 @@ export default function Training() {
           )}
         </section>
 
-        {/* ── STATS ── */}
         <section className="training-stats" aria-label="Training stats">
           <div className="stat"><div className="v">{stats?.total || 0}</div><div className="s">Workouts</div></div>
           <div className="stat"><div className="v">{totalDistance}</div><div className="s">Distance</div></div>
@@ -511,8 +499,6 @@ export default function Training() {
 
         {error   ? <div className="training-banner err">{error}</div>   : null}
         {loading ? <div className="training-banner">Loading…</div>      : null}
-
-        {/* ── LIST ── */}
         <section className="training-list" aria-label="Training log">
           <div className="list-label">
             <span className="s-icon"><List size={14} /></span>

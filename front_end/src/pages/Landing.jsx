@@ -5,7 +5,6 @@ export default function Landing() {
     return (
         <>
             <div className="Landing">
-                {/* Left Background Image */}
                 <div className="left-panel">
                     <img 
                         src="/assets/cyclists.jpg" 
@@ -14,7 +13,6 @@ export default function Landing() {
                     />
                 </div>
 
-                {/* Center Card */}
                 <div className="center-card">
                     <img src="/assets/logo.png" alt="Pace42 Logo" className="logo" />
                     <p className="tagline">
@@ -33,7 +31,6 @@ export default function Landing() {
                     </p>
                 </div>
 
-                {/* Right Background Image */}
                 <div className="right-panel">
                     <img 
                         src="/assets/runners.jpg" 

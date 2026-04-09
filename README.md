@@ -21,7 +21,6 @@
 - Google OAuth and email/password authentication
 - Photo uploads for activities and avatar management
 - Public REST API with shared-key authentication and rate limiting
-- Units preference (km/mi) across the entire app
 - Account management (email change, password change, avatar upload, account deletion)
 
 ---
@@ -33,45 +32,53 @@
 - **Docker** and **Docker Compose**
 - **Node.js** v20+ (if running outside Docker)
 - **npm** (bundled with Node.js)
-- A **Supabase** project (for authentication and storage)
-- A **PostgreSQL** database (provided by Supabase or standalone)
+
+This repo includes a local Supabase stack (Postgres + Auth + Storage + Kong) in `docker-compose.yml`. You only need external credentials if you want to enable Google OAuth.
 
 ### Environment Variables
 
-Create a `.env` file at the project root with the following variables (see `.env.example` for a template):
+Copy `.env.example` to `.env` and adjust values as needed:
 
-```
-# Supabase
-VITE_SUPABASE_URL=<your-supabase-url>
-VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-SUPABASE_URL=<your-supabase-url>
-SUPABASE_ANON_KEY=<your-supabase-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
-SUPABASE_JWT_SECRET=<your-supabase-jwt-secret>
+```bash
+# App entrypoint (nginx terminates TLS and proxies frontend + backend + Supabase)
+SITE_URL=https://localhost:5173
+ADDITIONAL_REDIRECT_URLS=https://localhost:5173,http://localhost:5173
 
-# Database
-DATABASE_URL=<your-postgresql-connection-string>
-DIRECT_URL=<your-postgresql-direct-connection-string>
+# Frontend
+VITE_BACKEND_URL=https://localhost:5173
+VITE_SUPABASE_URL=https://localhost:5173
+VITE_SUPABASE_ANON_KEY=<supabase anon key>
 
-# Backend
+# Backend (runs behind nginx; CORS must include the https origin)
 PORT=3004
-CORS_ORIGIN=http://localhost:5173
-VITE_BACKEND_URL=http://localhost:3004
+CORS_ORIGIN=https://localhost:5173,http://localhost:5173
 
-# Supabase Storage Buckets (optional — defaults shown)
+# Local Supabase stack
+SUPABASE_URL=http://localhost:54321
+SUPABASE_PUBLIC_URL=https://localhost:5173
+SUPABASE_ANON_KEY=<supabase anon key>
+SUPABASE_SERVICE_ROLE_KEY=<supabase service role key>
+SUPABASE_JWT_SECRET=<supabase jwt secret>
+
+# Supabase Storage buckets (optional - defaults shown)
 SUPABASE_AVATARS_BUCKET=test
 SUPABASE_ACTIVITY_MEDIA_BUCKET=activity-media
 SUPABASE_GPX_BUCKET=gpx
 SUPABASE_IMPORT_GPX_FUNCTION=import-gpx
-SUPABASE_HTTP_TIMEOUT_MS=60000
 
-# Public API
-PUBLIC_API_KEY=<your-shared-api-key>
+# Public API (optional)
+PUBLIC_API_KEY=dev_public_api_key_change_me
+
+# Google OAuth (optional)
+GOOGLE_ENABLED=false
+GOOGLE_CLIENT_ID=
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=https://localhost:5173/auth/v1/callback
 ```
 
 ### Running with Docker
 
-The recommended way to run Pace42 is with Docker Compose. Both services are containerized using Node 20 Alpine images.
+The recommended way to run Pace42 is with Docker Compose.
 
 **1. Make sure your `.env` file is in the project root** (see above).
 
@@ -81,12 +88,13 @@ The recommended way to run Pace42 is with Docker Compose. Both services are cont
 docker compose up --build
 ```
 
-This will start two services:
+Open:
 
-- **backend** — NestJS API server on `http://localhost:3004`. On startup, the entrypoint script automatically installs dependencies if needed, waits for the database to be reachable, runs `prisma generate`, and pushes the schema with `prisma db push`.
-- **frontend** — Vite dev server on `http://localhost:5173`. Depends on the backend service.
+- App: `https://localhost:5173`
+- Supabase Studio: `http://localhost:54323`
+- Supabase Kong (no TLS): `http://localhost:54321`
 
-Both services use volume mounts for live code reloading during development (`./backend:/app` and `./front_end:/app`), with separate named volumes for `node_modules` to avoid conflicts with the host.
+Note: the first time you hit `https://localhost:5173` your browser will prompt you to accept the self-signed certificate.
 
 **3. Stop the containers:**
 
@@ -257,107 +265,25 @@ We worked in an iterative approach with informal sprints of roughly one week eac
 
 ## Database Schema
 
-The database consists of **9 tables** managed through Prisma ORM. All tables use `UUID` primary keys and `timestamptz` for date/time fields.
+The schema is defined in `backend/schema.prisma`.
 
-### Tables and Key Fields
+It defines 9 Prisma models:
 
-#### `profiles`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `UUID` | PK — matches Supabase auth user ID |
-| `username` | `VARCHAR` | Unique |
-| `name` | `VARCHAR` | Display name |
-| `avatar_url` | `TEXT` | Supabase storage path |
-| `bio` | `TEXT` | Optional |
-| `date_of_birth` | `DATE` | Optional |
-| `gender` | `VARCHAR` | Optional |
-| `onboarded` | `BOOLEAN` | Whether onboarding is complete |
-| `created_at` | `TIMESTAMPTZ` | |
+- `Profile` (PK: `userId`)
+- `Activity` (`distanceMeters`, `durationSeconds`, optional `routePolyline`)
+- `ActivityMedia`, `ActivityKudo`, `ActivityComment`
+- `Follow`
+- `Conversation`, `ConversationParticipant`, `Message` (message content is stored in `body`)
 
-#### `activities`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `UUID` | PK |
-| `user_id` | `UUID` | FK → `profiles.id` |
-| `title` | `VARCHAR` | |
-| `description` | `TEXT` | Optional |
-| `sport_type` | `VARCHAR` | e.g. `running`, `cycling`, `walking` |
-| `distance` | `FLOAT` | Metres |
-| `duration` | `INTEGER` | Seconds |
-| `started_at` | `TIMESTAMPTZ` | |
-| `source` | `VARCHAR` | `manual` or `gpx` |
-| `route_polyline` | `TEXT` | Encoded polyline for Leaflet |
-| `map_image_url` | `TEXT` | Optional static map preview |
-| `created_at` | `TIMESTAMPTZ` | |
-
-#### `activity_media`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `UUID` | PK |
-| `activity_id` | `UUID` | FK → `activities.id` (cascade delete) |
-| `bucket` | `VARCHAR` | Supabase storage bucket name |
-| `path` | `TEXT` | File path within bucket |
-| `created_at` | `TIMESTAMPTZ` | |
-
-#### `activity_kudos`
-| Column | Type | Notes |
-|--------|------|-------|
-| `activity_id` | `UUID` | FK → `activities.id` (cascade delete) — composite PK |
-| `user_id` | `UUID` | FK → `profiles.id` — composite PK |
-| `created_at` | `TIMESTAMPTZ` | |
-
-#### `activity_comments`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `UUID` | PK |
-| `activity_id` | `UUID` | FK → `activities.id` (cascade delete) |
-| `user_id` | `UUID` | FK → `profiles.id` |
-| `content` | `TEXT` | |
-| `created_at` | `TIMESTAMPTZ` | |
-
-#### `follows`
-| Column | Type | Notes |
-|--------|------|-------|
-| `follower_id` | `UUID` | FK → `profiles.id` — composite PK |
-| `following_id` | `UUID` | FK → `profiles.id` — composite PK |
-| `created_at` | `TIMESTAMPTZ` | |
-
-#### `conversations`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `UUID` | PK |
-| `last_message` | `TEXT` | Preview of last message |
-| `last_message_at` | `TIMESTAMPTZ` | For sorting |
-| `created_at` | `TIMESTAMPTZ` | |
-
-#### `conversation_participants`
-| Column | Type | Notes |
-|--------|------|-------|
-| `conversation_id` | `UUID` | FK → `conversations.id` (cascade delete) — composite PK |
-| `user_id` | `UUID` | FK → `profiles.id` — composite PK |
-
-#### `messages`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `UUID` | PK |
-| `conversation_id` | `UUID` | FK → `conversations.id` (cascade delete) |
-| `sender_id` | `UUID` | FK → `profiles.id` |
-| `content` | `TEXT` | |
-| `created_at` | `TIMESTAMPTZ` | |
-
-### Entity Relationships
+Relationship overview:
 
 ```
-profiles ──< activities ──< activity_media
-         ──< activity_kudos
-         ──< activity_comments
-         ──< follows (follower / following)
-         ──< conversation_participants >── conversations ──< messages
+Profile ──< Activity ──< ActivityMedia
+       ──< ActivityKudo
+       ──< ActivityComment
+       ──< Follow (follower/following)
+       ──< ConversationParticipant >── Conversation ──< Message
 ```
-
-- Activities cascade-delete their kudos, comments, and media.
-- Conversations cascade-delete their participants and messages.
-- Indexes are placed on `activities.user_id`, `activities.started_at`, `messages.conversation_id`, `messages.created_at`, and `follows.follower_id` / `follows.following_id`.
 
 ---
 
@@ -382,7 +308,6 @@ profiles ──< activities ──< activity_media
 | **Real-Time Chat** | raldanda (UI) · wasmar (gateway) | Private messaging with WebSocket-based real-time delivery and online presence |
 | **Training Dashboard** | raldanda (UI) · wasmar (API) | Filterable, sortable, paginated list of all personal activities with advanced search |
 | **Weekly Goals** | raldanda (UI) · wasmar (API) | Set a weekly distance goal and track progress on the home dashboard |
-| **Units Preference** | raldanda | Toggle between kilometers and miles across the entire application |
 | **Settings** | raldanda (UI) · wasmar (API) | Change email, password, upload avatar, enable/disable 2FA, set weekly goal, delete account |
 | **Public REST API** | wasmar | Shared-key API for third-party access with rate limiting (6 endpoints) |
 | **API Documentation** | raldanda | In-app API docs page with endpoint reference and cURL examples |
@@ -415,7 +340,7 @@ profiles ──< activities ──< activity_media
 
 - Defined and prioritized features, maintained the product vision, and validated completed work against user needs.
 - Built the entire frontend application from scratch using React 18 and Vite.
-- Designed and implemented 15+ pages: Landing, Login, Signup, Home, Profile, UserProfile, Settings, Training, Chat, ChatThread, AddActivity, ActivityDetails, Search, ApiDocs, Mfa, PersonalInfo, PrivacyPolicy, TermsOfService, Verification.
+- Designed and implemented 15+ pages: Landing, Login, Signup, Home, Profile, UserProfile, Settings, Training, Chat, ChatThread, AddActivity, ActivityDetails, Search, ApiDocs, Mfa, PersonalInfo, PrivacyPolicy, TermsOfService.
 - Created the custom design system with 14 reusable components and 20+ CSS stylesheets.
 - Implemented client-side authentication flows (email/password login, Google OAuth redirect, MFA challenge page).
 - Built the social feed UI with activity cards, kudos, comments, and social modals.
@@ -423,7 +348,6 @@ profiles ──< activities ──< activity_media
 - Integrated Leaflet maps for route visualization.
 - Implemented file upload UI with progress tracking (activity photos, GPX files, avatars).
 - Built the real-time chat interface with Socket.IO client.
-- Implemented units preference (km/mi) with app-wide reactivity.
 - Collaborated with wasmar on API integration and WebSocket communication.
 
 **Challenges faced:** Getting the Leaflet map to render correctly inside React and avoiding double-initialization on hot reloads required wrapping the map in a key-controlled container and lazily importing Leaflet to prevent SSR-style issues with Vite. Supabase MFA's two-step enrollment flow (enroll → challenge → verify) was not well-documented, requiring careful study of the AAL (Authenticator Assurance Level) model before the UI flow worked reliably.
@@ -450,7 +374,7 @@ profiles ──< activities ──< activity_media
 
 ## Usage
 
-1. Open `http://localhost:5173` in your browser.
+1. Open `https://localhost:5173` (Docker) or `http://localhost:5173` (manual dev) in your browser.
 2. Sign up with email/password or Google.
 3. Complete the onboarding form (personal info).
 4. Log your first activity manually or import a GPX file.
@@ -458,7 +382,7 @@ profiles ──< activities ──< activity_media
 6. Interact with the feed — give kudos and leave comments.
 7. Start a conversation with another user via the chat.
 8. Track your progress on the training dashboard.
-9. Customize your settings (units, avatar, 2FA, weekly goal).
+9. Customize your settings (avatar, 2FA, weekly goal).
 
 ---
 

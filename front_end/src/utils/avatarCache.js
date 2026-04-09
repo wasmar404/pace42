@@ -3,7 +3,6 @@ export function readSupabaseSessionUserSync() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
       if (!k) continue
-      // Supabase JS v2 default storage key format.
       if (!k.startsWith('sb-') || !k.endsWith('-auth-token')) continue
 
       const raw = localStorage.getItem(k)
@@ -16,7 +15,6 @@ export function readSupabaseSessionUserSync() {
       return { id, email }
     }
   } catch {
-    // ignore
   }
   return null
 }
@@ -52,7 +50,6 @@ export function readSupabaseAccessTokenSync() {
       if (token) return token
     }
   } catch {
-    // ignore
   }
   return ''
 }

@@ -6,14 +6,6 @@
     linear-gradient(180deg, #fffaf2 0%, #f7f2e9 55%, #fffaf2 100%);
 }
 
-:root[data-theme="dark"] .training-page {
-  background:
-    radial-gradient(800px 420px at 12% 16%, rgba(252, 76, 2, 0.20), transparent 55%),
-    radial-gradient(900px 520px at 88% 24%, rgba(16, 185, 129, 0.16), transparent 60%),
-    linear-gradient(180deg, #0b1220 0%, #070b14 55%, #0b1220 100%);
-  color: rgba(255, 250, 242, 0.92);
-}
-
 .training-page::before {
   content: "";
   position: fixed;
@@ -32,25 +24,6 @@
       0deg,
       rgba(15, 23, 42, 0.05) 0px,
       rgba(15, 23, 42, 0.05) 1px,
-      transparent 1px,
-      transparent 22px
-    );
-}
-
-:root[data-theme="dark"] .training-page::before {
-  opacity: 0.20;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 250, 242, 0.08) 0px,
-      rgba(255, 250, 242, 0.08) 1px,
-      transparent 1px,
-      transparent 28px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 250, 242, 0.07) 0px,
-      rgba(255, 250, 242, 0.07) 1px,
       transparent 1px,
       transparent 22px
     );
@@ -81,10 +54,6 @@
   color: rgba(11, 18, 32, 0.52);
 }
 
-:root[data-theme="dark"] .training-head .k {
-  color: rgba(255, 250, 242, 0.52);
-}
-
 .training-head h1 {
   margin: 8px 0 6px;
   font-family: "Fraunces", serif;
@@ -94,19 +63,11 @@
   color: #0b1220;
 }
 
-:root[data-theme="dark"] .training-head h1 {
-  color: rgba(255, 250, 242, 0.92);
-}
-
 .training-head p {
   margin: 0;
   color: rgba(11, 18, 32, 0.62);
   font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
   font-size: 12px;
-}
-
-:root[data-theme="dark"] .training-head p {
-  color: rgba(255, 250, 242, 0.60);
 }
 
 .training-new {
@@ -138,12 +99,6 @@
   gap: 10px;
 }
 
-:root[data-theme="dark"] .training-filters {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.40);
-}
-
 .training-filters .search {
   display: flex;
   align-items: center;
@@ -153,11 +108,6 @@
   border: 1px solid #fc4c02;
   background: rgba(255, 255, 255, 0.72);
   color: rgba(11, 18, 32, 0.52);
-}
-
-:root[data-theme="dark"] .training-filters .search {
-  border-color: #fc4c02;
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .training-filters .search input {
@@ -171,17 +121,9 @@
   color: rgba(11, 18, 32, 0.86);
 }
 
-:root[data-theme="dark"] .training-filters .search input {
-  color: rgba(255, 250, 242, 0.88);
-}
-
 .training-filters .search input::placeholder {
   color: rgba(11, 18, 32, 0.40);
   font-weight: 500;
-}
-
-:root[data-theme="dark"] .training-filters .search input::placeholder {
-  color: rgba(255, 250, 242, 0.36);
 }
 
 .training-filters .filters {
@@ -204,8 +146,6 @@
   text-transform: uppercase;
 }
 
-:root[data-theme="dark"] .training-filters .lab { color: rgba(255, 250, 242, 0.56); }
-
 .training-filters input,
 .training-filters select {
   border-radius: 14px;
@@ -226,13 +166,6 @@
   box-shadow: 0 0 0 4px rgba(252, 76, 2, 0.12);
 }
 
-:root[data-theme="dark"] .training-filters input,
-:root[data-theme="dark"] .training-filters select {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.88);
-}
-
 .training-stats {
   margin-top: 12px;
   display: grid;
@@ -247,19 +180,12 @@
   padding: 12px;
 }
 
-:root[data-theme="dark"] .training-stats .stat {
-  border-color: rgba(255, 250, 242, 0.10);
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .training-stats .v {
   font-size: 20px;
   font-weight: 950;
   letter-spacing: -0.02em;
   color: rgba(11, 18, 32, 0.92);
 }
-
-:root[data-theme="dark"] .training-stats .v { color: rgba(255, 250, 242, 0.92); }
 
 .training-stats .s {
   margin-top: 4px;
@@ -271,8 +197,6 @@
   color: rgba(11, 18, 32, 0.52);
 }
 
-:root[data-theme="dark"] .training-stats .s { color: rgba(255, 250, 242, 0.56); }
-
 .training-banner {
   margin-top: 12px;
   padding: 12px 14px;
@@ -281,12 +205,6 @@
   background: rgba(255, 255, 255, 0.72);
   color: rgba(11, 18, 32, 0.74);
   font-weight: 900;
-}
-
-:root[data-theme="dark"] .training-banner {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.70);
 }
 
 .training-banner.err {
@@ -307,8 +225,6 @@
   color: rgba(11, 18, 32, 0.88);
 }
 
-:root[data-theme="dark"] .recent-label { color: rgba(255, 250, 242, 0.88); }
-
 .recent-label .s-icon {
   width: 28px;
   height: 28px;
@@ -328,12 +244,6 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: 280px 1fr;
-}
-
-:root[data-theme="dark"] .recent-card {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.40);
 }
 
 .recent-card .media {
@@ -385,18 +295,11 @@
   background: rgba(255, 255, 255, 0.58);
 }
 
-:root[data-theme="dark"] .recent-card .top {
-  border-color: rgba(255, 250, 242, 0.10);
-  background: rgba(255, 255, 255, 0.04);
-}
-
 .recent-card .t {
   font-weight: 950;
   letter-spacing: -0.01em;
   color: rgba(11, 18, 32, 0.90);
 }
-
-:root[data-theme="dark"] .recent-card .t { color: rgba(255, 250, 242, 0.92); }
 
 .recent-card .m {
   margin-top: 4px;
@@ -405,7 +308,6 @@
   font-size: 12px;
 }
 
-:root[data-theme="dark"] .recent-card .m { color: rgba(255, 250, 242, 0.60); }
 
 .recent-card .open {
   text-decoration: none;
@@ -423,12 +325,6 @@
 
 .recent-card .open:hover { border-color: rgba(252, 76, 2, 0.22); }
 
-:root[data-theme="dark"] .recent-card .open {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.78);
-}
-
 .recent-card .body { padding: 12px 14px; }
 
 .recent-card .nums {
@@ -440,21 +336,11 @@
   background: rgba(255, 255, 255, 0.52);
 }
 
-:root[data-theme="dark"] .recent-card .nums {
-  border-color: rgba(255, 250, 242, 0.10);
-  background: rgba(255, 255, 255, 0.04);
-}
-
 .recent-card .n {
   border-radius: 16px;
   border: 1px solid rgba(11, 18, 32, 0.10);
   background: rgba(255, 255, 255, 0.66);
   padding: 10px;
-}
-
-:root[data-theme="dark"] .recent-card .n {
-  border-color: rgba(255, 250, 242, 0.10);
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .recent-card .n span {
@@ -463,7 +349,6 @@
   color: rgba(11, 18, 32, 0.90);
 }
 
-:root[data-theme="dark"] .recent-card .n span { color: rgba(255, 250, 242, 0.90); }
 
 .recent-card .n em {
   display: block;
@@ -477,7 +362,6 @@
   color: rgba(11, 18, 32, 0.52);
 }
 
-:root[data-theme="dark"] .recent-card .n em { color: rgba(255, 250, 242, 0.56); }
 
 .training-list { margin-top: 12px; }
 
@@ -491,7 +375,6 @@
   color: rgba(11, 18, 32, 0.88);
 }
 
-:root[data-theme="dark"] .list-label { color: rgba(255, 250, 242, 0.88); }
 
 .list-label .s-icon {
   width: 28px;
@@ -520,12 +403,6 @@
   transition: border-color 0.15s;
 }
 
-:root[data-theme="dark"] .card {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.40);
-}
-
 .card:hover { border-color: rgba(252, 76, 2, 0.30); }
 
 .card .left { padding: 12px 14px; }
@@ -539,7 +416,6 @@
   color: rgba(11, 18, 32, 0.52);
 }
 
-:root[data-theme="dark"] .card .sport { color: rgba(255, 250, 242, 0.56); }
 
 .card .title {
   margin-top: 3px;
@@ -548,7 +424,6 @@
   color: rgba(11, 18, 32, 0.90);
 }
 
-:root[data-theme="dark"] .card .title { color: rgba(255, 250, 242, 0.90); }
 
 .card .meta {
   margin-top: 4px;
@@ -557,7 +432,6 @@
   font-size: 12px;
 }
 
-:root[data-theme="dark"] .card .meta { color: rgba(255, 250, 242, 0.56); }
 
 .card .right {
   display: flex;
@@ -567,11 +441,6 @@
   padding: 12px 14px;
   border-left: 1px solid rgba(11, 18, 32, 0.08);
   background: rgba(255, 255, 255, 0.52);
-}
-
-:root[data-theme="dark"] .card .right {
-  border-color: rgba(255, 250, 242, 0.08);
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .pill {
@@ -608,11 +477,6 @@
   outline-offset: 3px;
 }
 
-:root[data-theme="dark"] .workout-item {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-}
-
 @keyframes trainingRise {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -633,11 +497,6 @@
   background: rgba(11, 18, 32, 0.04);
   display: grid;
   place-items: center;
-}
-
-:root[data-theme="dark"] .workout-sport {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .sport-emoji { font-size: 20px; }
@@ -667,10 +526,6 @@
   color: rgba(11, 18, 32, 0.58);
 }
 
-:root[data-theme="dark"] .workout-date {
-  color: rgba(255, 250, 242, 0.70);
-}
-
 .workout-metrics {
   margin-top: 8px;
   display: flex;
@@ -678,10 +533,6 @@
   gap: 10px;
   color: rgba(11, 18, 32, 0.70);
   font-weight: 850;
-}
-
-:root[data-theme="dark"] .workout-metrics {
-  color: rgba(255, 250, 242, 0.74);
 }
 
 .metric {
@@ -696,20 +547,12 @@
   color: rgba(11, 18, 32, 0.35);
 }
 
-:root[data-theme="dark"] .workout-arrow {
-  color: rgba(255, 250, 242, 0.42);
-}
-
 .workout-description {
   margin: 10px 0 0;
   color: rgba(11, 18, 32, 0.70);
   font-weight: 850;
   line-height: 1.5;
   white-space: pre-wrap;
-}
-
-:root[data-theme="dark"] .workout-description {
-  color: rgba(255, 250, 242, 0.74);
 }
 
 .training-pagination {
@@ -741,22 +584,6 @@
   color: rgba(11, 18, 32, 0.62);
 }
 
-:root[data-theme="dark"] .training-pagination .pg {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.78);
-}
-
-:root[data-theme="dark"] .training-pagination .pg-meta {
-  color: rgba(255, 250, 242, 0.70);
-}
-
-:root[data-theme="dark"] .pill {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 250, 242, 0.72);
-}
-
 .training-empty {
   border-radius: 22px;
   border: 1px dashed rgba(11, 18, 32, 0.18);
@@ -766,11 +593,6 @@
   grid-template-columns: 44px 1fr auto;
   gap: 14px;
   align-items: center;
-}
-
-:root[data-theme="dark"] .training-empty {
-  border-color: rgba(255, 250, 242, 0.16);
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .training-empty .icon {
@@ -789,7 +611,6 @@
   color: rgba(11, 18, 32, 0.88);
 }
 
-:root[data-theme="dark"] .training-empty .t { color: rgba(255, 250, 242, 0.90); }
 
 .training-empty .s {
   margin-top: 3px;
@@ -797,7 +618,6 @@
   color: rgba(11, 18, 32, 0.62);
 }
 
-:root[data-theme="dark"] .training-empty .s { color: rgba(255, 250, 242, 0.62); }
 
 @media (max-width: 980px) {
   .training-filters .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -836,16 +656,8 @@
   color: rgba(11, 18, 32, 0.55);
 }
 
-:root[data-theme="dark"] .training-filters .search .clear {
-  color: rgba(255, 250, 242, 0.62);
-}
-
 .training-filters .search .clear:hover {
   background: rgba(11, 18, 32, 0.06);
-}
-
-:root[data-theme="dark"] .training-filters .search .clear:hover {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .tf-sort,
@@ -879,13 +691,6 @@
 .tf-sort-wrap { position: relative; }
 .tf-take-wrap { position: relative; }
 
-:root[data-theme="dark"] .tf-sort,
-:root[data-theme="dark"] .tf-take {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.76);
-}
-
 .tf-sort select,
 .tf-take select {
   border: 0;
@@ -918,18 +723,6 @@
 .tf-filter-btn.has-filters {
   border-color: rgba(252, 76, 2, 0.32);
   background: rgba(252, 76, 2, 0.08);
-  color: rgba(252, 76, 2, 0.92);
-}
-
-:root[data-theme="dark"] .tf-filter-btn {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.78);
-}
-
-:root[data-theme="dark"] .tf-filter-btn.has-filters {
-  border-color: rgba(252, 76, 2, 0.40);
-  background: rgba(252, 76, 2, 0.14);
   color: rgba(252, 76, 2, 0.92);
 }
 
@@ -979,12 +772,6 @@
   min-width: 200px;
 }
 
-:root[data-theme="dark"] .tf-picker {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(11, 18, 32, 0.96);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.50);
-}
-
 .tf-picker-head {
   padding: 10px 14px 8px;
   font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular;
@@ -994,11 +781,6 @@
   letter-spacing: 0.10em;
   color: rgba(11, 18, 32, 0.48);
   border-bottom: 1px solid rgba(11, 18, 32, 0.08);
-}
-
-:root[data-theme="dark"] .tf-picker-head {
-  color: rgba(255, 250, 242, 0.48);
-  border-color: rgba(255, 250, 242, 0.08);
 }
 
 .tf-picker-item {
@@ -1020,13 +802,6 @@
 
 .tf-picker-item:hover { background: rgba(252, 76, 2, 0.06); }
 
-:root[data-theme="dark"] .tf-picker-item {
-  color: rgba(255, 250, 242, 0.84);
-}
-
-:root[data-theme="dark"] .tf-picker-item:hover {
-  background: rgba(252, 76, 2, 0.10);
-}
 
 .tf-picker-sub {
   margin-left: auto;
@@ -1035,7 +810,6 @@
   color: rgba(11, 18, 32, 0.44);
 }
 
-:root[data-theme="dark"] .tf-picker-sub { color: rgba(255, 250, 242, 0.44); }
 
 .tf-picker-empty {
   padding: 12px 14px;
@@ -1043,7 +817,6 @@
   color: rgba(11, 18, 32, 0.52);
 }
 
-:root[data-theme="dark"] .tf-picker-empty { color: rgba(255, 250, 242, 0.52); }
 
 .tf-chips {
   display: flex;
@@ -1066,12 +839,6 @@
   color: rgba(11, 18, 32, 0.80);
 }
 
-:root[data-theme="dark"] .tf-chip {
-  border-color: rgba(255, 250, 242, 0.16);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.80);
-}
-
 .tf-chip-icon { color: rgba(252, 76, 2, 0.80); flex-shrink: 0; }
 
 .tf-chip-label {
@@ -1082,7 +849,6 @@
   white-space: nowrap;
 }
 
-:root[data-theme="dark"] .tf-chip-label { color: rgba(255, 250, 242, 0.54); }
 
 .tf-chip-input {
   border: none;
@@ -1096,7 +862,6 @@
   min-width: 0;
 }
 
-:root[data-theme="dark"] .tf-chip-input { color: rgba(255, 250, 242, 0.86); }
 
 .tf-chip-input[type="date"] { width: 130px; }
 
@@ -1119,7 +884,6 @@
   padding: 0;
 }
 
-:root[data-theme="dark"] .tf-chip-sel-btn { color: rgba(252, 76, 2, 0.92); }
 
 .tf-chip-picker {
   top: calc(100% + 8px);
@@ -1161,12 +925,6 @@
   color: rgba(220, 38, 38, 0.80);
 }
 
-:root[data-theme="dark"] .tf-chip-remove {
-  border-color: rgba(255, 250, 242, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 250, 242, 0.54);
-}
-
 .tf-clear {
   display: inline-flex;
   align-items: center;
@@ -1185,11 +943,6 @@
 .tf-clear:hover {
   border-color: rgba(220, 38, 38, 0.22);
   color: rgba(220, 38, 38, 0.80);
-}
-
-:root[data-theme="dark"] .tf-clear {
-  border-color: rgba(255, 250, 242, 0.14);
-  color: rgba(255, 250, 242, 0.52);
 }
 
 @media (max-width: 560px) {

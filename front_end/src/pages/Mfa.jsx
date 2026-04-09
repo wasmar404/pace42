@@ -34,18 +34,12 @@ export default function Mfa() {
     async function run() {
       setLoading(true)
       setError('')
-
-
-
-    //call sb to verify the code 
       try {
         const { data: s } = await supabase.auth.getSession()
         if (!s.session) {
           navigate('/login', { replace: true })
           return
         }
-
-        // check if user passed 2fa already
         const { data: aalRes, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         if (aalErr) throw aalErr
         if (aalRes?.currentLevel === 'aal2') {
@@ -75,7 +69,6 @@ export default function Mfa() {
       } finally {
         if (!cancelled) {
           setLoading(false)
-          // Give React a tick to paint before focusing.
           setTimeout(() => inputRef.current?.focus(), 0)
         }
       }
@@ -102,14 +95,12 @@ export default function Mfa() {
       const msg = String(e2?.message || 'Invalid code')
       setError(msg)
       setCode('')
-      // if the challenge expired/was consumed refresh it so the user can retry
       const lower = msg.toLowerCase()
       if (lower.includes('expired') || lower.includes('challenge') || lower.includes('not found')) {
         try {
           const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId })
           if (!chErr && ch?.id) setChallengeId(String(ch.id))
         } catch {
-          // ignore
         }
       }
       setTimeout(() => inputRef.current?.focus(), 0)

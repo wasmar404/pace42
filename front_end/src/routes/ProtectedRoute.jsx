@@ -42,8 +42,6 @@ export default function ProtectedRoute({ children }) {
           setNeedsMfa(false)
         }
       } catch {
-        // If Supabase auth endpoints are temporarily unreachable, fall back to
-        // the persisted token (lets the app keep working).
         const token = readSupabaseAccessTokenSync()
         setHasSession(Boolean(token))
         setNeedsMfa(false)

@@ -53,7 +53,6 @@ export default function Settings() {
         if (cancelled) return
         setMe(res)
 
-        // MFA state
         try {
           const { data, error: mfaErr } = await supabase.auth.mfa.listFactors()
           if (!mfaErr) {
@@ -62,7 +61,6 @@ export default function Settings() {
             setMfaEnabled(enabled)
           }
         } catch {
-          // ignore
         }
       } catch (e) {
         if (cancelled) return
@@ -105,7 +103,6 @@ export default function Settings() {
       if (chErr) throw chErr
       if (!ch?.id) throw new Error('Failed to start challenge')
       setMfaChallengeId(String(ch.id))
-      // Instruction text is shown inline in the 2FA panel.
     } catch (e) {
       setError(e?.message || 'Failed to enable 2FA')
     } finally {
@@ -146,7 +143,6 @@ export default function Settings() {
       const totp = await refreshMfa()
       const verified = totp.filter((f) => f.status === 'verified')
       for (const f of verified) {
-        // eslint-disable-next-line no-await-in-loop
         const { error: uErr } = await supabase.auth.mfa.unenroll({ factorId: f.id })
         if (uErr) throw uErr
       }
@@ -186,7 +182,6 @@ export default function Settings() {
         onProgress: (p) => setUploadPct(Math.round(p * 100)),
       })
 
-      // Refresh profile
       const next = await backendGet('/api/me')
       setMe(next)
 
@@ -200,10 +195,6 @@ export default function Settings() {
       if (fileRef.current) fileRef.current.value = ''
     }
   }
-
-
-  // weekly goal removed
-
   const onChangePassword = async (e) => {
     e.preventDefault()
     setNotice('')
@@ -254,7 +245,6 @@ export default function Settings() {
           .filter((k) => k.startsWith('pace42.'))
           .forEach((k) => localStorage.removeItem(k))
       } catch {
-        // ignore
       }
 
       navigate('/login')
@@ -402,17 +392,14 @@ export default function Settings() {
                         const qr = normalizeQrValue(mfaEnroll?.totp?.qr_code)
                         if (!qr) return <div className="mfa-qr-text">QR unavailable</div>
 
-                        // Supabase usually returns a data URL.
                         if (qr.startsWith('data:image/') || qr.startsWith('data:')) {
                           return <img className="mfa-qr-img" src={qr} alt="2FA QR code" />
                         }
 
-                        // Fallback: raw SVG markup.
                         if (qr.startsWith('<svg') || qr.includes('<svg')) {
                           return <div className="mfa-qr-svg" dangerouslySetInnerHTML={{ __html: qr }} />
                         }
 
-                        // Last resort: show as text to avoid injecting unknown markup.
                         return <div className="mfa-qr-text">{qr}</div>
                       })()}
                     </div>

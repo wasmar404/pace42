@@ -5,7 +5,19 @@ import { Search, UserPlus, UserCheck, Loader2, AlertCircle } from 'lucide-react'
 import NavBar from '../components/NavBar'
 import { followUser, searchUsers, unfollowUser } from '../api/users'
 import Avatar from '../components/Avatar'
+import { supabase } from '../supabaseClient'
+import { readSupabaseSessionUserForStorageKeySync, readSupabaseSessionUserSync } from '../utils/avatarCache'
 import '../styles/Search.css'
+
+function readMeIdSync() {
+  try {
+    const key = supabase?.auth?.storageKey
+    const u = key ? readSupabaseSessionUserForStorageKeySync(key) : readSupabaseSessionUserSync()
+    return u?.id || ''
+  } catch {
+    return ''
+  }
+}
 
 function displayName(u) {
   const first = (u?.firstName || '').trim()
@@ -22,10 +34,11 @@ export default function SearchPage() {
   const lastReq = useRef(0)
   const inputRef = useRef(null)
 
+  const meId = readMeIdSync()
+
   const trimmed = useMemo(() => (q || '').trim(), [q])
 
   useEffect(() => {
-    // Focus input on mount
     inputRef.current?.focus()
 
     const onKey = (e) => {
@@ -57,7 +70,8 @@ export default function SearchPage() {
         try {
           const res = await searchUsers(trimmed)
           if (lastReq.current !== token) return
-          setResults(res?.users || [])
+          const list = Array.isArray(res?.users) ? res.users : []
+          setResults(meId ? list.filter((u) => u?.id !== meId) : list)
         } catch (e) {
           if (lastReq.current !== token) return
           setError(e?.message || 'Search failed')
@@ -73,6 +87,11 @@ export default function SearchPage() {
   const toggleFollow = async (u) => {
     setError('')
     const userId = u.id
+    const currentMeId = readMeIdSync()
+    if (currentMeId && userId === currentMeId) {
+      setError('Cannot follow yourself')
+      return
+    }
     const next = !u.isFollowing
     setResults((prev) => prev.map((x) => (x.id === userId ? { ...x, isFollowing: next } : x)))
 
@@ -80,7 +99,6 @@ export default function SearchPage() {
       if (next) await followUser(userId)
       else await unfollowUser(userId)
     } catch (e) {
-      // rollback
       setResults((prev) => prev.map((x) => (x.id === userId ? { ...x, isFollowing: !next } : x)))
       setError(e?.message || 'Action failed')
     }
@@ -184,6 +202,7 @@ export default function SearchPage() {
                       className={`follow-button ${u.isFollowing ? 'following' : ''}`}
                       type="button"
                       onClick={() => toggleFollow(u)}
+                      disabled={Boolean(meId && u.id === meId)}
                       aria-label={u.isFollowing ? 'Unfollow user' : 'Follow user'}
                     >
                       {u.isFollowing ? (

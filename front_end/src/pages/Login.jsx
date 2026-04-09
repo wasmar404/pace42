@@ -23,7 +23,6 @@ export default function Login() {
             }
             setError(message || map[err] || err)
         } catch {
-            // ignore
         }
     }, [])
 
@@ -44,7 +43,6 @@ export default function Login() {
                 setError(msg)
             }
         } else {
-            // Enforce: email/password accounts cannot be linked to OAuth.
             const { data } = await supabase.auth.getUser().catch(() => ({ data: null }))
             const providers = Array.isArray(data?.user?.app_metadata?.providers)
                 ? data.user.app_metadata.providers

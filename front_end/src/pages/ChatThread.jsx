@@ -122,7 +122,6 @@ export default function ChatThread() {
     }
   }, [id])
 
-  // Effect 1: socket message listeners — depends only on id, no race with convo loading
   useEffect(() => {
     let s
     let cancelled = false

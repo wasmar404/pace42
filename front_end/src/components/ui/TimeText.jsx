@@ -38,7 +38,6 @@ export default function TimeText({
     else if (variant === 'datetime-long') {
       text = formatLocale(ms, { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     } else {
-      // datetime-short
       text = formatLocale(ms, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     }
   }

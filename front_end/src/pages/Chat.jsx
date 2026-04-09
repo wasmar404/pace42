@@ -23,7 +23,6 @@ export default function Chat() {
   const watchedRef = useRef([])
   const debounceRef = useRef(null)
 
-  //rm dup convo
   const itemsUniq = useMemo(() => {
     const seen = new Set()
     const out = []
@@ -69,8 +68,6 @@ export default function Chat() {
   }
 
   useEffect(() => {
-
-    //loads mutual friends
     let cancelled = false
     async function run() {
       setError('')

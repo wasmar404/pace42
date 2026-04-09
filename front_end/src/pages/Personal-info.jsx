@@ -42,7 +42,6 @@ export default function PersonalInfo() {
     e.preventDefault();
     setError("");
 
-    // Validate all fields are filled
     if (!firstName.trim()) {
         setError("Please enter your first name");
         return;
@@ -127,7 +126,6 @@ export default function PersonalInfo() {
             <div className="center-card dark">
                
 
-                {/* Profile Picture Upload */}
                 <div className="avatar-wrapper">
                     <div className="avatar-circle" onClick={handleAvatarClick}>
                         {profileImage ? (
