@@ -26,7 +26,7 @@ export default function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate 
   const title = a?.title || `${sportLabel(a?.sport)} activity`
 
   const onKudos = async () => {
-    if (!a?.id || kudosBusy) return
+    if (!a?.id || kudosBusy || mine) return
     const next = !kudosOn
 
     onSocialUpdate(a.id, {
@@ -110,7 +110,13 @@ export default function ActivityCard({ item, meId, onOpenSocial, onSocialUpdate 
       </div>
 
       <footer className="feed-foot">
-        <button className={kudosOn ? 'kudos on' : 'kudos'} type="button" onClick={onKudos} disabled={kudosBusy}>
+        <button
+          className={kudosOn ? 'kudos on' : 'kudos'}
+          type="button"
+          onClick={onKudos}
+          disabled={kudosBusy || mine}
+          title={mine ? "You can't kudo your own activity" : undefined}
+        >
           <Heart size={16} />
           <span>Kudos</span>
           <span className="count">{kudosCount}</span>

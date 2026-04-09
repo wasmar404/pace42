@@ -7,6 +7,7 @@ import TimeText from '../components/ui/TimeText'
 import SocialModal from '../components/home/SocialModal'
 import { getActivity, deleteActivity, giveKudos, removeKudos } from '../api/activities'
 import { formatDistance, formatDuration, formatPaceOrSpeed } from '../utils/format'
+import { readSupabaseSessionUserSync } from '../utils/avatarCache'
 import '../styles/ActivityDetails.css'
 
 const RouteMap = lazy(() => import('../components/RouteMap'))
@@ -40,6 +41,9 @@ export default function ActivityDetails() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTab, setModalTab] = useState('comments')
 
+  const meId = useMemo(() => readSupabaseSessionUserSync()?.id || null, [])
+  const mine = Boolean(activity?.userId && meId && activity.userId === meId)
+
   useEffect(() => {
     let cancelled = false
     async function run() {
@@ -65,16 +69,30 @@ export default function ActivityDetails() {
 
   const onKudos = async () => {
     if (kudosBusy) return
+    if (mine) return
     setKudosBusy(true)
     try {
       if (social.viewerHasKudo) {
-        await removeKudos(id)
-        setSocial(s => ({ ...s, kudosCount: Math.max(0, s.kudosCount - 1), viewerHasKudo: false }))
+        const res = await removeKudos(id)
+        setSocial((s) => ({
+          ...s,
+          kudosCount: typeof res?.kudosCount === 'number' ? res.kudosCount : Math.max(0, s.kudosCount - 1),
+          commentCount: typeof res?.commentCount === 'number' ? res.commentCount : s.commentCount,
+          viewerHasKudo: false,
+        }))
       } else {
-        await giveKudos(id)
-        setSocial(s => ({ ...s, kudosCount: s.kudosCount + 1, viewerHasKudo: true }))
+        const res = await giveKudos(id)
+        setSocial((s) => ({
+          ...s,
+          kudosCount: typeof res?.kudosCount === 'number' ? res.kudosCount : s.kudosCount + 1,
+          commentCount: typeof res?.commentCount === 'number' ? res.commentCount : s.commentCount,
+          viewerHasKudo: true,
+        }))
       }
-    } catch { /* ignore */ } finally {
+    } catch (e) {
+      const msg = e?.message || "You can't kudo this activity"
+      setError(String(msg))
+    } finally {
       setKudosBusy(false)
     }
   }
@@ -233,7 +251,8 @@ export default function ActivityDetails() {
                 className={`activity-social-btn kudos${social.viewerHasKudo ? ' active' : ''}`}
                 type="button"
                 onClick={onKudos}
-                disabled={kudosBusy}
+                disabled={kudosBusy || mine}
+                title={mine ? "You can't kudo your own activity" : undefined}
               >
                 <span className="social-icon">👊</span>
                 <span>{social.kudosCount} Kudos</span>

@@ -26,7 +26,8 @@ export async function getChatSocket() {
 
   if (!socket) {
     socket = io(`${BASE_URL}/chat`, {
-      transports: ['websocket'],
+      // Allow polling fallback if WebSocket is blocked by TLS/proxy settings.
+      transports: ['polling', 'websocket'],
       auth: { token },
       reconnection: true,
       reconnectionDelay: 400,

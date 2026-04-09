@@ -387,6 +387,8 @@ services:
     ports:
       - "3004:3004"   # HTTP → redirects to HTTPS
       - "3443:3443"   # HTTPS (TLS termination, proxies to backend)
+      - "5443:5443"   # HTTPS (TLS termination, proxies to Supabase kong)
+      - "5173:5173"   # HTTPS (TLS termination, proxies to frontend)
 
   frontend:
     build:
@@ -400,8 +402,6 @@ services:
       VITE_BACKEND_URL: ${VITE_BACKEND_URL:-https://localhost:3443}
       VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://localhost:54321}
       VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY}}
-    ports:
-      - "5173:5173"
     volumes:
       - ./front_end:/app
       - frontend_node_modules:/app/node_modules
